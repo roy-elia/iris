@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A floating glass panel: Liquid Glass material, continuous corners, an appearance-aware
-/// edge stroke and two-layer shadow. Falls back to an opaque surface only when the user
+/// A floating glass panel: Liquid Glass material, continuous corners and a two-layer
+/// shadow. No drawn outline: the glass's own specular rim defines the edge. Falls back to an opaque surface only when the user
 /// has turned on Reduce Transparency.
 struct GlassPanel: ViewModifier {
   var cornerRadius: CGFloat = DesignTokens.Radius.card
@@ -17,7 +17,6 @@ struct GlassPanel: ViewModifier {
   func body(content: Content) -> some View {
     let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
     let increased = contrast == .increased || forceContrast
-    let stroke = DesignTokens.Stroke.edge(for: scheme, increasedContrast: increased)
     let contact = DesignTokens.Shadow.contact(for: scheme)
     let ambient = DesignTokens.Shadow.ambient(for: scheme)
 
@@ -32,7 +31,6 @@ struct GlassPanel: ViewModifier {
           .glassEffect(glass, in: shape)
       }
     }
-    .overlay(shape.strokeBorder(stroke.color, lineWidth: stroke.width).allowsHitTesting(false))
     .shadow(color: shadowed ? contact.color : .clear, radius: contact.radius, y: contact.y)
     .shadow(color: shadowed ? ambient.color : .clear, radius: ambient.radius, y: ambient.y)
   }
@@ -134,12 +132,8 @@ struct Keycap: View {
   let name: String
 
   @Environment(\.colorScheme) private var scheme
-  @Environment(\.colorSchemeContrast) private var contrast
-  @Environment(\.forceIncreasedContrast) private var forceContrast
 
   var body: some View {
-    let stroke = DesignTokens.Stroke.edge(
-      for: scheme, increasedContrast: contrast == .increased || forceContrast)
     VStack(alignment: .trailing, spacing: 2) {
       Text(symbol).font(.title3.weight(.semibold))
       Text(name).font(.caption)
@@ -148,13 +142,7 @@ struct Keycap: View {
     .padding(.horizontal, 10)
     .padding(.vertical, 6)
     .frame(minWidth: 64, alignment: .trailing)
-    .background(
-      .background.secondary, in: RoundedRectangle(cornerRadius: DesignTokens.Radius.chip, style: .continuous)
-    )
-    .overlay(
-      RoundedRectangle(cornerRadius: DesignTokens.Radius.chip, style: .continuous)
-        .strokeBorder(stroke.color, lineWidth: stroke.width)
-    )
+    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: DesignTokens.Radius.chip, style: .continuous))
     .shadow(color: DesignTokens.Shadow.contact(for: scheme).color, radius: 1, y: 1)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("\(name) key")

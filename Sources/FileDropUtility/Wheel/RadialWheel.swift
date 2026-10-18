@@ -29,8 +29,29 @@ struct RingSegment: Shape {
   }
 }
 
-/// The radial action wheel. In `.click` mode segments are buttons; in `.drop` mode each
-/// segment is a drop target for files being dragged.
+/// Geometry shared by the SwiftUI wheel and the AppKit drop target, so the segment that
+/// lights up is always the one under the pointer.
+enum WheelGeometry {
+  static let innerRatio: CGFloat = 0.42
+
+  /// Angle where segment `index` of `count` starts. Segment 0 is centred at the top and
+  /// the rest follow clockwise (in flipped, y-down coordinates).
+  static func startAngle(index: Int, count: Int) -> Angle {
+    let step = 360.0 / Double(max(count, 1))
+    return Angle(degrees: -90 - step / 2 + step * Double(index))
+  }
+
+  /// The segment under `point`, given relative to the wheel's centre in y-down
+  /// coordinates, or nil over the centre or outside the wheel.
+  static func segment(at point: CGPoint, outerRadius: CGFloat, count: Int) -> Int? {
+    WheelHitTest.segment(
+      dx: point.x, dy: point.y, outerRadius: outerRadius, count: count, innerRatio: innerRatio)
+  }
+}
+
+/// The radial action wheel: separate Liquid Glass segments around a glass centre pill.
+/// In `.click` mode segments are buttons that light up under the pointer. In `.drop`
+/// mode an AppKit drop target tracks the drag and passes the lit segment in `hotID`.
 struct RadialWheel: View {
   enum Mode { case click, drop }
 
@@ -38,6 +59,8 @@ struct RadialWheel: View {
   let items: [WheelItem]
   let centerText: String
   let mode: Mode
+  /// The lit segment in `.drop` mode, set by `WheelDropView`.
+  var hotID: String? = nil
   let onSelect: (WheelItem, [URL]) -> Void
 
   @State private var hovered: String?
@@ -46,14 +69,18 @@ struct RadialWheel: View {
   @Environment(\.forceIncreasedContrast) private var forceContrast
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+  private var litID: String? { mode == .drop ? hotID : hovered }
+  private var litItem: WheelItem? { items.first { $0.id == litID && $0.isEnabled } }
+
   var body: some View {
     GeometryReader { geo in
       let size = min(geo.size.width, geo.size.height)
-      let step = 360.0 / Double(max(items.count, 1))
+      // Each segment keeps its own glass: a shared GlassEffectContainer would melt the
+      // neighbouring shapes into one disc.
       ZStack {
         ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-          // Start at the top, going clockwise.
-          let start = Angle(degrees: -90 - step / 2 + step * Double(index))
+          let start = WheelGeometry.startAngle(index: index, count: items.count)
+          let step = 360.0 / Double(items.count)
           segment(item, start: start, end: start + .degrees(step), size: size)
         }
         center(size: size)
@@ -62,36 +89,39 @@ struct RadialWheel: View {
       .position(x: geo.size.width / 2, y: geo.size.height / 2)
     }
     .aspectRatio(1, contentMode: .fit)
-    .padding(10)
-    .glassPanel(cornerRadius: 999)
     .accessibilityElement(children: .contain)
     .accessibilityLabel("\(kind.longTitle) wheel")
   }
 
   @ViewBuilder
   private func segment(_ item: WheelItem, start: Angle, end: Angle, size: CGFloat) -> some View {
-    let shape = RingSegment(startAngle: start, endAngle: end)
-    let isHot = hovered == item.id && item.isEnabled
-    let stroke = DesignTokens.Stroke.edge(
-      for: scheme, increasedContrast: contrast == .increased || forceContrast)
+    let shape = RingSegment(startAngle: start, endAngle: end, innerRatio: WheelGeometry.innerRatio, gap: 7)
+    let isHot = litID == item.id && item.isEnabled
+    let increased = contrast == .increased || forceContrast
     let mid = Angle(degrees: (start.degrees + end.degrees) / 2)
     let labelRadius = size / 2 * 0.71
     let offset = CGSize(
       width: cos(mid.radians) * labelRadius, height: sin(mid.radians) * labelRadius)
+    let contact = DesignTokens.Shadow.contact(for: scheme)
+    let ambient = DesignTokens.Shadow.ambient(for: scheme)
 
     ZStack {
       shape
         .fill(
           isHot
             ? AnyShapeStyle(DesignTokens.Palette.accentFill)
-            : AnyShapeStyle(
-              DesignTokens.scrim(for: scheme, increasedContrast: contrast == .increased || forceContrast))
+            : AnyShapeStyle(DesignTokens.scrim(for: scheme, increasedContrast: increased))
         )
         .glassEffect(isHot ? .regular.tint(DesignTokens.Palette.accentFill) : .regular, in: shape)
-        .overlay(shape.stroke(stroke.color, lineWidth: stroke.width))
+        // The lit segment glows in the accent colour instead of being outlined.
+        .shadow(
+          color: isHot ? DesignTokens.Palette.accentFill.opacity(0.55) : contact.color,
+          radius: isHot ? 14 : contact.radius, y: isHot ? 0 : contact.y
+        )
+        .shadow(color: isHot ? .clear : ambient.color, radius: ambient.radius, y: ambient.y)
       VStack(spacing: 3) {
         if let symbol = item.systemImage {
-          Image(systemName: symbol).font(.title3).accessibilityHidden(true)
+          Image(systemName: symbol).font(.title3.weight(.medium)).accessibilityHidden(true)
         }
         Text(item.title)
           .font(.system(.caption, design: .rounded).weight(.bold))
@@ -109,9 +139,10 @@ struct RadialWheel: View {
       .allowsHitTesting(false)
     }
     .contentShape(shape)
-    .scaleEffect(isHot && !reduceMotion ? 1.03 : 1)
+    .scaleEffect(isHot && !reduceMotion ? 1.04 : 1)
+    .zIndex(isHot ? 1 : 0)
     .animation(DesignTokens.Motion.animation(reduceMotion: reduceMotion), value: isHot)
-    .modifier(SegmentInteraction(mode: mode, item: item, hovered: $hovered, onSelect: onSelect))
+    .modifier(SegmentClick(enabled: mode == .click, item: item, hovered: $hovered, onSelect: onSelect))
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(item.title)
     .accessibilityHint(item.disabledReason ?? "")
@@ -123,43 +154,48 @@ struct RadialWheel: View {
     .help(item.disabledReason ?? item.title)
   }
 
+  /// The centre pill names the lit segment, or shows `centerText` when nothing is lit.
   private func center(size: CGFloat) -> some View {
     VStack(spacing: 2) {
-      Text(centerText).font(.headline.monospacedDigit())
+      Text(litItem?.title.uppercased() ?? centerText)
+        .font(
+          litItem == nil ? .headline.monospacedDigit() : .system(.subheadline, design: .rounded).weight(.bold)
+        )
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+        .contentTransition(.opacity)
       Text(kind.title).font(.caption2).foregroundStyle(DesignTokens.Palette.secondaryText)
     }
     .padding(.horizontal, 14)
     .padding(.vertical, 8)
-    .glassPanel(cornerRadius: 999, shadowed: false)
-    .frame(width: size * 0.36)
+    .frame(maxWidth: size * 0.34)
+    .glassPanel(cornerRadius: 999)
+    .animation(DesignTokens.Motion.animation(reduceMotion: reduceMotion), value: litID)
     .accessibilityElement(children: .combine)
   }
 }
 
-/// Click or drop behaviour for a segment.
-private struct SegmentInteraction: ViewModifier {
-  let mode: RadialWheel.Mode
+/// Hover and click behaviour for a segment in `.click` mode.
+private struct SegmentClick: ViewModifier {
+  let enabled: Bool
   let item: WheelItem
   @Binding var hovered: String?
   let onSelect: (WheelItem, [URL]) -> Void
 
   func body(content: Content) -> some View {
-    switch mode {
-    case .click:
+    if enabled {
       content
-        .onHover { inside in hovered = inside ? item.id : (hovered == item.id ? nil : hovered) }
+        .onHover { inside in
+          if inside {
+            if hovered != item.id, item.isEnabled { WheelFeedback.hover() }
+            hovered = item.id
+          } else if hovered == item.id {
+            hovered = nil
+          }
+        }
         .onTapGesture { if item.isEnabled { onSelect(item, []) } }
-    case .drop:
-      content.onDrop(
-        of: [.fileURL],
-        isTargeted: Binding(
-          get: { hovered == item.id },
-          set: { inside in hovered = inside ? item.id : (hovered == item.id ? nil : hovered) })
-      ) { providers in
-        guard item.isEnabled else { return false }
-        URLLoader.load(providers) { urls in onSelect(item, urls) }
-        return true
-      }
+    } else {
+      content
     }
   }
 }

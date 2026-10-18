@@ -244,3 +244,36 @@ private func load(_ urls: URL...) throws -> [DroppedFile] { try urls.map { try D
     #expect(FileActions.commonFolder(of: []) == nil)
   }
 }
+
+@Suite struct WheelHitTestTests {
+  // Six segments, outer radius 170, as in the drag overlay.
+  private func hit(_ dx: Double, _ dy: Double) -> Int? {
+    WheelHitTest.segment(dx: dx, dy: dy, outerRadius: 170, count: 6)
+  }
+
+  @Test func topIsFirstSegmentAndOrderIsClockwise() {
+    #expect(hit(0, -120) == 0)  // top
+    #expect(hit(104, -60) == 1)  // upper right
+    #expect(hit(104, 60) == 2)  // lower right
+    #expect(hit(0, 120) == 3)  // bottom
+    #expect(hit(-104, 60) == 4)  // lower left
+    #expect(hit(-104, -60) == 5)  // upper left
+  }
+
+  @Test func centreHoleAndOutsideMissEverySegment() {
+    #expect(hit(0, 0) == nil)
+    #expect(hit(30, -40) == nil)  // inside the centre pill
+    #expect(hit(0, -200) == nil)  // past the rim
+    #expect(hit(0, -185) == 0)  // just past the rim still counts
+  }
+
+  @Test func boundariesFallOnOneSide() {
+    // The edge between segments 0 and 1 is at -60°; just either side of it.
+    let r = 120.0
+    let a0 = (-60.5) * .pi / 180
+    let a1 = (-59.5) * .pi / 180
+    #expect(hit(r * cos(a0), r * sin(a0)) == 0)
+    #expect(hit(r * cos(a1), r * sin(a1)) == 1)
+    #expect(WheelHitTest.segment(dx: 0, dy: -100, outerRadius: 170, count: 0) == nil)
+  }
+}

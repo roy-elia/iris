@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Every adaptive design value in one place. Change a value here and every glass panel,
-/// shadow, stroke and animation follows.
+/// shadow and animation follows.
 ///
 /// Custom colours are defined in code with light and dark variants because asset catalogs
 /// need Xcode's `actool`, which the Command Line Tools don't include.
@@ -69,22 +69,6 @@ enum DesignTokens {
     case (.dark, false): return base.opacity(0.55)
     case (_, false): return base.opacity(0.50)
     case (_, true): return base.opacity(0.85)
-    }
-  }
-
-  // MARK: Edge highlight
-
-  struct Stroke {
-    let color: Color
-    let width: CGFloat
-
-    static func edge(for scheme: ColorScheme, increasedContrast: Bool) -> Stroke {
-      switch (scheme, increasedContrast) {
-      case (.dark, false): Stroke(color: .white.opacity(0.16), width: 1)
-      case (.dark, true): Stroke(color: .white.opacity(0.45), width: 1.5)
-      case (_, false): Stroke(color: .black.opacity(0.10), width: 1)
-      case (_, true): Stroke(color: .black.opacity(0.40), width: 1.5)
-      }
     }
   }
 

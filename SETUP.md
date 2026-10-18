@@ -18,7 +18,9 @@ wording, code or bundled tools.
 
 ## Features
 
-**Menu-bar panel:** a status header (Ready, the ⇧ ⌘ ⌃ hints, and a menu with Getting Started, About and Quit), a floating glass tab bar (Files, History, Settings), and floating glass cards.
+**Menu-bar menu:** a native macOS menu with the status line ("File Drop Utility is ready"), the ⇧ ⌘ ⌃ hints, Settings… (⌘,), Getting Started…, About and Quit (⌘Q).
+
+**Main window** (from Settings…): a status header, a floating glass tab bar (Files, History, Settings), and floating glass cards.
 - **Files:** drop zone and Choose Files, the queued list with sizes, three wheel launchers, and the last result with Show in Finder, AirDrop and Share.
 - **History:** the last 50 operations.
 - **Settings:**
@@ -36,7 +38,7 @@ wording, code or bundled tools.
 | Tools | ⌘ Command | Compress, Metadata (strip), Edit, Annotate, Remove BG, Crop, Redact |
 | Actions | ⌃ Control | AirDrop, Float, Copy, Move, Copy Path, Terminal |
 
-A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the queued files don't fit it. A drop on the overlay wheel reports its result in a glass toast at the top of the screen.
+A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the queued files don't fit it. While dragging over the overlay wheel, the segment under the pointer lights up in the accent colour with a soft glow, the centre pill shows its name, and a soft tick plays (with a trackpad tap). A drop plays a pop, runs the command, and reports the result in a glass toast at the top of the screen.
 
 **Other windows:**
 - **Editor:** adjust brightness, contrast and saturation; crop; annotate (colour and width); redact (black bar or pixelate); rotate; undo. Save Copy writes `name edited.ext` and never touches the original.
@@ -51,10 +53,12 @@ All adaptive values live in one file. Change them there and every screen follows
 
 | Component | File |
 |---|---|
-| Tokens: radii, insets, blue-teal accent, secondary/error/warning text, legibility backing, edge stroke, contact and ambient shadows, spring and fade | `Sources/FileDropUtility/Design/DesignTokens.swift` |
+| Tokens: radii, insets, blue-teal accent, secondary/error/warning text, legibility backing, contact and ambient shadows, spring and fade | `Sources/FileDropUtility/Design/DesignTokens.swift` |
 | `glassPanel()` / `glassCard()`, prominent and subtle glass buttons, `Keycap`, `withMorph`, the Increase Contrast override | `Sources/FileDropUtility/Design/GlassStyles.swift` |
 | Floating tab bar (morphing selection) | `Sources/FileDropUtility/Design/FloatingTabBar.swift` |
-| Radial wheel and ring segment shape | `Sources/FileDropUtility/Wheel/RadialWheel.swift` |
+| Radial wheel, ring segment shape, shared wheel geometry | `Sources/FileDropUtility/Wheel/RadialWheel.swift` |
+| AppKit drop target, hover state, sounds and haptics | `Sources/FileDropUtility/Wheel/WheelDrop.swift` |
+| Segment hit-testing (unit-tested) | `Sources/DropCore/WheelHitTest.swift` |
 | Wheel definitions, overlay, drag watcher, toast | `Sources/FileDropUtility/Wheel/WheelModel.swift`, `WheelOverlay.swift` |
 | Panel screens | `Sources/FileDropUtility/Panel/` |
 | Editor | `Sources/FileDropUtility/Editor/` |
@@ -67,12 +71,7 @@ All adaptive values live in one file. Change them there and every screen follows
 2. **Shapes:** `RoundedRectangle(cornerRadius:style: .continuous)`, `Capsule(style: .continuous)` and `Circle` only. `.cornerRadius()` appears 0 times. Wheel segments are ring sectors (a custom `Shape`), since a wheel can't be built from rectangles.
 3. **Floating layout:** cards, the tab bar, the editor toolbar and inspector, the toast and the onboarding panel all sit inset from the window edges (`Spacing.inset` = 12pt). Onboarding, Float and the overlay use transparent windows, so only the glass is drawn.
 4. **Depth:** a tight contact shadow (radius 1.5, y 1) plus a soft ambient shadow (radius 22, y 12). Opacity is 0.12 / 0.10 in light mode and 0.50 / 0.45 in dark mode.
-5. **Edge highlights:**
-
-   | Appearance | Normal | Increase Contrast |
-   |---|---|---|
-   | Dark | white at 16% opacity | white at 45%, 1.5pt |
-   | Light | black at 10% opacity | black at 40%, 1.5pt |
+5. **No outlines:** nothing draws a stroke around glass. Edges come from the Liquid Glass material's own specular rim plus the two shadows. The lit wheel segment glows in the accent colour instead of being outlined.
 
 6. **Motion:** every animation goes through `DesignTokens.Motion`. It's a spring (response 0.4, damping 0.7) normally, and a 0.2s fade and opacity transition under **Reduce Motion**. A grep confirms no animation bypasses the tokens.
 7. **Light and dark:**
@@ -82,7 +81,7 @@ All adaptive values live in one file. Change them there and every screen follows
 8. **Accessibility:**
    - Every control has a VoiceOver label (wheel segments carry their disabled reason as a hint) and an accessibility identifier.
    - Decorative images are hidden from VoiceOver.
-   - Increase Contrast strengthens the strokes and the legibility backing, and switches to the high-contrast colour variants.
+   - Increase Contrast strengthens the legibility backing, and switches to the high-contrast colour variants.
    - Dynamic Type: see Known gaps.
 
 ### Contrast work (WCAG AA, 4.5:1 body text)
@@ -108,7 +107,8 @@ Increase Contrast can't be switched on per window, so the snapshots use macOS's 
 - The wheels open globally while dragging from other apps; it can be turned off in Settings. Drags that start inside this app don't trigger them, because AppKit's drag loop consumes those events.
 - Editor tools work on one image at a time. Wheel tools on several files edit the first image.
 - Rotating in the editor clears that edit's redactions, strokes and crop, rather than guessing how to rotate them.
-- The status menu sits in the panel's header (a "…" menu). `MenuBarExtra` can't show both a menu and a panel from one icon.
+- The menu-bar icon opens a native menu, as in your screenshot; the Files, History and Settings content moved to a window opened by Settings…. Left out of the menu: the free-uses line and Unlock, since there's no licensing.
+- The hover and drop sounds are the system's Tink and Pop. Your sample video had no audio track, and Tangerine's own sound file wasn't copied.
 - Not built: licensing, free-use counts and purchases from the screenshots. You asked for features, and a paywall would need a payment account.
 
 ## Dependencies and licences
@@ -145,7 +145,7 @@ Two scripts work around missing Xcode pieces:
 
 `Previews.swift` uses `PreviewProvider`. The `#Preview` and `@Entry` macros need plugins that ship only with Xcode, so they don't compile here.
 
-It covers every screen in Light, Dark and Largest Text: Panel (Files, History, Settings), the three wheels, Onboarding (Welcome, Tools, Finish), Toast, Editor and Float. Xcode shows them in the canvas.
+It covers every screen in Light, Dark and Largest Text: Panel (Files, History, Settings), the three wheels, a drag hovering over the Actions wheel (Terminal lit), Onboarding (Welcome, Tools, Finish), Toast, Editor and Float. Xcode shows them in the canvas.
 
 Without Xcode, the snapshot harness renders the same screens in real windows. Glass only composites in live windows, not in offscreen `ImageRenderer` output.
 
@@ -156,7 +156,10 @@ Without Xcode, the snapshot harness renders the same screens in real windows. Gl
 - A real Shift-drag of `trip.jpg` from Finder (synthesised HID events) showed the 380×380 Convert overlay under the pointer.
 - The floating card no longer moves when you drag its image; it starts a file drag. (Found and fixed during this check.)
 
-Not confirmed: **a drop onto an overlay segment**. With synthesised events the drop never reached the segment. The same synthetic drag onto the panel's drop zone also failed, because clicking Finder closes the panel, so the test can't separate a code problem from the synthetic events. One synthetic drag also left a stuck drag ghost in Finder, so I stopped testing that way. See manual steps.
+- The native menu shows all eight items with the right enabled states and shortcuts (read back through Accessibility and captured in `docs/previews/Menu.png`).
+- A synthesised Shift-drag from a test window opens the Convert wheel under the pointer. (It failed before: macOS 26 hides the drag pasteboard's types from other apps, so the watcher never recognised the drag. Fixed.)
+
+Not confirmed: **a drop onto an overlay segment**. Synthesised mouse events can't drive a drag session on this Mac: even a plain AppKit test window registered for files got no drag events, and the session never ended. The drop target is ordinary AppKit (`registerForDraggedTypes`, `draggingUpdated`, `performDragOperation`), and its segment maths is covered by unit tests, but a real drag by hand is the remaining check. See manual steps.
 
 ## Known gaps
 
@@ -170,11 +173,10 @@ Not confirmed: **a drop onto an overlay segment**. With synthesised events the d
 
 ## Manual steps for you
 
-1. **Wheel drop test (2 minutes):** drag any image from Finder, hold ⇧ while dragging, drop it on **JPEG**. A glass toast should say "saved 1 file". Then try ⌘ (Tools) and ⌃ (Actions).
-2. If Finder still shows a stuck "trip.jpg" drag ghost from my test, press Escape or click an empty spot in the Finder window.
-3. Optional: try the app with System Settings › Accessibility › Display › Increase Contrast, Reduce Transparency and Reduce Motion turned on.
-4. Optional: toggle Launch at login and check System Settings › General › Login Items.
-5. Optional: revoke the Accessibility and Screen Recording permissions you gave Claude, in System Settings › Privacy & Security.
+1. **Wheel drop test (2 minutes):** drag any image from Finder, hold ⇧ while dragging, move over the segments (each should light up with a tick), and drop on **JPEG**. You should hear a pop, and a glass toast should say "saved 1 file". Then try ⌘ (Tools) and ⌃ (Actions).
+2. Optional: try the app with System Settings › Accessibility › Display › Increase Contrast, Reduce Transparency and Reduce Motion turned on.
+3. Optional: toggle Launch at login and check System Settings › General › Login Items.
+4. Optional: revoke the Accessibility and Screen Recording permissions you gave Claude, in System Settings › Privacy & Security.
 
 ## Suggestions (not built)
 

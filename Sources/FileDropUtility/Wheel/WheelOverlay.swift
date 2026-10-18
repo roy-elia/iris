@@ -52,11 +52,14 @@ final class DragWatcher {
     case .leftMouseDragged:
       if !isFileDrag {
         let pasteboard = NSPasteboard(name: .drag)
-        // A new drag session writes to the drag pasteboard; only react to file drags.
-        if pasteboard.changeCount != dragPasteboardCount,
-          pasteboard.canReadObject(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])
-        {
-          isFileDrag = true
+        // A new drag session writes to the drag pasteboard. macOS 26's pasteboard privacy
+        // often hides its types from apps that aren't the drop target, so an unreadable
+        // pasteboard still counts; only a readable one without files rules the drag out.
+        // The wheel's drop target accepts file URLs only either way.
+        if pasteboard.changeCount != dragPasteboardCount {
+          let types = pasteboard.types ?? []
+          isFileDrag = types.isEmpty || types.contains(.fileURL)
+          dragPasteboardCount = pasteboard.changeCount
         }
       }
       guard isFileDrag else { return }
@@ -82,21 +85,36 @@ final class WheelOverlayController {
   private var currentKind: WheelKind?
   private let size = NSSize(width: 380, height: 380)
 
+  private let dropState = WheelDropState()
+  private let diameter: CGFloat = 340
+
   func show(_ kind: WheelKind, at point: NSPoint) {
     let panel = self.panel ?? makePanel()
     self.panel = panel
     if currentKind != kind {
       currentKind = kind
-      let view = RadialWheel(
-        kind: kind, items: kind.items(for: []), centerText: "Drop", mode: .drop
-      ) { item, urls in
+      dropState.hotID = nil
+      let items = kind.items(for: [])
+      let container = NSView(frame: NSRect(origin: .zero, size: size))
+      let host = NSHostingView(
+        rootView: DropWheelHost(kind: kind, items: items, diameter: diameter, state: dropState))
+      host.frame = container.bounds
+      host.autoresizingMask = [.width, .height]
+      let dropView = WheelDropView(state: dropState)
+      dropView.items = items
+      dropView.diameter = diameter
+      dropView.onDrop = { item, urls in
         AppModel.shared.perform(item.command, urls: urls, origin: .overlay)
       }
-      .padding(DesignTokens.Spacing.inset)
-      panel.contentView = NSHostingView(rootView: view)
+      dropView.frame = container.bounds
+      dropView.autoresizingMask = [.width, .height]
+      container.addSubview(host)
+      container.addSubview(dropView)  // On top, so it is the drag destination.
+      panel.contentView = container
     }
     if !panel.isVisible {
       panel.setFrameOrigin(NSPoint(x: point.x - size.width / 2, y: point.y - size.height / 2))
+      panel.alphaValue = 1
       panel.orderFrontRegardless()
       startReleaseWatch()
     }
@@ -106,6 +124,7 @@ final class WheelOverlayController {
     releaseTimer?.invalidate()
     releaseTimer = nil
     panel?.orderOut(nil)
+    dropState.hotID = nil
     currentKind = nil
   }
 

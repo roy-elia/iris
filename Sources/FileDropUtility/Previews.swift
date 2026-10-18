@@ -63,6 +63,7 @@ import SwiftUI
       ("Wheel-Convert", CGSize(width: 420, height: 420)),
       ("Wheel-Tools", CGSize(width: 420, height: 420)),
       ("Wheel-Actions", CGSize(width: 420, height: 420)),
+      ("Wheel-DropHover", CGSize(width: 420, height: 420)),
       ("Onboarding-Welcome", CGSize(width: 820, height: 520)),
       ("Onboarding-Tools", CGSize(width: 820, height: 520)),
       ("Onboarding-Finish", CGSize(width: 820, height: 520)),
@@ -80,6 +81,7 @@ import SwiftUI
       case "Wheel-Convert": wheel(.convert, model)
       case "Wheel-Tools": wheel(.tools, model)
       case "Wheel-Actions": wheel(.actions, model)
+      case "Wheel-DropHover": dropHover(model)
       case "Onboarding-Welcome": OnboardingView(onFinish: {}, startPage: .welcome).environmentObject(model)
       case "Onboarding-Tools": OnboardingView(onFinish: {}, startPage: .tools).environmentObject(model)
       case "Onboarding-Finish": OnboardingView(onFinish: {}, startPage: .finish).environmentObject(model)
@@ -103,6 +105,15 @@ import SwiftUI
             color: RGBA(red: 0.9, green: 0.1, blue: 0.1), width: 0.012)
         ])
       return editor
+    }
+
+    /// A file being dragged over the Actions wheel, with Terminal lit as in a live drag.
+    private static func dropHover(_ model: AppModel) -> some View {
+      let items = WheelKind.actions.items(for: [])
+      return RadialWheel(
+        kind: .actions, items: items, centerText: "Drop", mode: .drop, hotID: items.last?.id
+      ) { _, _ in }
+      .padding(DesignTokens.Spacing.inset)
     }
 
     private static func wheel(_ kind: WheelKind, _ model: AppModel) -> some View {

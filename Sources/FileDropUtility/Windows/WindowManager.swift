@@ -9,6 +9,26 @@ final class WindowManager {
   private var editors: [URL: NSWindow] = [:]
   private var floats: [URL: NSWindow] = [:]
   private var onboarding: NSWindow?
+  private var main: NSWindow?
+
+  /// The main window: Files, History and Settings on floating glass, opened from the
+  /// menu's Settings… item.
+  func openMain() {
+    if let main {
+      main.makeKeyAndOrderFront(nil)
+      NSApp.activate()
+      return
+    }
+    let view = PanelView().environmentObject(AppModel.shared)
+    let window = makeWindow(
+      content: view, size: NSSize(width: 400, height: 520), title: "File Drop Utility", transparent: true,
+      fitsContent: true)
+    window.styleMask.remove(.resizable)
+    window.isMovableByWindowBackground = true
+    track(window) { [weak self] in self?.main = nil }
+    main = window
+    show(window)
+  }
 
   func openEditor(for url: URL, tool: EditorTool) {
     if let window = editors[url] {
@@ -65,7 +85,7 @@ final class WindowManager {
   /// A window whose content floats over the desktop. With `transparent`, only the SwiftUI
   /// glass panels are drawn, so the window has no opaque background of its own.
   private func makeWindow<Content: View>(
-    content: Content, size: NSSize, title: String, transparent: Bool = false
+    content: Content, size: NSSize, title: String, transparent: Bool = false, fitsContent: Bool = false
   ) -> NSWindow {
     let window = NSWindow(
       contentRect: NSRect(origin: .zero, size: size),
@@ -75,7 +95,10 @@ final class WindowManager {
     window.titlebarAppearsTransparent = true
     window.titleVisibility = .hidden
     window.isReleasedWhenClosed = false
-    window.contentViewController = NSHostingController(rootView: content)
+    let hosting = NSHostingController(rootView: AnyView(content))
+    // With `fitsContent`, the window grows and shrinks with the SwiftUI content.
+    hosting.sizingOptions = fitsContent ? [.preferredContentSize] : []
+    window.contentViewController = hosting
     window.setContentSize(size)
     if transparent {
       window.isOpaque = false
