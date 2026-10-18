@@ -3,33 +3,22 @@ import DropCore
 import ServiceManagement
 import SwiftUI
 
-/// The operation the user has picked in the panel.
-enum OperationChoice: String, CaseIterable, Identifiable {
-  case convert, stripMetadata, mergePDFs, imagesToPDF
-  var id: String { rawValue }
-
-  var title: String {
-    switch self {
-    case .convert: "Convert"
-    case .stripMetadata: "Strip metadata"
-    case .mergePDFs: "Merge PDFs"
-    case .imagesToPDF: "Images to PDF"
-    }
-  }
-}
-
+/// App state shared by the menu-bar panel, the drag overlay and the windows.
 @MainActor
 final class AppModel: ObservableObject {
+  static let shared = AppModel()
+
   @Published var files: [DroppedFile] = []
   @Published var rejected: [String] = []
-  @Published var choice: OperationChoice = .convert
-  @Published var format: ImageFormat
-  @Published var quality: Double
   @Published var isRunning = false
   @Published var lastResult: OperationResult?
+  @Published var lastOperation: String?
   @Published var history: [HistoryEntry]
   @Published var settings: AppSettings {
-    didSet { saveSettings() }
+    didSet {
+      saveSettings()
+      if oldValue.appearance != settings.appearance { applyAppearance() }
+    }
   }
   @Published var settingsError: String?
 
@@ -39,23 +28,14 @@ final class AppModel: ObservableObject {
   init(folder: URL = .appSupportFolder) {
     settingsStore = SettingsStore(fileURL: folder.appendingPathComponent("settings.json"))
     historyStore = HistoryStore(fileURL: folder.appendingPathComponent("history.json"))
-    let loaded = settingsStore.load()
-    settings = loaded
-    format = loaded.defaultFormat
-    quality = loaded.quality
+    settings = settingsStore.load()
     history = historyStore.load()
   }
 
-  var operation: FileOperation {
-    switch choice {
-    case .convert: .convert(format, quality: quality)
-    case .stripMetadata: .stripMetadata
-    case .mergePDFs: .mergePDFs
-    case .imagesToPDF: .imagesToPDF
-    }
+  var totalSizeText: String {
+    let total = files.reduce(Int64(0)) { $0 + $1.byteSize }
+    return ByteCountFormatter.string(fromByteCount: total, countStyle: .file)
   }
-
-  var validationMessage: String? { Processor.validate(operation, files: files) }
 
   // MARK: Queue
 
@@ -69,10 +49,9 @@ final class AppModel: ObservableObject {
       do {
         files.append(try DroppedFile.load(url))
       } catch {
-        rejected.append((error as? LocalizedError)?.errorDescription ?? url.lastPathComponent)
+        rejected.append(Self.message(for: error, fallback: url.lastPathComponent))
       }
     }
-    suggestOperation()
   }
 
   func remove(_ file: DroppedFile) {
@@ -89,45 +68,123 @@ final class AppModel: ObservableObject {
     let panel = NSOpenPanel()
     panel.allowsMultipleSelection = true
     panel.canChooseDirectories = false
-    NSApp.activate(ignoringOtherApps: true)
+    NSApp.activate()
     if panel.runModal() == .OK { add(panel.urls) }
   }
 
-  /// Picks a sensible operation for what was dropped, without overriding a valid choice.
-  private func suggestOperation() {
-    guard validationMessage != nil, !files.isEmpty else { return }
-    if files.allSatisfy({ $0.kind == .pdf }) {
-      choice = .mergePDFs
-    } else if files.allSatisfy(\.kind.isImage) {
-      choice = .convert
+  // MARK: Wheel commands
+
+  enum Origin { case panel, overlay }
+
+  /// Runs a wheel command on `urls` (from a drop) or, when empty, on the queued files.
+  func perform(_ command: WheelCommand, urls: [URL], origin: Origin) {
+    let targets: [DroppedFile]
+    if urls.isEmpty {
+      targets = files
+    } else {
+      var loaded: [DroppedFile] = []
+      var problems: [String] = []
+      for url in urls {
+        do { loaded.append(try DroppedFile.load(url)) } catch {
+          problems.append(Self.message(for: error, fallback: url.lastPathComponent))
+        }
+      }
+      if loaded.isEmpty {
+        finish(
+          OperationResult(failures: problems.map { .init(file: "", message: $0) }), operation: "Drop",
+          origin: origin)
+        return
+      }
+      targets = loaded
+    }
+    let fileURLs = targets.map(\.url)
+
+    switch command {
+    case .convert(let format):
+      run(.convert(format, quality: settings.quality), on: targets, origin: origin)
+    case .toPDF:
+      let allPDFs = targets.allSatisfy { $0.kind == .pdf }
+      run(allPDFs ? .mergePDFs : .imagesToPDF, on: targets, origin: origin)
+    case .compress:
+      run(.compress(quality: CompressOps.defaultQuality), on: targets, origin: origin)
+    case .stripMetadata:
+      run(.stripMetadata, on: targets, origin: origin)
+    case .removeBackground:
+      run(.replaceBackground(.transparent), on: targets, origin: origin)
+    case .edit(let tool):
+      guard let first = targets.first(where: \.kind.isImage) else { return }
+      WindowManager.shared.openEditor(for: first.url, tool: tool)
+    case .airDrop:
+      NSSharingService(named: .sendViaAirDrop)?.perform(withItems: fileURLs)
+    case .float:
+      fileURLs.prefix(6).forEach { WindowManager.shared.openFloat(for: $0) }
+    case .copy:
+      NSPasteboard.general.clearContents()
+      NSPasteboard.general.writeObjects(fileURLs as [NSURL])
+      Toast.show("Copied \(fileURLs.count) file\(fileURLs.count == 1 ? "" : "s")", outputs: [])
+    case .copyPath:
+      NSPasteboard.general.clearContents()
+      NSPasteboard.general.setString(FileActions.pathText(for: fileURLs), forType: .string)
+      Toast.show("Copied \(fileURLs.count == 1 ? "path" : "\(fileURLs.count) paths")", outputs: [])
+    case .move:
+      move(fileURLs, origin: origin)
+    case .terminal:
+      openTerminal(at: fileURLs)
     }
   }
 
-  // MARK: Run
-
-  func run() {
+  /// Runs a file operation off the main thread and records it.
+  func run(_ operation: FileOperation, on targets: [DroppedFile], origin: Origin) {
     guard !isRunning else { return }
-    let operation = operation
-    let files = files
     let processor = Processor(settings: settings)
-    let store = historyStore
     isRunning = true
     Task {
-      let result = await Task.detached { processor.run(operation, on: files) }.value
-      lastResult = result
-      if let entries = try? store.append(result.historyEntry(for: operation, inputCount: files.count)) {
-        history = entries
-      }
+      let result = await Task.detached { processor.run(operation, on: targets) }.value
       isRunning = false
+      finish(result, operation: operation.summary, origin: origin, inputCount: targets.count)
     }
+  }
+
+  private func finish(_ result: OperationResult, operation: String, origin: Origin, inputCount: Int = 0) {
+    lastResult = result
+    lastOperation = operation
+    let entry = HistoryEntry(
+      operation: operation, inputCount: inputCount, outputs: result.outputs.map(\.lastPathComponent),
+      errors: result.failures.map { $0.file.isEmpty ? $0.message : "\($0.file): \($0.message)" })
+    if let entries = try? historyStore.append(entry) { history = entries }
+    if origin == .overlay { Toast.show(result: result, operation: operation) }
+  }
+
+  private func move(_ urls: [URL], origin: Origin) {
+    let panel = NSOpenPanel()
+    panel.canChooseFiles = false
+    panel.canChooseDirectories = true
+    panel.canCreateDirectories = true
+    panel.prompt = "Move Here"
+    NSApp.activate()
+    guard panel.runModal() == .OK, let folder = panel.url else { return }
+    let (moved, failures) = FileActions.move(urls, to: folder)
+    // Keep the queue pointing at the files' new homes.
+    for (old, new) in zip(urls, moved) {
+      if let index = files.firstIndex(where: { $0.url == old }), let reloaded = try? DroppedFile.load(new) {
+        files[index] = reloaded
+      }
+    }
+    finish(
+      OperationResult(outputs: moved, failures: failures), operation: "Move", origin: origin,
+      inputCount: urls.count)
+  }
+
+  private func openTerminal(at urls: [URL]) {
+    guard let folder = FileActions.commonFolder(of: urls),
+      let terminal = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal")
+    else { return }
+    NSWorkspace.shared.open(
+      [folder], withApplicationAt: terminal, configuration: NSWorkspace.OpenConfiguration())
   }
 
   func reveal(_ urls: [URL]) {
     NSWorkspace.shared.activateFileViewerSelecting(urls)
-  }
-
-  func airDrop(_ urls: [URL]) {
-    NSSharingService(named: .sendViaAirDrop)?.perform(withItems: urls)
   }
 
   func clearHistory() {
@@ -143,7 +200,7 @@ final class AppModel: ObservableObject {
     panel.canChooseDirectories = true
     panel.canCreateDirectories = true
     panel.prompt = "Use Folder"
-    NSApp.activate(ignoringOtherApps: true)
+    NSApp.activate()
     if panel.runModal() == .OK, let url = panel.url {
       settings.outputLocation = .folder(url)
     }
@@ -164,11 +221,24 @@ final class AppModel: ObservableObject {
     }
   }
 
+  /// System appearance unless the user picked one in Settings.
+  func applyAppearance() {
+    switch settings.appearance {
+    case .system: NSApp.appearance = nil
+    case .light: NSApp.appearance = NSAppearance(named: .aqua)
+    case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
+    }
+  }
+
   private func saveSettings() {
     do {
       try settingsStore.save(settings)
     } catch {
       settingsError = "Settings could not be saved."
     }
+  }
+
+  nonisolated static func message(for error: Error, fallback: String) -> String {
+    (error as? LocalizedError)?.errorDescription ?? fallback
   }
 }

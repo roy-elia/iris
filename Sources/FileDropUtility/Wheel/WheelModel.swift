@@ -1,0 +1,173 @@
+import AppKit
+import DropCore
+
+/// The three wheels, each opened by holding a modifier key while dragging files.
+enum WheelKind: String, CaseIterable, Identifiable {
+  case convert, tools, actions
+  var id: String { rawValue }
+
+  var title: String {
+    switch self {
+    case .convert: "Convert"
+    case .tools: "Tools"
+    case .actions: "Actions"
+    }
+  }
+
+  var longTitle: String {
+    switch self {
+    case .convert: "File Converter"
+    case .tools: "File Tools"
+    case .actions: "File Actions"
+    }
+  }
+
+  var keySymbol: String {
+    switch self {
+    case .convert: "⇧"
+    case .tools: "⌘"
+    case .actions: "⌃"
+    }
+  }
+
+  var keyName: String {
+    switch self {
+    case .convert: "shift"
+    case .tools: "command"
+    case .actions: "control"
+    }
+  }
+
+  var systemImage: String {
+    switch self {
+    case .convert: "arrow.triangle.2.circlepath"
+    case .tools: "wrench.and.screwdriver"
+    case .actions: "bolt"
+    }
+  }
+
+  /// Which wheel the currently held modifiers ask for, if any.
+  static func forModifiers(_ flags: NSEvent.ModifierFlags) -> WheelKind? {
+    let flags = flags.intersection(.deviceIndependentFlagsMask)
+    if flags.contains(.shift) { return .convert }
+    if flags.contains(.command) { return .tools }
+    if flags.contains(.control) { return .actions }
+    return nil
+  }
+}
+
+/// Editor tool to start in when a tool segment opens the editor.
+enum EditorTool: String, CaseIterable, Identifiable {
+  case adjust, crop, annotate, redact
+  var id: String { rawValue }
+
+  var title: String {
+    switch self {
+    case .adjust: "Adjust"
+    case .crop: "Crop"
+    case .annotate: "Annotate"
+    case .redact: "Redact"
+    }
+  }
+
+  var systemImage: String {
+    switch self {
+    case .adjust: "slider.horizontal.3"
+    case .crop: "crop"
+    case .annotate: "pencil.tip.crop.circle"
+    case .redact: "eye.slash"
+    }
+  }
+}
+
+/// What a wheel segment does.
+enum WheelCommand: Equatable {
+  case convert(ImageFormat)
+  case toPDF
+  case compress
+  case stripMetadata
+  case removeBackground
+  case edit(EditorTool)
+  case airDrop
+  case float
+  case copy
+  case copyPath
+  case move
+  case terminal
+}
+
+struct WheelItem: Identifiable, Equatable {
+  let id: String
+  let title: String
+  let systemImage: String?
+  let command: WheelCommand
+  /// Why the segment can't be used right now, if it can't.
+  var disabledReason: String?
+
+  var isEnabled: Bool { disabledReason == nil }
+}
+
+extension WheelKind {
+  /// Segments for this wheel, enabled or not depending on what's being dropped.
+  /// `files` may be empty while dragging, when the kinds aren't known yet.
+  func items(for files: [DroppedFile]) -> [WheelItem] {
+    let known = !files.isEmpty
+    let allImages = known && files.allSatisfy(\.kind.isImage)
+    let allPDFs = known && files.allSatisfy { $0.kind == .pdf }
+    let imagesOnly: String? = known && !allImages ? "Images only" : nil
+    let oneImage: String? = known && !(files.count == 1 && allImages) ? "One image at a time" : nil
+
+    switch self {
+    case .convert:
+      let formats: [ImageFormat] = [.png, .jpeg, .heic, .avif, .tiff, .bmp, .webp]
+      var items = formats.map { format in
+        WheelItem(
+          id: format.rawValue, title: format.displayName, systemImage: nil, command: .convert(format),
+          disabledReason: !format.isWritable ? "macOS can't write \(format.displayName)" : imagesOnly)
+      }
+      let pdfReason: String? =
+        known && !(allImages || (allPDFs && files.count > 1)) ? "Images, or 2+ PDFs" : nil
+      items.insert(
+        WheelItem(id: "pdf", title: "PDF", systemImage: nil, command: .toPDF, disabledReason: pdfReason),
+        at: 1)
+      return items
+    case .tools:
+      let compressReason: String? =
+        known && files.contains { $0.kind == .unsupported } ? "Images and PDFs only" : nil
+      return [
+        WheelItem(
+          id: "compress", title: "Compress", systemImage: "arrow.down.right.and.arrow.up.left",
+          command: .compress, disabledReason: compressReason),
+        WheelItem(
+          id: "metadata", title: "Metadata", systemImage: "tag", command: .stripMetadata,
+          disabledReason: imagesOnly),
+        WheelItem(
+          id: "edit", title: "Edit", systemImage: EditorTool.adjust.systemImage, command: .edit(.adjust),
+          disabledReason: oneImage),
+        WheelItem(
+          id: "annotate", title: "Annotate", systemImage: EditorTool.annotate.systemImage,
+          command: .edit(.annotate), disabledReason: oneImage),
+        WheelItem(
+          id: "removebg", title: "Remove BG", systemImage: "person.crop.rectangle",
+          command: .removeBackground,
+          disabledReason: imagesOnly),
+        WheelItem(
+          id: "crop", title: "Crop", systemImage: EditorTool.crop.systemImage, command: .edit(.crop),
+          disabledReason: oneImage),
+        WheelItem(
+          id: "redact", title: "Redact", systemImage: EditorTool.redact.systemImage, command: .edit(.redact),
+          disabledReason: oneImage),
+      ]
+    case .actions:
+      return [
+        WheelItem(
+          id: "airdrop", title: "AirDrop", systemImage: "dot.radiowaves.left.and.right", command: .airDrop),
+        WheelItem(id: "float", title: "Float", systemImage: "pin", command: .float),
+        WheelItem(id: "copy", title: "Copy", systemImage: "doc.on.doc", command: .copy),
+        WheelItem(id: "move", title: "Move", systemImage: "folder", command: .move),
+        WheelItem(id: "copypath", title: "Copy Path", systemImage: "doc.text", command: .copyPath),
+        WheelItem(id: "terminal", title: "Terminal", systemImage: "terminal", command: .terminal),
+      ]
+    }
+  }
+}
