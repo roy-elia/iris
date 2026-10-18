@@ -18,7 +18,7 @@ import Testing
   }
 
   @Test func onlyLossyFormatsUseQuality() {
-    #expect(ImageFormat.allCases.filter(\.usesQuality) == [.jpeg, .heic])
+    #expect(ImageFormat.allCases.filter(\.usesQuality) == [.jpeg, .heic, .avif])
   }
 }
 
@@ -83,7 +83,7 @@ import Testing
   }
 
   @Test func fillsMissingOrBadFieldsWithDefaults() throws {
-    let json = Data(#"{"defaultFormat":"bmp","quality":42}"#.utf8)
+    let json = Data(#"{"defaultFormat":"gif","quality":42}"#.utf8)
     let s = try JSONDecoder().decode(AppSettings.self, from: json)
     #expect(s.defaultFormat == .png)
     #expect(s.quality == 1.0)

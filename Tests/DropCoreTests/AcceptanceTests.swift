@@ -28,7 +28,7 @@ import Testing
   func a3Convert() throws {
     let dir = try TempDir()
     let src = try Fixtures.writeImage(to: dir.file("pic.jpg"), width: 64, height: 32)
-    for format in ImageFormat.allCases {
+    for format in ImageFormat.writable {
       let result = AppSettings().processor.run(.convert(format, quality: 0.7), on: try drop([src]))
       #expect(result.succeeded, "\(format)")
       let out = try #require(result.outputs.first)

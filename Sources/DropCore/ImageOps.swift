@@ -14,6 +14,9 @@ public enum ImageOps {
       let image = CGImageSourceCreateImageAtIndex(imageSource, 0, nil)
     else { throw DropError.readFailed(source.lastPathComponent) }
 
+    guard format.isWritable else {
+      throw DropError.wrongInput("macOS can't write \(format.displayName) files.")
+    }
     guard
       let dest = CGImageDestinationCreateWithURL(
         destination as CFURL, format.typeIdentifier as CFString, 1, nil)
@@ -78,7 +81,11 @@ public enum ImageOps {
         imageSource, 0, thumbOptions as CFDictionary)
     else { throw DropError.readFailed(source.lastPathComponent) }
 
-    guard let dest = CGImageDestinationCreateWithURL(destination as CFURL, type, 1, nil) else {
+    // Formats macOS can only read (WebP) are written as PNG instead.
+    let outType = CGImageDestinationCopyTypeIdentifiers() as? [String] ?? []
+    let writeType: CFString =
+      outType.contains(type as String) ? type : ImageFormat.png.typeIdentifier as CFString
+    guard let dest = CGImageDestinationCreateWithURL(destination as CFURL, writeType, 1, nil) else {
       throw DropError.writeFailed(destination.lastPathComponent)
     }
     let options: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 1.0]
@@ -86,6 +93,46 @@ public enum ImageOps {
     guard CGImageDestinationFinalize(dest) else {
       try? FileManager.default.removeItem(at: destination)
       throw DropError.writeFailed(destination.lastPathComponent)
+    }
+  }
+
+  /// Loads the first image with its orientation applied to the pixels.
+  public static func loadOriented(_ url: URL) throws -> CGImage {
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+      CGImageSourceGetCount(source) > 0
+    else { throw DropError.readFailed(url.lastPathComponent) }
+    let options: [CFString: Any] = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true,
+      kCGImageSourceCreateThumbnailWithTransform: true,
+      kCGImageSourceThumbnailMaxPixelSize: maxPixelSize(source),
+    ]
+    guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+      throw DropError.readFailed(url.lastPathComponent)
+    }
+    return image
+  }
+
+  /// Encodes `image` as `format`. Throws for formats macOS cannot write.
+  public static func write(_ image: CGImage, as format: ImageFormat, quality: Double, to url: URL) throws {
+    guard format.isWritable,
+      let dest = CGImageDestinationCreateWithURL(url as CFURL, format.typeIdentifier as CFString, 1, nil)
+    else { throw DropError.writeFailed(url.lastPathComponent) }
+    var options: [CFString: Any] = [:]
+    if format.usesQuality {
+      options[kCGImageDestinationLossyCompressionQuality] = AppSettings.clampQuality(quality)
+    }
+    CGImageDestinationAddImage(dest, image, options as CFDictionary)
+    guard CGImageDestinationFinalize(dest) else {
+      try? FileManager.default.removeItem(at: url)
+      throw DropError.writeFailed(url.lastPathComponent)
+    }
+  }
+
+  /// Whether the image has an alpha channel that is actually used.
+  public static func hasAlpha(_ image: CGImage) -> Bool {
+    switch image.alphaInfo {
+    case .none, .noneSkipFirst, .noneSkipLast: false
+    default: true
     }
   }
 

@@ -15,6 +15,47 @@ enum Fixtures {
     return context.makeImage()!
   }
 
+  /// Deterministic noise, which compresses poorly losslessly and well lossily.
+  static func noisyImage(width: Int, height: Int) -> CGImage {
+    var bytes = [UInt8](repeating: 255, count: width * height * 4)
+    var seed: UInt32 = 12345
+    for i in stride(from: 0, to: bytes.count, by: 4) {
+      for c in 0..<3 {
+        seed = seed &* 1_664_525 &+ 1_013_904_223
+        bytes[i + c] = UInt8(truncatingIfNeeded: seed >> 24)
+      }
+    }
+    let provider = CGDataProvider(data: Data(bytes) as CFData)!
+    return CGImage(
+      width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+      bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+      provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
+  }
+
+  @discardableResult
+  static func writeCGImage(_ image: CGImage, to url: URL, type: String = "public.png") throws -> URL {
+    let dest = CGImageDestinationCreateWithURL(url as CFURL, type as CFString, 1, nil)!
+    CGImageDestinationAddImage(dest, image, nil)
+    guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
+    return url
+  }
+
+  /// RGBA (0...255) of the pixel at a top-left-origin position.
+  static func pixel(_ image: CGImage, x: Int, y: Int) -> [Int] {
+    var buffer = [UInt8](repeating: 0, count: 4)
+    let ctx = CGContext(
+      data: &buffer, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    // Shift the image so the wanted pixel lands on the 1×1 canvas (CG is bottom-left origin).
+    ctx.draw(
+      image,
+      in: CGRect(
+        x: -x, y: -(image.height - 1 - y), width: image.width, height: image.height))
+    return buffer.map(Int.init)
+  }
+
   /// Writes an image file. With `withMetadata`, adds EXIF, GPS and TIFF fields.
   @discardableResult
   static func writeImage(
