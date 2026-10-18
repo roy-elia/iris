@@ -98,12 +98,30 @@ final class WheelOverlayController {
     if !panel.isVisible {
       panel.setFrameOrigin(NSPoint(x: point.x - size.width / 2, y: point.y - size.height / 2))
       panel.orderFrontRegardless()
+      startReleaseWatch()
     }
   }
 
   func hide() {
+    releaseTimer?.invalidate()
+    releaseTimer = nil
     panel?.orderOut(nil)
     currentKind = nil
+  }
+
+  private var releaseTimer: Timer?
+
+  /// During another app's drag session the mouse-up often never reaches our monitors, so
+  /// also watch the physical button state and close shortly after it's released.
+  private func startReleaseWatch() {
+    releaseTimer?.invalidate()
+    releaseTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+      MainActor.assumeIsolated {
+        guard NSEvent.pressedMouseButtons & 1 == 0 else { return }
+        self?.releaseTimer?.invalidate()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { self?.hide() }
+      }
+    }
   }
 
   private func makePanel() -> NSPanel {

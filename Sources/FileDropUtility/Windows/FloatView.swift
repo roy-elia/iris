@@ -27,6 +27,10 @@ struct FloatView: View {
         .glassEffect(.regular.interactive(), in: Circle())
         .accessibilityLabel("Close")
       }
+      // The header moves the window; the preview below drags the file itself.
+      .contentShape(Rectangle())
+      .gesture(WindowDragGesture())
+      .allowsWindowActivationEvents(true)
       Group {
         if let thumbnail {
           Image(nsImage: thumbnail).resizable().scaledToFit()
@@ -36,7 +40,7 @@ struct FloatView: View {
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .onDrag { NSItemProvider(contentsOf: url) ?? NSItemProvider() }
+      .onDrag { NSItemProvider(object: url as NSURL) }
       .accessibilityLabel("Preview of \(url.lastPathComponent). Drag to move the file.")
     }
     .padding(DesignTokens.Spacing.cardPadding)

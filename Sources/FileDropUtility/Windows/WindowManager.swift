@@ -36,7 +36,6 @@ final class WindowManager {
       transparent: true)
     window.level = .floating
     window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-    window.isMovableByWindowBackground = true
     track(window) { [weak self] in self?.floats[url] = nil }
     floats[url] = window
     window.orderFrontRegardless()
@@ -56,7 +55,6 @@ final class WindowManager {
       .environmentObject(AppModel.shared)
     let window = makeWindow(
       content: view, size: NSSize(width: 820, height: 520), title: "Welcome", transparent: true)
-    window.isMovableByWindowBackground = true
     track(window) { [weak self] in self?.onboarding = nil }
     onboarding = window
     show(window)
