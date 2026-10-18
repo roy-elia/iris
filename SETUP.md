@@ -55,7 +55,7 @@ Output names: convert gives `name.<new ext>`; strip gives `name no-metadata.<ext
 | A7 | Unsupported or broken files produce a message, not a crash | Test `A7` |
 | A8 | Settings persist across restarts | Test `A8` |
 | A9 | History keeps the last 50 operations across restarts | Test `A9` |
-| A10 | Share and AirDrop open the system picker | Manual, in the running app |
+| A10 | Share and AirDrop open the system picker | Stage 6 UI check (passes) |
 
 ## Dependencies and licences
 
@@ -93,26 +93,48 @@ checked that a deliberately failing test makes it exit 1.
 - **Your fix, with sudo:** you moved two stale 2024 `PackageDescription.swiftmodule/*.private.swiftinterface` files into `/Library/Developer/CommandLineTools/stale-backup/`. They had broken every `Package.swift` link. The undo command is in the chat history.
 - I deleted `~/Library/Application Support/FileDropUtility` before the first launch, to start clean. It is this app's own data folder.
 
+## End-to-end UI check (stage 6), 2026-10-18
+
+Run against the bundled app through macOS accessibility (System Events). You gave Claude.app
+Accessibility permission for this. Files were added through Choose Files (the open panel).
+Drag and drop itself wasn't simulated.
+
+| Flow | Result |
+|---|---|
+| Menu-bar icon shows; app has no Dock icon (A2) | Pass. You confirmed the icon; `lsappinfo` reports `UIElement` |
+| `beach.png`, Convert, JPEG, Run | Pass. 640×400 JPEG `beach.jpg`; panel shows "Saved 1 file" |
+| Run again | Pass. `beach (1).jpg`; nothing overwritten |
+| `trip.jpg`, Strip metadata | Pass. Copy has no GPS and no camera make; original unchanged |
+| `part1.pdf` + `part2.pdf` | Pass. Action switched to Merge PDFs by itself; `Merged.pdf` has 5 pages |
+| `beach.png` + `trip.jpg`, Images to PDF | Pass. `Images.pdf` has 2 pages |
+| `notes.txt` | Pass. "notes.txt is not a supported file type." |
+| Images plus a PDF, Images to PDF selected | Pass. Shows "works on images only" |
+| AirDrop button (A10) | Pass. System AirDrop window opens |
+| Share button (A10) | Pass, after a fix. The system share picker opens next to the button |
+| Default format TIFF + output folder via Choose Folder, then Quit and relaunch | Pass. Both kept; next conversion defaulted to TIFF and saved into the chosen folder |
+| History after relaunch | Pass. All runs listed, newest first |
+| Launch at login | Not exercised. It would register a real login item on your account; ask me to test it |
+
+Settings were put back to defaults (PNG, next to original) afterwards.
+
+### Fixes from the UI check
+
+- **Share button:** replaced SwiftUI `ShareLink` with an AppKit `NSSharingServicePicker` button (`ShareButton.swift`). The replacement is verified to open the picker. I didn't confirm whether the original `ShareLink` was actually broken; my first check only looked for an in-app menu, and this picker is not one.
+- **Settings layout:** "Choose Folder…" was missing from the accessibility tree (probably clipped in the form's narrow right-hand column). It now sits on its own row and shows up.
+- **Accessibility:** the drop zone had merged with its Choose Files link into one unlabeled element; it's now a labeled container with a separate button. The decorative tray image is hidden from VoiceOver. Key controls have accessibility identifiers, which the UI check uses.
+
 ## Known gaps against the spec
 
-- **End-to-end UI check not done (stage 6).** Computer use can't target the app because it isn't in the Spotlight app index, and screenshot filtering hides it. `osascript` has no Accessibility permission. Verified: the app launches, runs as `UIElement` (no Dock icon) and has no crash reports or logged errors. Not verified: the status item appearing, the panel, drag and drop, the buttons, and A10. Every operation the panel runs goes through the same `Processor` the acceptance tests exercise, but the SwiftUI wiring itself is untested.
-- The menu-bar icon does appear (confirmed by you with a screenshot on 2026-10-18), so A2 passes. On macOS 26 the status item isn't a window of the app's own process, which is why my window listing found nothing.
-- Launch at login only works from the `.app` bundle (`SMAppService`). It shows an error when run with `swift run`.
+- Drag and drop onto the panel wasn't simulated; files went in through the open panel, which feeds the same `add` path.
+- Launch at login wasn't exercised (see above). It only works from the `.app` bundle (`SMAppService`).
 - The app is ad-hoc signed, not notarized. Other Macs will block it unless you sign it with a Developer ID.
-- No UI tests. XCUITest needs Xcode.
+- No automated UI tests. XCUITest needs Xcode; the stage 6 check was scripted by hand and isn't in the repo.
 
 ## Manual steps for you
 
-1. Launch `dist/File Drop Utility.app` and look for the tray icon in the menu bar. If it's missing, check System Settings > Menu Bar (macOS 26) and allow "File Drop Utility". A crowded menu bar can also hide it behind the notch.
-2. Run the checklist with `samples/`:
-   - Drop `beach.png`, choose Convert, then JPEG, then Run. `beach.jpg` should appear.
-   - Run it again. `beach (1).jpg` should appear.
-   - Drop `trip.jpg`, choose Strip metadata, then Run. Finder's Get Info on `trip no-metadata.jpg` should show no location.
-   - Drop `part1.pdf` and `part2.pdf`. Merge should be selected, and Run gives a 5-page `Merged.pdf`.
-   - Drop `notes.txt`. It should show "is not a supported file type".
-   - Click AirDrop and Share on a result. The system pickers should open (A10).
-   - Change Settings, quit, relaunch. The settings should be kept, and History should list the runs.
-3. Alternatively, open the app and mention it to me with `@File Drop Utility` (or give `osascript` Accessibility permission) and I'll run that checklist through the UI myself.
+- Optional: try a real drag and drop from Finder onto the panel.
+- Optional: toggle Launch at login, check it appears under System Settings > General > Login Items, then toggle it off.
+- If you want to undo the Accessibility permission, turn Claude off in System Settings > Privacy & Security > Accessibility.
 
 ## Suggestions (not built)
 

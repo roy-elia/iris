@@ -32,6 +32,7 @@ struct PanelView: View {
         Text("File Drop Utility").font(.caption).foregroundStyle(.secondary)
         Spacer()
         Button("Quit") { NSApplication.shared.terminate(nil) }
+          .accessibilityIdentifier("quit")
           .keyboardShortcut("q")
       }
     }
@@ -69,8 +70,10 @@ struct DropTab: View {
   private var dropZone: some View {
     VStack(spacing: 6) {
       Image(systemName: "tray.and.arrow.down").font(.system(size: 26))
+        .accessibilityHidden(true)
       Text("Drop images or PDFs here")
       Button("Choose Files…") { model.chooseFiles() }
+        .accessibilityIdentifier("chooseFiles")
         .buttonStyle(.link)
     }
     .frame(maxWidth: .infinity, minHeight: 100)
@@ -83,8 +86,9 @@ struct DropTab: View {
       loadURLs(from: providers)
       return true
     }
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel("Drop zone")
+    // Keep the Choose Files button reachable on its own; label the container as the drop target.
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel("Drop zone for images or PDFs")
   }
 
   private var fileList: some View {
@@ -93,6 +97,7 @@ struct DropTab: View {
         Text("\(model.files.count) file\(model.files.count == 1 ? "" : "s")").font(.headline)
         Spacer()
         Button("Clear") { model.clear() }.buttonStyle(.borderless)
+          .accessibilityIdentifier("clearFiles")
       }
       ScrollView {
         VStack(alignment: .leading, spacing: 4) {
@@ -126,10 +131,12 @@ struct DropTab: View {
       Picker("Action", selection: $model.choice) {
         ForEach(OperationChoice.allCases) { Text($0.title).tag($0) }
       }
+      .accessibilityIdentifier("action")
       if model.choice == .convert {
         Picker("Format", selection: $model.format) {
           ForEach(ImageFormat.allCases, id: \.self) { Text($0.displayName).tag($0) }
         }
+        .accessibilityIdentifier("format")
         if model.format.usesQuality {
           HStack {
             Text("Quality")
@@ -145,6 +152,7 @@ struct DropTab: View {
         Spacer()
         if model.isRunning { ProgressView().controlSize(.small) }
         Button("Run") { model.run() }
+          .accessibilityIdentifier("run")
           .keyboardShortcut(.defaultAction)
           .disabled(model.validationMessage != nil || model.isRunning)
       }
@@ -204,8 +212,11 @@ struct ResultView: View {
         }
         HStack {
           Button("Show in Finder") { model.reveal(result.outputs) }
+            .accessibilityIdentifier("reveal")
           Button("AirDrop") { model.airDrop(result.outputs) }
-          ShareLink("Share", items: result.outputs)
+            .accessibilityIdentifier("airdrop")
+          ShareButton(items: result.outputs)
+            .fixedSize()
         }
         .controlSize(.small)
       }
@@ -257,6 +268,7 @@ struct HistoryTab: View {
         HStack {
           Spacer()
           Button("Clear History") { model.clearHistory() }.buttonStyle(.borderless)
+            .accessibilityIdentifier("clearHistory")
         }
       }
     }
@@ -273,20 +285,28 @@ struct SettingsTab: View {
       Picker("Default format", selection: $model.settings.defaultFormat) {
         ForEach(ImageFormat.allCases, id: \.self) { Text($0.displayName).tag($0) }
       }
+      .accessibilityIdentifier("defaultFormat")
       HStack {
         Text("Default quality")
         Slider(value: $model.settings.quality, in: AppSettings.qualityRange)
         Text("\(Int(model.settings.quality * 100))%").monospacedDigit().frame(width: 40, alignment: .trailing)
       }
-      LabeledContent("Save to") {
-        VStack(alignment: .trailing, spacing: 4) {
-          Text(locationLabel).lineLimit(1).truncationMode(.middle)
-          HStack {
-            Button("Next to Original") { model.settings.outputLocation = .nextToSource }
-            Button("Choose Folder…") { model.chooseOutputFolder() }
-          }
-          .controlSize(.small)
+      // Own rows rather than a LabeledContent column, which is too narrow for two buttons.
+      VStack(alignment: .leading, spacing: 4) {
+        Text("Save to")
+        Text(locationLabel)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+          .truncationMode(.middle)
+          .accessibilityIdentifier("saveLocation")
+        HStack {
+          Button("Next to Original") { model.settings.outputLocation = .nextToSource }
+            .accessibilityIdentifier("nextToOriginal")
+          Button("Choose Folder…") { model.chooseOutputFolder() }
+            .accessibilityIdentifier("chooseFolder")
         }
+        .controlSize(.small)
       }
       Toggle(
         "Launch at login",
@@ -294,6 +314,7 @@ struct SettingsTab: View {
           get: { model.settings.launchAtLogin },
           set: { model.setLaunchAtLogin($0) })
       )
+      .accessibilityIdentifier("launchAtLogin")
       if let error = model.settingsError {
         Text(error).font(.caption).foregroundStyle(.red)
       }
