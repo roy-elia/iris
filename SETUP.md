@@ -1,144 +1,185 @@
 # File Drop Utility: setup and status
 
-A from-scratch macOS menu-bar file utility. It is built from the functional spec below and
-uses no code, assets, text, branding or bundled tools from any existing product.
+A from-scratch macOS menu-bar file utility with a Liquid Glass interface. The layout takes
+structural cues from screenshots you supplied: an onboarding carousel, radial action wheels,
+modifier-key hints and a status header. It reproduces no other product's name, icon, colours,
+wording, code or bundled tools.
 
 ## Stack and versions
 
 | Item | Version |
 |---|---|
-| macOS (build host) | 26.6.2, Apple Silicon |
-| Swift | 6.3.3 (Command Line Tools; Xcode not installed) |
-| UI | SwiftUI `MenuBarExtra`, AppKit for open panels, sharing and Finder |
-| Core | Foundation, ImageIO, Core Graphics, PDFKit, ServiceManagement |
-| Tests | swift-testing (ships with the toolchain) |
-| Lint | swift-format 6.3.0 (`swift format`, ships with the toolchain) |
-| Minimum macOS for the app | 14.0 |
+| Minimum macOS | **26.0** (Liquid Glass APIs are macOS 26+) |
+| Build host | macOS 26.6.2, Apple Silicon |
+| Swift / tools | Swift 6.3.3, `swift-tools-version:6.2`, Command Line Tools (no Xcode) |
+| UI | SwiftUI (`MenuBarExtra`, Liquid Glass), AppKit for windows, panels, sharing and event monitors |
+| Core | Foundation, ImageIO, Core Graphics, Core Image, PDFKit, Vision, ServiceManagement |
+| Tests / lint | swift-testing, swift-format (both ship with the toolchain) |
 
-Why this stack: a native menu-bar app needs AppKit or SwiftUI. ImageIO and PDFKit cover every
-operation in the spec with no third-party code, and SwiftPM works without Xcode.
+## Features
 
-## Spec (as built)
+**Menu-bar panel:** a status header (Ready, the ⇧ ⌘ ⌃ hints, and a menu with Getting Started, About and Quit), a floating glass tab bar (Files, History, Settings), and floating glass cards.
+- **Files:** drop zone and Choose Files, the queued list with sizes, three wheel launchers, and the last result with Show in Finder, AirDrop and Share.
+- **History:** the last 50 operations.
+- **Settings:**
+  - Appearance (System, Light or Dark; System by default)
+  - Default format and quality
+  - Save location
+  - Wheels while dragging
+  - Launch at login
 
-1. Menu-bar-only app (no Dock icon). The status item opens a panel with Files, History and Settings tabs.
-2. Drop files on the panel, or click Choose Files. Each queued file shows its name, type and size and can be removed. Unsupported files and folders are rejected with a message.
-3. Convert images between PNG, JPEG, HEIC and TIFF. The quality slider (10–100%) applies to JPEG and HEIC.
-4. Strip metadata: writes a copy with no EXIF, GPS, TIFF (camera), IPTC or XMP data. Orientation is baked into the pixels.
-5. Merge two or more PDFs in drop order, or turn images into a PDF with one page per image.
-6. Results panel: Show in Finder, AirDrop, and the system Share sheet.
-7. Outputs never overwrite. A collision becomes `name (1).ext`, `name (2).ext`, and so on. Outputs go next to the original or to a chosen folder.
-8. Settings for default format, default quality, output location and launch at login, saved to `~/Library/Application Support/FileDropUtility/settings.json`.
-9. History of the last 50 operations (newest first), saved to `history.json` in the same folder.
+**Wheels** open from the panel, or by holding a modifier while dragging files from another app:
 
-Output names: convert gives `name.<new ext>`; strip gives `name no-metadata.<ext>`; merge gives `Merged.pdf`; images to PDF gives `name.pdf` for one image or `Images.pdf` for several.
-
-## Assumptions (my reading where the spec was open)
-
-- Neutral name "File Drop Utility", bundle ID `local.filedroputility`, SF Symbols and system colours only.
-- Inputs are recognised by file extension: png, jpg/jpeg, heic/heif, tif/tiff and pdf. Anything else is rejected at drop time.
-- Strip metadata re-encodes at maximum quality, which is lossy for JPEG and HEIC. A lossless path would need per-format handling.
-- Per-file operations keep going past a bad file and report it. Merge and images-to-PDF are all-or-nothing, and a half-written PDF is deleted.
-- Password-protected PDFs are rejected, not unlocked.
-- After a drop the action picker switches to a suitable operation (Merge for all PDFs, Convert for all images) only if the current choice doesn't fit.
-- Out of scope: Office/Pages conversion, OCR, annotation, in-app purchases, ads, analytics.
-
-## Acceptance criteria
-
-| ID | Criterion | How it is checked |
+| Wheel | Key | Segments |
 |---|---|---|
-| A1 | Build, full test suite and lint all pass | `swift build`, `scripts/test.sh`, `scripts/lint.sh` |
-| A2 | Runs as a menu-bar-only app with no Dock icon | Test `A2` (Info.plist `LSUIElement`); `lsappinfo` reports `type="UIElement"` |
-| A3 | Images convert to each format with readable output of the right type and size | Test `A3` |
-| A4 | Strip metadata removes EXIF, GPS and camera fields and leaves the original unchanged | Test `A4`, `ProcessorTests` |
-| A5 | PDFs merge in order with summed page count; images to PDF gives one page per image | Test `A5` |
-| A6 | No output ever overwrites an existing file | Test `A6`, `OutputNamerTests` |
-| A7 | Unsupported or broken files produce a message, not a crash | Test `A7` |
-| A8 | Settings persist across restarts | Test `A8` |
-| A9 | History keeps the last 50 operations across restarts | Test `A9` |
-| A10 | Share and AirDrop open the system picker | Stage 6 UI check (passes) |
+| Convert | ⇧ Shift | PNG, PDF, JPEG, HEIC, AVIF, TIFF, BMP, WebP (disabled: macOS can't write WebP) |
+| Tools | ⌘ Command | Compress, Metadata (strip), Edit, Annotate, Remove BG, Crop, Redact |
+| Actions | ⌃ Control | AirDrop, Float, Copy, Move, Copy Path, Terminal |
+
+A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the queued files don't fit it. A drop on the overlay wheel reports its result in a glass toast at the top of the screen.
+
+**Other windows:**
+- **Editor:** adjust brightness, contrast and saturation; crop; annotate (colour and width); redact (black bar or pixelate); rotate; undo. Save Copy writes `name edited.ext` and never touches the original.
+- **Float:** an always-on-top glass card per file. Move it by its header; drag the preview to drop the file somewhere else.
+- **Onboarding:** six pages shown on first launch and from Getting Started: Welcome, the three wheels with key caps, folder access, and Finish (launch at login and the wheel toggle).
+
+**Output names:** `name.ext` (convert), `name no-metadata.ext`, `name compressed.ext`, `name no-bg.png`, `name edited.ext`, `Merged.pdf`, `Images.pdf`. Existing files are never overwritten; a collision becomes `name (1).ext`.
+
+## Design system
+
+All adaptive values live in one file. Change them there and every screen follows.
+
+| Component | File |
+|---|---|
+| Tokens: radii, insets, blue-teal accent, secondary/error/warning text, legibility backing, edge stroke, contact and ambient shadows, spring and fade | `Sources/FileDropUtility/Design/DesignTokens.swift` |
+| `glassPanel()` / `glassCard()`, prominent and subtle glass buttons, `Keycap`, `withMorph`, the Increase Contrast override | `Sources/FileDropUtility/Design/GlassStyles.swift` |
+| Floating tab bar (morphing selection) | `Sources/FileDropUtility/Design/FloatingTabBar.swift` |
+| Radial wheel and ring segment shape | `Sources/FileDropUtility/Wheel/RadialWheel.swift` |
+| Wheel definitions, overlay, drag watcher, toast | `Sources/FileDropUtility/Wheel/WheelModel.swift`, `WheelOverlay.swift` |
+| Panel screens | `Sources/FileDropUtility/Panel/` |
+| Editor | `Sources/FileDropUtility/Editor/` |
+| Onboarding, Float, window manager, snapshot harness | `Sources/FileDropUtility/Windows/` |
+| Previews | `Sources/FileDropUtility/Previews.swift` |
+
+### How each design requirement is met
+
+1. **Materials:** every primary container uses `glassEffect(_:in:)` with `Glass.regular`, plus `.tint(_:)` and `.interactive()` where relevant. `GlassEffectContainer` groups the tab bar and the editor toolbar, and `glassEffectID(_:in:)` morphs the tab selection. There are no opaque container backgrounds. The only opaque fallback is when **Reduce Transparency** is on, which swaps glass for the window background colour.
+2. **Shapes:** `RoundedRectangle(cornerRadius:style: .continuous)`, `Capsule(style: .continuous)` and `Circle` only. `.cornerRadius()` appears 0 times. Wheel segments are ring sectors (a custom `Shape`), since a wheel can't be built from rectangles.
+3. **Floating layout:** cards, the tab bar, the editor toolbar and inspector, the toast and the onboarding panel all sit inset from the window edges (`Spacing.inset` = 12pt). Onboarding, Float and the overlay use transparent windows, so only the glass is drawn.
+4. **Depth:** a tight contact shadow (radius 1.5, y 1) plus a soft ambient shadow (radius 22, y 12). Opacity is 0.12 / 0.10 in light mode and 0.50 / 0.45 in dark mode.
+5. **Edge highlights:**
+
+   | Appearance | Normal | Increase Contrast |
+   |---|---|---|
+   | Dark | white at 16% opacity | white at 45%, 1.5pt |
+   | Light | black at 10% opacity | black at 40%, 1.5pt |
+
+6. **Motion:** every animation goes through `DesignTokens.Motion`. It's a spring (response 0.4, damping 0.7) normally, and a 0.2s fade and opacity transition under **Reduce Motion**. A grep confirms no animation bypasses the tokens.
+7. **Light and dark:**
+   - Text uses `.primary` plus tokens built on the label colours.
+   - Custom colours have light, dark and high-contrast variants defined in code.
+   - The system switches appearance live; the app forces one only if you pick Light or Dark in Settings.
+8. **Accessibility:**
+   - Every control has a VoiceOver label (wheel segments carry their disabled reason as a hint) and an accessibility identifier.
+   - Decorative images are hidden from VoiceOver.
+   - Increase Contrast strengthens the strokes and the legibility backing, and switches to the high-contrast colour variants.
+   - Dynamic Type: see Known gaps.
+
+### Contrast work (WCAG AA, 4.5:1 body text)
+
+Every screen was rendered in a real window over a deliberately busy, bright backdrop, in light, dark, light + Increase Contrast and dark + Increase Contrast. Then Vision OCR found every text line, and each line's contrast was measured from the pixels.
+
+The first pass found failures, each fixed in the design tokens:
+
+| Problem | Fix |
+|---|---|
+| Text on glass dropped to 3.6–4.4:1 over bright content | Each glass panel gets a thin layer of the window background colour (50–55%, or 85% with Increase Contrast). The glass still shows through. |
+| System `.secondary` is 50% black, about 3.9:1 even on white | A `secondaryText` token: 64% in light, 66% in dark, 80% and 82% with Increase Contrast |
+| System red and orange were too light for small text | `errorText` and `warningText` tokens |
+| White on the blue-teal button measured 3.95:1, because the glass highlight lightens the fill | The fill was darkened; it now measures 5.7–6.2:1 |
+
+**Final scan:** 869 text lines measured. Every line of app text is ≥ 4.5:1 in all four appearances. The remaining hits are OCR fragments of the backdrop's own "Busy text" and one icon.
+
+Increase Contrast can't be switched on per window, so the snapshots use macOS's high-contrast appearances plus an app-level `forceIncreasedContrast` environment value that the glass styles honour.
+
+## Assumptions
+
+- macOS 26 minimum, as you chose, so no material fallback is needed for missing APIs. Reduce Transparency still gets an opaque fallback.
+- The wheels open globally while dragging from other apps; it can be turned off in Settings. Drags that start inside this app don't trigger them, because AppKit's drag loop consumes those events.
+- Editor tools work on one image at a time. Wheel tools on several files edit the first image.
+- Rotating in the editor clears that edit's redactions, strokes and crop, rather than guessing how to rotate them.
+- The status menu sits in the panel's header (a "…" menu). `MenuBarExtra` can't show both a menu and a panel from one icon.
+- Not built: licensing, free-use counts and purchases from the screenshots. You asked for features, and a paywall would need a payment account.
 
 ## Dependencies and licences
 
-No third-party packages. Everything is Apple system frameworks plus tools that ship with the
-Swift toolchain:
+No third-party packages.
 
 | Dependency | Licence | Use |
 |---|---|---|
-| Apple SDK frameworks (SwiftUI, AppKit, ImageIO, PDFKit, Core Graphics, ServiceManagement) | Apple SDK licence (system frameworks) | App and core logic |
-| swift-testing | Apache 2.0 with Runtime Library Exception | Tests only |
-| swift-format | Apache 2.0 | Lint only |
-| SF Symbols (`tray.and.arrow.down`, etc.) | Apple SF Symbols licence; usable in apps on Apple platforms | Icons |
+| Apple SDK frameworks | Apple SDK licence | App and core |
+| swift-testing | Apache 2.0 with Runtime Library Exception | Tests |
+| swift-format | Apache 2.0 | Lint |
+| SF Symbols | Apple SF Symbols licence | Icons |
 
-No API keys, accounts or network calls, so there is no `.env` or `.env.example`.
+There are no API keys or network calls, so there is no `.env`.
 
 ## Run, test, build
 
 ```bash
 cd /Users/royelia/file-drop-utility
-scripts/test.sh                      # 47 tests
-scripts/lint.sh                      # swift-format --strict; --fix to reformat
-swift build                          # debug build
-scripts/bundle.sh                    # release build, dist/File Drop Utility.app (ad-hoc signed)
+scripts/test.sh                 # 71 tests
+scripts/lint.sh                 # swift-format --strict
+swift build
+scripts/bundle.sh               # dist/File Drop Utility.app (ad-hoc signed)
 open "dist/File Drop Utility.app"
-swift scripts/make-samples.swift samples   # sample images/PDFs for trying it by hand
+.build/debug/FileDropUtility --snapshot /tmp/fdu-snaps          # all screens × 5 appearances
+.build/debug/FileDropUtility --snapshot /tmp/fdu-snaps --only Editor
 ```
 
-`scripts/test.sh` exists because without Xcode, SwiftPM doesn't put the Command Line Tools'
-swift-testing on the search path, including for its generated test runner. Plain `swift test`
-then builds but runs zero tests and still exits 0. The script passes the paths explicitly. I
-checked that a deliberately failing test makes it exit 1.
+Two scripts work around missing Xcode pieces:
+- `scripts/test.sh` adds the Command Line Tools' swift-testing paths. Without it, `swift test` runs zero tests and still passes.
+- The snapshot mode needs Screen Recording permission for the app that runs it.
 
-## Toolchain fixes made on this Mac
+## Previews
 
-- **Your fix, with sudo:** you moved two stale 2024 `PackageDescription.swiftmodule/*.private.swiftinterface` files into `/Library/Developer/CommandLineTools/stale-backup/`. They had broken every `Package.swift` link. The undo command is in the chat history.
-- I deleted `~/Library/Application Support/FileDropUtility` before the first launch, to start clean. It is this app's own data folder.
+`Previews.swift` uses `PreviewProvider`. The `#Preview` and `@Entry` macros need plugins that ship only with Xcode, so they don't compile here.
 
-## End-to-end UI check (stage 6), 2026-10-18
+It covers every screen in Light, Dark and Largest Text: Panel (Files, History, Settings), the three wheels, Onboarding (Welcome, Tools, Finish), Toast, Editor and Float. Xcode shows them in the canvas.
 
-Run against the bundled app through macOS accessibility (System Events). You gave Claude.app
-Accessibility permission for this. Files were added through Choose Files (the open panel).
-Drag and drop itself wasn't simulated.
+Without Xcode, the snapshot harness renders the same screens in real windows. Glass only composites in live windows, not in offscreen `ImageRenderer` output.
 
-| Flow | Result |
-|---|---|
-| Menu-bar icon shows; app has no Dock icon (A2) | Pass. You confirmed the icon; `lsappinfo` reports `UIElement` |
-| `beach.png`, Convert, JPEG, Run | Pass. 640×400 JPEG `beach.jpg`; panel shows "Saved 1 file" |
-| Run again | Pass. `beach (1).jpg`; nothing overwritten |
-| `trip.jpg`, Strip metadata | Pass. Copy has no GPS and no camera make; original unchanged |
-| `part1.pdf` + `part2.pdf` | Pass. Action switched to Merge PDFs by itself; `Merged.pdf` has 5 pages |
-| `beach.png` + `trip.jpg`, Images to PDF | Pass. `Images.pdf` has 2 pages |
-| `notes.txt` | Pass. "notes.txt is not a supported file type." |
-| Images plus a PDF, Images to PDF selected | Pass. Shows "works on images only" |
-| AirDrop button (A10) | Pass. System AirDrop window opens |
-| Share button (A10) | Pass, after a fix. The system share picker opens next to the button |
-| Default format TIFF + output folder via Choose Folder, then Quit and relaunch | Pass. Both kept; next conversion defaulted to TIFF and saved into the chosen folder |
-| History after relaunch | Pass. All runs listed, newest first |
-| Launch at login | Not exercised. It would register a real login item on your account; ask me to test it |
+## Verified in the running app
 
-Settings were put back to defaults (PNG, next to original) afterwards.
+- First launch opens onboarding; clicking through all six pages and Done saves the "completed" flag.
+- Files are added through the panel; the Actions wheel opens; Float opens an always-on-top card.
+- A real Shift-drag of `trip.jpg` from Finder (synthesised HID events) showed the 380×380 Convert overlay under the pointer.
+- The floating card no longer moves when you drag its image; it starts a file drag. (Found and fixed during this check.)
 
-### Fixes from the UI check
+Not confirmed: **a drop onto an overlay segment**. With synthesised events the drop never reached the segment. The same synthetic drag onto the panel's drop zone also failed, because clicking Finder closes the panel, so the test can't separate a code problem from the synthetic events. One synthetic drag also left a stuck drag ghost in Finder, so I stopped testing that way. See manual steps.
 
-- **Share button:** replaced SwiftUI `ShareLink` with an AppKit `NSSharingServicePicker` button (`ShareButton.swift`). The replacement is verified to open the picker. I didn't confirm whether the original `ShareLink` was actually broken; my first check only looked for an in-app menu, and this picker is not one.
-- **Settings layout:** "Choose Folder…" was missing from the accessibility tree (probably clipped in the form's narrow right-hand column). It now sits on its own row and shows up.
-- **Accessibility:** the drop zone had merged with its Choose Files link into one unlabeled element; it's now a labeled container with a separate button. The decorative tray image is hidden from VoiceOver. Key controls have accessibility identifiers, which the UI check uses.
+## Known gaps
 
-## Known gaps against the spec
-
-- Drag and drop onto the panel wasn't simulated; files went in through the open panel, which feeds the same `add` path.
-- Launch at login wasn't exercised (see above). It only works from the `.app` bundle (`SMAppService`).
-- The app is ad-hoc signed, not notarized. Other Macs will block it unless you sign it with a Developer ID.
-- No automated UI tests. XCUITest needs Xcode; the stage 6 check was scripted by hand and isn't in the repo.
+- **WebP export:** macOS's ImageIO reads WebP but can't write it. WebP files work as inputs; the WebP segment is disabled with that reason. Export would need libwebp (BSD licence), which I'd add only with your OK.
+- **Dynamic Type:** SwiftUI text styles on macOS don't respond to `dynamicTypeSize`. The Largest Text snapshots look the same as normal. Views use text styles throughout, so they'll scale wherever the OS scales them, but macOS 26 offers no system-wide Dynamic Type to test.
+- **Increase Contrast and Reduce Motion:** checked by simulation (high-contrast appearances, the contrast override, and a code audit of all animations), not by toggling the system settings.
+- **Overlay drop:** see "Not confirmed" above.
+- **Launch at login:** not exercised, because it registers a real login item.
+- **Signing:** ad-hoc signed, not notarized.
+- **UI tests:** none automated; XCUITest needs Xcode.
 
 ## Manual steps for you
 
-- Optional: try a real drag and drop from Finder onto the panel.
-- Optional: toggle Launch at login, check it appears under System Settings > General > Login Items, then toggle it off.
-- If you want to undo the Accessibility permission, turn Claude off in System Settings > Privacy & Security > Accessibility.
+1. **Wheel drop test (2 minutes):** drag any image from Finder, hold ⇧ while dragging, drop it on **JPEG**. A glass toast should say "saved 1 file". Then try ⌘ (Tools) and ⌃ (Actions).
+2. If Finder still shows a stuck "trip.jpg" drag ghost from my test, press Escape or click an empty spot in the Finder window.
+3. Optional: try the app with System Settings › Accessibility › Display › Increase Contrast, Reduce Transparency and Reduce Motion turned on.
+4. Optional: toggle Launch at login and check System Settings › General › Login Items.
+5. Optional: revoke the Accessibility and Screen Recording permissions you gave Claude, in System Settings › Privacy & Security.
 
 ## Suggestions (not built)
 
-- Lossless metadata stripping for JPEG via `CGImageDestinationCopyImageSource`.
-- Batch progress for large drops, and cancel.
-- Content sniffing instead of extension checks, for files without extensions.
-- A Developer ID signing and notarization script.
+- WebP export via libwebp.
+- Lossless JPEG metadata stripping.
+- A bespoke app icon (it currently uses the system tray symbol).
+- Per-file progress for large batches.
+- Remembering where each floating card was placed.
