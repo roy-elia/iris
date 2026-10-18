@@ -11,11 +11,13 @@ struct GlassPanel: ViewModifier {
 
   @Environment(\.colorScheme) private var scheme
   @Environment(\.colorSchemeContrast) private var contrast
+  @Environment(\.forceIncreasedContrast) private var forceContrast
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
   func body(content: Content) -> some View {
     let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-    let stroke = DesignTokens.Stroke.edge(for: scheme, increasedContrast: contrast == .increased)
+    let increased = contrast == .increased || forceContrast
+    let stroke = DesignTokens.Stroke.edge(for: scheme, increasedContrast: increased)
     let contact = DesignTokens.Shadow.contact(for: scheme)
     let ambient = DesignTokens.Shadow.ambient(for: scheme)
 
@@ -23,7 +25,11 @@ struct GlassPanel: ViewModifier {
       if reduceTransparency {
         content.background(Color(nsColor: .windowBackgroundColor), in: shape)
       } else {
-        content.glassEffect(glass, in: shape)
+        content
+          .background(
+            tint == nil ? DesignTokens.scrim(for: scheme, increasedContrast: increased) : .clear, in: shape
+          )
+          .glassEffect(glass, in: shape)
       }
     }
     .overlay(shape.strokeBorder(stroke.color, lineWidth: stroke.width).allowsHitTesting(false))
@@ -36,6 +42,20 @@ struct GlassPanel: ViewModifier {
     if let tint { g = g.tint(tint) }
     if interactive { g = g.interactive() }
     return g
+  }
+}
+
+private struct ForceIncreasedContrastKey: EnvironmentKey {
+  static let defaultValue = false
+}
+
+extension EnvironmentValues {
+  /// Treats Increase Contrast as on. The system setting can't be set per window, so the
+  /// snapshot harness uses this to check the high-contrast styling. (Written by hand:
+  /// the `@Entry` macro's plugin ships only with Xcode.)
+  var forceIncreasedContrast: Bool {
+    get { self[ForceIncreasedContrastKey.self] }
+    set { self[ForceIncreasedContrastKey.self] = newValue }
   }
 }
 
@@ -115,9 +135,11 @@ struct Keycap: View {
 
   @Environment(\.colorScheme) private var scheme
   @Environment(\.colorSchemeContrast) private var contrast
+  @Environment(\.forceIncreasedContrast) private var forceContrast
 
   var body: some View {
-    let stroke = DesignTokens.Stroke.edge(for: scheme, increasedContrast: contrast == .increased)
+    let stroke = DesignTokens.Stroke.edge(
+      for: scheme, increasedContrast: contrast == .increased || forceContrast)
     VStack(alignment: .trailing, spacing: 2) {
       Text(symbol).font(.title3.weight(.semibold))
       Text(name).font(.caption)

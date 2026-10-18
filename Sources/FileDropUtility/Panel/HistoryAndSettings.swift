@@ -8,7 +8,7 @@ struct HistoryTab: View {
     VStack(alignment: .leading, spacing: DesignTokens.Spacing.stack) {
       if model.history.isEmpty {
         Text("Nothing yet. Finished operations appear here.")
-          .foregroundStyle(.secondary)
+          .foregroundStyle(DesignTokens.Palette.secondaryText)
           .frame(maxWidth: .infinity, minHeight: 90)
           .glassCard()
       } else {
@@ -17,7 +17,9 @@ struct HistoryTab: View {
             ForEach(model.history) { entry in
               HStack(alignment: .top, spacing: 10) {
                 Image(systemName: entry.succeeded ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                  .foregroundStyle(entry.succeeded ? DesignTokens.Palette.accentText : .orange)
+                  .foregroundStyle(
+                    entry.succeeded ? DesignTokens.Palette.accentText : DesignTokens.Palette.warningText
+                  )
                   .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                   Text(entry.operation).font(.callout.weight(.medium))
@@ -26,8 +28,10 @@ struct HistoryTab: View {
                       + entry.date.formatted(date: .abbreviated, time: .shortened)
                   )
                   .font(.caption)
-                  .foregroundStyle(.secondary)
-                  ForEach(entry.errors, id: \.self) { Text($0).font(.caption).foregroundStyle(.red) }
+                  .foregroundStyle(DesignTokens.Palette.secondaryText)
+                  ForEach(entry.errors, id: \.self) {
+                    Text($0).font(.caption).foregroundStyle(DesignTokens.Palette.errorText)
+                  }
                 }
               }
               .accessibilityElement(children: .combine)
@@ -80,7 +84,7 @@ struct SettingsTab: View {
         Text("Save to").font(.callout.weight(.medium))
         Text(locationLabel)
           .font(.caption)
-          .foregroundStyle(.secondary)
+          .foregroundStyle(DesignTokens.Palette.secondaryText)
           .lineLimit(1)
           .truncationMode(.middle)
           .accessibilityIdentifier("saveLocation")
@@ -104,7 +108,7 @@ struct SettingsTab: View {
         )
         .accessibilityIdentifier("launchAtLogin")
         if let error = model.settingsError {
-          Text(error).font(.caption).foregroundStyle(.red)
+          Text(error).font(.caption).foregroundStyle(DesignTokens.Palette.errorText)
         }
       }
       .glassCard()

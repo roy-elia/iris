@@ -20,6 +20,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     MainActor.assumeIsolated {
       // Menu-bar only: no Dock icon, even when run outside the .app bundle.
       NSApp.setActivationPolicy(.accessory)
+      #if DEBUG
+        if SnapshotRunner.runIfRequested() { return }
+      #endif
       AppModel.shared.applyAppearance()
       DragWatcher.shared.start()
       if !AppModel.shared.settings.hasCompletedOnboarding {

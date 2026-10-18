@@ -182,7 +182,7 @@ private struct ToastView: View {
   var body: some View {
     HStack(spacing: 10) {
       Image(systemName: isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-        .foregroundStyle(isError ? Color.orange : DesignTokens.Palette.accentText)
+        .foregroundStyle(isError ? DesignTokens.Palette.warningText : DesignTokens.Palette.accentText)
         .accessibilityHidden(true)
       Text(message).font(.callout).foregroundStyle(.primary).lineLimit(2)
       if !outputs.isEmpty {

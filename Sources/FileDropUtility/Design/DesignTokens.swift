@@ -29,14 +29,47 @@ enum DesignTokens {
   // MARK: Colour
 
   enum Palette {
-    /// Fill for prominent buttons and selected segments. White text on it is ≥ 5.1:1.
+    /// Fill for prominent buttons and selected segments. White text on it is ≥ 4.5:1 measured with the glass highlight (7:1+ flat).
     static let accentFill = Color(
-      nsColor: dynamic(light: (0.00, 0.42, 0.52), dark: (0.02, 0.47, 0.58)))
+      nsColor: dynamic(light: (0.00, 0.36, 0.45), dark: (0.00, 0.34, 0.43)))
     /// Accent for text and icons on glass. ≥ 6:1 on light and ≥ 9:1 on dark backgrounds.
     static let accentText = Color(
       nsColor: dynamic(light: (0.00, 0.40, 0.50), dark: (0.40, 0.82, 0.92)))
     /// Text on `accentFill`.
     static let onAccent = Color.white
+    /// Error text. System red is too light for small text on bright glass.
+    static let errorText = Color(
+      nsColor: dynamic(light: (0.70, 0.04, 0.07), dark: (1.00, 0.50, 0.48)))
+    /// Warning text and icons. System orange is under 3:1 on light backgrounds.
+    static let warningText = Color(
+      nsColor: dynamic(light: (0.60, 0.29, 0.00), dark: (1.00, 0.72, 0.32)))
+    /// Secondary text. The system `.secondary` label is 50% black (about 3.9:1 on white),
+    /// below WCAG AA, so this uses a stronger mix of the label colour, and stronger still
+    /// with Increase Contrast.
+    static let secondaryText = Color(
+      nsColor: NSColor(name: nil) { appearance in
+        switch appearance.bestMatch(from: [
+          .aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua,
+        ]) {
+        case .darkAqua?: NSColor.white.withAlphaComponent(0.66)
+        case .accessibilityHighContrastDarkAqua?: NSColor.white.withAlphaComponent(0.82)
+        case .accessibilityHighContrastAqua?: NSColor.black.withAlphaComponent(0.80)
+        default: NSColor.black.withAlphaComponent(0.64)
+        }
+      })
+  }
+
+  // MARK: Legibility backing
+
+  /// A thin layer of the window background colour inside each glass panel. It keeps text
+  /// at ≥ 4.5:1 over bright, busy content while the glass still shows what's behind it.
+  static func scrim(for scheme: ColorScheme, increasedContrast: Bool) -> Color {
+    let base = Color(nsColor: .windowBackgroundColor)
+    switch (scheme, increasedContrast) {
+    case (.dark, false): return base.opacity(0.55)
+    case (_, false): return base.opacity(0.50)
+    case (_, true): return base.opacity(0.85)
+    }
   }
 
   // MARK: Edge highlight

@@ -110,19 +110,21 @@ struct EditorView: View {
         slider("Saturation", value: binding(\.saturation), range: EditRecipe.saturationRange)
         Button("Reset") { model.resetAdjustments() }.buttonStyle(.subtleGlass)
       case .crop:
-        Text("Drag over the image to choose the area to keep.").font(.callout).foregroundStyle(.secondary)
+        Text("Drag over the image to choose the area to keep.").font(.callout).foregroundStyle(
+          DesignTokens.Palette.secondaryText)
         if model.recipe.crop != nil {
           Button("Clear Crop") { model.commit { $0.crop = nil } }.buttonStyle(.subtleGlass)
         }
       case .annotate:
-        Text("Draw on the image.").font(.callout).foregroundStyle(.secondary)
+        Text("Draw on the image.").font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
         ColorPicker("Colour", selection: $model.strokeColor, supportsOpacity: false)
         slider("Line width", value: $model.strokeWidth, range: 0.003...0.04)
         if !model.recipe.strokes.isEmpty {
           Button("Clear Drawing") { model.commit { $0.strokes = [] } }.buttonStyle(.subtleGlass)
         }
       case .redact:
-        Text("Drag over anything you want hidden.").font(.callout).foregroundStyle(.secondary)
+        Text("Drag over anything you want hidden.").font(.callout).foregroundStyle(
+          DesignTokens.Palette.secondaryText)
         Picker(
           "Style",
           selection: Binding(
@@ -137,7 +139,8 @@ struct EditorView: View {
         }
       }
       Spacer(minLength: 0)
-      Text(model.url.lastPathComponent).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+      Text(model.url.lastPathComponent).font(.caption).foregroundStyle(DesignTokens.Palette.secondaryText)
+        .lineLimit(1)
         .truncationMode(.middle)
     }
     .frame(maxHeight: .infinity, alignment: .top)
@@ -179,7 +182,8 @@ struct EditorView: View {
         .accessibilityElement()
         .accessibilityLabel("Image canvas, \(model.tool.title) tool")
       } else if let error = model.loadError {
-        Text(error).foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
+        Text(error).foregroundStyle(DesignTokens.Palette.secondaryText).frame(
+          maxWidth: .infinity, maxHeight: .infinity)
       } else {
         ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
       }

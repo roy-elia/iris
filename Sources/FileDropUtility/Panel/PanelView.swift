@@ -55,7 +55,7 @@ struct StatusHeader: View {
         .accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 1) {
         Text(model.isRunning ? "Working…" : "Ready").font(.headline)
-        Text(hint).font(.caption).foregroundStyle(.secondary)
+        Text(hint).font(.caption).foregroundStyle(DesignTokens.Palette.secondaryText)
       }
       Spacer()
       Menu {

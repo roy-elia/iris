@@ -15,7 +15,8 @@ struct FilesTab: View {
       if !model.rejected.isEmpty {
         VStack(alignment: .leading, spacing: 4) {
           ForEach(model.rejected, id: \.self) { message in
-            Label(message, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
+            Label(message, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(
+              DesignTokens.Palette.warningText)
           }
         }
         .glassCard()
@@ -69,34 +70,40 @@ struct FilesTab: View {
           .buttonStyle(.subtleGlass)
           .accessibilityIdentifier("clearFiles")
       }
-      ScrollView {
-        VStack(alignment: .leading, spacing: 4) {
-          ForEach(model.files) { file in
-            HStack(spacing: 8) {
-              Image(systemName: file.kind == .pdf ? "doc.richtext" : "photo")
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-              Text(file.name).lineLimit(1).truncationMode(.middle)
-              Spacer()
-              Text(ByteCountFormatter.string(fromByteCount: file.byteSize, countStyle: .file))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-              Button {
-                model.remove(file)
-              } label: {
-                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
-              }
-              .buttonStyle(.plain)
-              .accessibilityLabel("Remove \(file.name)")
-            }
-            .font(.callout)
-            .accessibilityElement(children: .combine)
-          }
-        }
+      // Only scroll once the list is long; a short list sizes to its rows.
+      if model.files.count <= 4 {
+        fileRows
+      } else {
+        ScrollView { fileRows }.frame(height: 130)
       }
-      .frame(maxHeight: 110)
     }
     .glassCard()
+  }
+
+  private var fileRows: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      ForEach(model.files) { file in
+        HStack(spacing: 8) {
+          Image(systemName: file.kind == .pdf ? "doc.richtext" : "photo")
+            .foregroundStyle(DesignTokens.Palette.secondaryText)
+            .accessibilityHidden(true)
+          Text(file.name).lineLimit(1).truncationMode(.middle)
+          Spacer()
+          Text(ByteCountFormatter.string(fromByteCount: file.byteSize, countStyle: .file))
+            .foregroundStyle(DesignTokens.Palette.secondaryText)
+            .monospacedDigit()
+          Button {
+            model.remove(file)
+          } label: {
+            Image(systemName: "xmark.circle.fill").foregroundStyle(DesignTokens.Palette.secondaryText)
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel("Remove \(file.name)")
+        }
+        .font(.callout)
+        .accessibilityElement(children: .combine)
+      }
+    }
   }
 
   private var wheelLaunchers: some View {
@@ -108,7 +115,8 @@ struct FilesTab: View {
           VStack(spacing: 4) {
             Image(systemName: kind.systemImage).font(.title3).accessibilityHidden(true)
             Text(kind.title).font(.callout.weight(.medium))
-            Text("\(kind.keySymbol) \(kind.keyName)").font(.caption2).foregroundStyle(.secondary)
+            Text("\(kind.keySymbol) \(kind.keyName)").font(.caption2).foregroundStyle(
+              DesignTokens.Palette.secondaryText)
           }
           .frame(maxWidth: .infinity)
           .padding(.vertical, 10)
@@ -181,7 +189,7 @@ struct ResultCard: View {
           systemImage: "xmark.octagon"
         )
         .font(.caption)
-        .foregroundStyle(.red)
+        .foregroundStyle(DesignTokens.Palette.errorText)
       }
     }
     .glassCard()

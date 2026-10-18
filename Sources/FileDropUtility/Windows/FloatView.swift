@@ -30,12 +30,12 @@ struct FloatView: View {
       Group {
         if let thumbnail {
           Image(nsImage: thumbnail).resizable().scaledToFit()
+            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.control, style: .continuous))
         } else {
           Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().scaledToFit().padding(30)
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.control, style: .continuous))
       .onDrag { NSItemProvider(contentsOf: url) ?? NSItemProvider() }
       .accessibilityLabel("Preview of \(url.lastPathComponent). Drag to move the file.")
     }

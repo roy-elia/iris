@@ -43,6 +43,7 @@ struct RadialWheel: View {
   @State private var hovered: String?
   @Environment(\.colorScheme) private var scheme
   @Environment(\.colorSchemeContrast) private var contrast
+  @Environment(\.forceIncreasedContrast) private var forceContrast
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
@@ -71,7 +72,8 @@ struct RadialWheel: View {
   private func segment(_ item: WheelItem, start: Angle, end: Angle, size: CGFloat) -> some View {
     let shape = RingSegment(startAngle: start, endAngle: end)
     let isHot = hovered == item.id && item.isEnabled
-    let stroke = DesignTokens.Stroke.edge(for: scheme, increasedContrast: contrast == .increased)
+    let stroke = DesignTokens.Stroke.edge(
+      for: scheme, increasedContrast: contrast == .increased || forceContrast)
     let mid = Angle(degrees: (start.degrees + end.degrees) / 2)
     let labelRadius = size / 2 * 0.71
     let offset = CGSize(
@@ -79,7 +81,12 @@ struct RadialWheel: View {
 
     ZStack {
       shape
-        .fill(isHot ? AnyShapeStyle(DesignTokens.Palette.accentFill) : AnyShapeStyle(.clear))
+        .fill(
+          isHot
+            ? AnyShapeStyle(DesignTokens.Palette.accentFill)
+            : AnyShapeStyle(
+              DesignTokens.scrim(for: scheme, increasedContrast: contrast == .increased || forceContrast))
+        )
         .glassEffect(isHot ? .regular.tint(DesignTokens.Palette.accentFill) : .regular, in: shape)
         .overlay(shape.stroke(stroke.color, lineWidth: stroke.width))
       VStack(spacing: 3) {
@@ -92,13 +99,16 @@ struct RadialWheel: View {
           .multilineTextAlignment(.center)
           .minimumScaleFactor(0.7)
       }
-      .foregroundStyle(isHot ? DesignTokens.Palette.onAccent : (item.isEnabled ? .primary : .secondary))
+      .foregroundStyle(
+        isHot
+          ? DesignTokens.Palette.onAccent
+          : (item.isEnabled ? Color.primary : DesignTokens.Palette.secondaryText)
+      )
       .frame(width: size * 0.2)
       .offset(offset)
       .allowsHitTesting(false)
     }
     .contentShape(shape)
-    .opacity(item.isEnabled ? 1 : 0.55)
     .scaleEffect(isHot && !reduceMotion ? 1.03 : 1)
     .animation(DesignTokens.Motion.animation(reduceMotion: reduceMotion), value: isHot)
     .modifier(SegmentInteraction(mode: mode, item: item, hovered: $hovered, onSelect: onSelect))
@@ -116,7 +126,7 @@ struct RadialWheel: View {
   private func center(size: CGFloat) -> some View {
     VStack(spacing: 2) {
       Text(centerText).font(.headline.monospacedDigit())
-      Text(kind.title).font(.caption2).foregroundStyle(.secondary)
+      Text(kind.title).font(.caption2).foregroundStyle(DesignTokens.Palette.secondaryText)
     }
     .padding(.horizontal, 14)
     .padding(.vertical, 8)

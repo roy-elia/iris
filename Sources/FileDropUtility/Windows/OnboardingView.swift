@@ -9,8 +9,13 @@ struct OnboardingView: View {
     case welcome, convert, tools, actions, folders, finish
   }
 
+  init(onFinish: @escaping () -> Void, startPage: Page = .welcome) {
+    self.onFinish = onFinish
+    _page = State(initialValue: startPage)
+  }
+
   @EnvironmentObject private var model: AppModel
-  @State private var page: Page = .welcome
+  @State private var page: Page
   @State private var folderStatus: String?
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -44,11 +49,11 @@ struct OnboardingView: View {
         .font(.system(size: 54, weight: .medium))
         .foregroundStyle(DesignTokens.Palette.accentText)
         .accessibilityHidden(true)
-      Text("Welcome to").font(.title2).foregroundStyle(.secondary)
+      Text("Welcome to").font(.title2).foregroundStyle(DesignTokens.Palette.secondaryText)
       Text("File Drop Utility").font(.system(.largeTitle, design: .rounded).weight(.bold))
       Text("Convert, fix and send files without opening another app.")
         .font(.title3)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(DesignTokens.Palette.secondaryText)
         .multilineTextAlignment(.center)
       continueButton
     }
@@ -69,7 +74,7 @@ struct OnboardingView: View {
           Text("2. Hold").font(.title2.weight(.semibold))
           Keycap(symbol: kind.keySymbol, name: kind.keyName)
         }
-        Text(blurb(kind)).font(.callout).foregroundStyle(.secondary).fixedSize(
+        Text(blurb(kind)).font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText).fixedSize(
           horizontal: false, vertical: true)
         continueButton
       }
@@ -90,7 +95,7 @@ struct OnboardingView: View {
           .accessibilityIdentifier("checkFolders")
         Text(folderStatus ?? "Skip for now and macOS will ask the first time it's needed.")
           .font(.caption)
-          .foregroundStyle(.secondary)
+          .foregroundStyle(DesignTokens.Palette.secondaryText)
           .multilineTextAlignment(.center)
           .frame(maxWidth: 260)
       }
@@ -102,7 +107,7 @@ struct OnboardingView: View {
           "Results are saved next to the originals. macOS asks once per protected folder (Desktop, Documents, Downloads). Checking now gets those prompts out of the way."
         )
         .font(.callout)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(DesignTokens.Palette.secondaryText)
         .fixedSize(horizontal: false, vertical: true)
         continueButton
       }
@@ -115,7 +120,7 @@ struct OnboardingView: View {
     HStack(spacing: 36) {
       VStack(spacing: 10) {
         HStack(spacing: 14) {
-          Image(systemName: "wifi").foregroundStyle(.secondary)
+          Image(systemName: "wifi").foregroundStyle(DesignTokens.Palette.secondaryText)
           Image(systemName: "tray.and.arrow.down")
             .padding(8)
             .glassPanel(
@@ -138,7 +143,7 @@ struct OnboardingView: View {
             isOn: Binding(get: { model.settings.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
           Toggle("Wheels while dragging", isOn: $model.settings.wheelTriggerEnabled)
           if let error = model.settingsError {
-            Text(error).font(.caption).foregroundStyle(.red)
+            Text(error).font(.caption).foregroundStyle(DesignTokens.Palette.errorText)
           }
         }
         .glassCard()
@@ -149,7 +154,7 @@ struct OnboardingView: View {
         Text("Finish setup").font(.largeTitle.weight(.bold))
         Text("The app lives in the menu bar. You can change these and everything else in Settings.")
           .font(.callout)
-          .foregroundStyle(.secondary)
+          .foregroundStyle(DesignTokens.Palette.secondaryText)
           .fixedSize(horizontal: false, vertical: true)
         Button("Done") {
           model.settings.hasCompletedOnboarding = true
@@ -180,7 +185,7 @@ struct OnboardingView: View {
       Label("Back", systemImage: "arrow.left").font(.callout)
     }
     .buttonStyle(.plain)
-    .foregroundStyle(.secondary)
+    .foregroundStyle(DesignTokens.Palette.secondaryText)
     .accessibilityIdentifier("onboardingBack")
   }
 
