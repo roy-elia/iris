@@ -66,25 +66,25 @@ import Testing
 
 @Suite struct SettingsTests {
   @Test func clampsQuality() {
-    #expect(Settings(quality: 5).quality == 1.0)
-    #expect(Settings(quality: -1).quality == 0.1)
-    #expect(Settings(quality: .nan).quality == 0.85)
-    var s = Settings()
+    #expect(AppSettings(quality: 5).quality == 1.0)
+    #expect(AppSettings(quality: -1).quality == 0.1)
+    #expect(AppSettings(quality: .nan).quality == 0.85)
+    var s = AppSettings()
     s.quality = 0
     #expect(s.quality == 0.1)
   }
 
   @Test func roundTripsThroughJSON() throws {
-    let original = Settings(
+    let original = AppSettings(
       defaultFormat: .heic, quality: 0.5,
       outputLocation: .folder(URL(fileURLWithPath: "/tmp/out")), launchAtLogin: true)
     let data = try JSONEncoder().encode(original)
-    #expect(try JSONDecoder().decode(Settings.self, from: data) == original)
+    #expect(try JSONDecoder().decode(AppSettings.self, from: data) == original)
   }
 
   @Test func fillsMissingOrBadFieldsWithDefaults() throws {
     let json = Data(#"{"defaultFormat":"bmp","quality":42}"#.utf8)
-    let s = try JSONDecoder().decode(Settings.self, from: json)
+    let s = try JSONDecoder().decode(AppSettings.self, from: json)
     #expect(s.defaultFormat == .png)
     #expect(s.quality == 1.0)
     #expect(s.outputLocation == .nextToSource)

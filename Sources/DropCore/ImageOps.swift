@@ -25,7 +25,7 @@ public enum ImageOps {
       options[kCGImagePropertyOrientation] = orientation
     }
     if format.usesQuality {
-      options[kCGImageDestinationLossyCompressionQuality] = Settings.clampQuality(quality)
+      options[kCGImageDestinationLossyCompressionQuality] = AppSettings.clampQuality(quality)
     }
     CGImageDestinationAddImage(dest, image, options as CFDictionary)
     guard CGImageDestinationFinalize(dest) else {

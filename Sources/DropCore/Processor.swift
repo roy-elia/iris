@@ -24,9 +24,9 @@ public struct OperationResult: Equatable, Sendable {
 
 /// Runs operations on dropped files. Never overwrites existing files.
 public struct Processor: Sendable {
-  public var settings: Settings
+  public var settings: AppSettings
 
-  public init(settings: Settings) {
+  public init(settings: AppSettings) {
     self.settings = settings
   }
 

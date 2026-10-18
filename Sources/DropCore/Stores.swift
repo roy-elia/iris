@@ -1,6 +1,6 @@
 import Foundation
 
-/// Saves and loads `Settings` as JSON.
+/// Saves and loads `AppSettings` as JSON.
 public struct SettingsStore: Sendable {
   public let fileURL: URL
 
@@ -9,14 +9,14 @@ public struct SettingsStore: Sendable {
   }
 
   /// Returns saved settings, or defaults if the file is missing or unreadable.
-  public func load() -> Settings {
+  public func load() -> AppSettings {
     guard let data = try? Data(contentsOf: fileURL),
-      let settings = try? JSONDecoder().decode(Settings.self, from: data)
-    else { return Settings() }
+      let settings = try? JSONDecoder().decode(AppSettings.self, from: data)
+    else { return AppSettings() }
     return settings
   }
 
-  public func save(_ settings: Settings) throws {
+  public func save(_ settings: AppSettings) throws {
     try FileManager.default.createDirectory(
       at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
     let encoder = JSONEncoder()

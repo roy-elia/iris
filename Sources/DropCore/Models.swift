@@ -129,7 +129,7 @@ public enum OutputLocation: Codable, Equatable, Sendable {
 }
 
 /// User preferences, persisted between launches.
-public struct Settings: Codable, Equatable, Sendable {
+public struct AppSettings: Codable, Equatable, Sendable {
   public static let qualityRange: ClosedRange<Double> = 0.1...1.0
 
   public var defaultFormat: ImageFormat
@@ -157,7 +157,7 @@ public struct Settings: Codable, Equatable, Sendable {
   }
 
   public init(from decoder: any Decoder) throws {
-    let defaults = Settings()
+    let defaults = AppSettings()
     let c = try decoder.container(keyedBy: CodingKeys.self)
     defaultFormat = (try? c.decode(ImageFormat.self, forKey: .defaultFormat)) ?? defaults.defaultFormat
     quality = Self.clampQuality((try? c.decode(Double.self, forKey: .quality)) ?? defaults.quality)

@@ -35,15 +35,15 @@ import Testing
   @Test func defaultsWhenMissingOrCorrupt() throws {
     let dir = try TempDir()
     let store = SettingsStore(fileURL: dir.file("sub/settings.json"))
-    #expect(store.load() == Settings())
+    #expect(store.load() == AppSettings())
     try dir.touch("bad.json", contents: "{not json")
-    #expect(SettingsStore(fileURL: dir.file("bad.json")).load() == Settings())
+    #expect(SettingsStore(fileURL: dir.file("bad.json")).load() == AppSettings())
   }
 
   @Test func persistsAcrossInstances() throws {
     let dir = try TempDir()
     let url = dir.file("sub/settings.json")
-    let saved = Settings(defaultFormat: .tiff, quality: 0.3, launchAtLogin: true)
+    let saved = AppSettings(defaultFormat: .tiff, quality: 0.3, launchAtLogin: true)
     try SettingsStore(fileURL: url).save(saved)
     #expect(SettingsStore(fileURL: url).load() == saved)
   }
