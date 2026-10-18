@@ -9,6 +9,16 @@ public struct OperationResult: Equatable, Sendable {
   public struct Failure: Equatable, Sendable {
     public let file: String
     public let message: String
+
+    public init(file: String, message: String) {
+      self.file = file
+      self.message = message
+    }
+  }
+
+  public init(outputs: [URL] = [], failures: [Failure] = []) {
+    self.outputs = outputs
+    self.failures = failures
   }
 
   public var succeeded: Bool { failures.isEmpty && !outputs.isEmpty }

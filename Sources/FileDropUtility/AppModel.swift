@@ -117,7 +117,7 @@ final class AppModel: ObservableObject {
     case .airDrop:
       NSSharingService(named: .sendViaAirDrop)?.perform(withItems: fileURLs)
     case .float:
-      fileURLs.prefix(6).forEach { WindowManager.shared.openFloat(for: $0) }
+      for url in fileURLs.prefix(6) { WindowManager.shared.openFloat(for: url) }
     case .copy:
       NSPasteboard.general.clearContents()
       NSPasteboard.general.writeObjects(fileURLs as [NSURL])

@@ -203,7 +203,7 @@ struct EditorView: View {
         let points = stroke.points.map { CGPoint(x: $0.x * size.width, y: $0.y * size.height) }
         guard let first = points.first else { return }
         p.move(to: first)
-        points.dropFirst().forEach { p.addLine(to: $0) }
+        for point in points.dropFirst() { p.addLine(to: point) }
       }
       .stroke(
         model.strokeColor,
