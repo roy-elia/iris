@@ -96,7 +96,7 @@ checked that a deliberately failing test makes it exit 1.
 ## Known gaps against the spec
 
 - **End-to-end UI check not done (stage 6).** Computer use can't target the app because it isn't in the Spotlight app index, and screenshot filtering hides it. `osascript` has no Accessibility permission. Verified: the app launches, runs as `UIElement` (no Dock icon) and has no crash reports or logged errors. Not verified: the status item appearing, the panel, drag and drop, the buttons, and A10. Every operation the panel runs goes through the same `Processor` the acceptance tests exercise, but the SwiftUI wiring itself is untested.
-- **No window owned by the app's process was found.** On macOS 26 the menu-bar item may be hosted by another process, or hidden until allowed under System Settings > Menu Bar. See manual steps.
+- The menu-bar icon does appear (confirmed by you with a screenshot on 2026-10-18), so A2 passes. On macOS 26 the status item isn't a window of the app's own process, which is why my window listing found nothing.
 - Launch at login only works from the `.app` bundle (`SMAppService`). It shows an error when run with `swift run`.
 - The app is ad-hoc signed, not notarized. Other Macs will block it unless you sign it with a Developer ID.
 - No UI tests. XCUITest needs Xcode.
