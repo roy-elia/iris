@@ -294,6 +294,7 @@ public struct VideoRecipe: Codable, Sendable {
   - PowerPoint exports ppt/pptx when Keynote is missing (live test: `FDU_TEST_POWERPOINT=1 scripts/test.sh --filter PowerPoint`)
   - self-test samples for xlsx, ods and Keynote
   - Quick Look fallback stops after 60 s
+  - Keynote export and Numbers → CSV have opt-in live tests (`FDU_TEST_IWORK=1 scripts/test.sh --filter IWorkLiveTests`), not yet run: neither app is installed here
 - **Open from Phase 2:**
   - WebM output: added after Phase 2 with libvpx 1.17.0 (VP9) and ffmpeg's Opus encoder.
   - Timeline handles for redaction ranges are buttons ("Set Start/End"), not draggable edges.
