@@ -6,9 +6,10 @@ import Vision
 /// Runs a macOS command-line tool (zip, ditto, osascript, qlmanage) and collects its output.
 enum SystemProcess {
   @discardableResult
-  static func run(_ path: String, _ arguments: [String], in directory: URL? = nil) async throws
-    -> ToolRunner.Output
-  {
+  /// `timeout` stops a tool that hangs; it then throws as a failed run.
+  static func run(
+    _ path: String, _ arguments: [String], in directory: URL? = nil, timeout: TimeInterval? = nil
+  ) async throws -> ToolRunner.Output {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: path)
     process.arguments = arguments
@@ -32,6 +33,12 @@ enum SystemProcess {
       try? outPipe.fileHandleForWriting.close()
       try? errPipe.fileHandleForWriting.close()
       throw error
+    }
+    if let timeout {
+      let box = UncheckedBox(process)
+      DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
+        if box.value.isRunning { box.value.terminate() }
+      }
     }
     await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
       group.notify(queue: .global()) { done.resume() }
@@ -838,6 +845,9 @@ public enum IWorkOps {
     ]
   }
 
+  /// How long the Quick Look fallback may take.
+  static let quickLookTimeout: TimeInterval = 60
+
   /// A presentation, spreadsheet or iWork document as PDF: exported by its app when it's
   /// installed, otherwise the document's saved preview or a Quick Look rendering.
   public static func exportPDF(_ source: URL, app: IWorkApp?, destination: URL) async throws {
@@ -850,7 +860,9 @@ public enum IWorkOps {
     // Quick Look renders the first page or sheet.
     let dir = try SystemProcess.scratchDirectory()
     defer { try? FileManager.default.removeItem(at: dir) }
-    try? await SystemProcess.run("/usr/bin/qlmanage", ["-t", "-s", "2000", "-o", dir.path, source.path])
+    // Quick Look can stall on a damaged file, so give it a minute.
+    try? await SystemProcess.run(
+      "/usr/bin/qlmanage", ["-t", "-s", "2000", "-o", dir.path, source.path], timeout: quickLookTimeout)
     let pngs = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
     guard let png = pngs.first(where: { $0.pathExtension == "png" }) else {
       let needed = app?.rawValue ?? "Pages"
@@ -891,8 +903,16 @@ public enum DocumentOps {
   public static func convert(_ file: DroppedFile, to output: DocumentOutput, destination: URL) async throws {
     let title = file.url.deletingPathExtension().lastPathComponent
     switch (file.kind, output) {
+    case (.office(.ods), .pdf) where !IWorkApp.numbers.isInstalled:
+      // Quick Look has no OpenDocument renderer, so lay the sheets out directly.
+      try await SpreadsheetOps.renderPDF(file.url, format: .ods, to: destination)
     case (.office(let format), .pdf) where !format.isTable:
-      try await IWorkOps.exportPDF(file.url, app: format.app, destination: destination)
+      do {
+        try await IWorkOps.exportPDF(file.url, app: format.app, destination: destination)
+      } catch  where format == .xlsx || format == .ods {
+        // No Numbers and no Quick Look rendering: lay the sheets out as tables.
+        try await SpreadsheetOps.renderPDF(file.url, format: format, to: destination)
+      }
     case (.document(.pages), .pdf):
       try await IWorkOps.exportPDF(
         file.url, app: IWorkApp.pages.isInstalled ? .pages : nil, destination: destination)

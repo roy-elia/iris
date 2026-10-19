@@ -1,4 +1,5 @@
 import Foundation
+import PDFKit
 import Testing
 
 @testable import DropCore
@@ -151,5 +152,38 @@ private func load(_ urls: URL...) throws -> [DroppedFile] { try urls.map { try D
       #expect(SpreadsheetOps.problem(.numbers) == "Needs Numbers")
       #expect(SpreadsheetOps.problem(.xlsx) == nil)
     }
+  }
+
+  @Test func stopsAToolThatHangs() async throws {
+    let start = Date()
+    await #expect(throws: (any Error).self) {
+      try await SystemProcess.run("/bin/sleep", ["30"], timeout: 0.5)
+    }
+    #expect(Date().timeIntervalSince(start) < 10)
+  }
+
+  @Test func sampleWorkbooksAreReadable() async throws {
+    let dir = try TempDir()
+    let xlsx = dir.file("s.xlsx")
+    try await SampleFiles.writeXLSX(to: xlsx)
+    #expect(try await SpreadsheetOps.read(xlsx, format: .xlsx).map(\.name) == ["Budget", "Staff"])
+    let ods = dir.file("s.ods")
+    try await SampleFiles.writeODS(to: ods)
+    #expect(try await SpreadsheetOps.read(ods, format: .ods).first?.rows.count == 3)
+  }
+
+  @Test(.enabled(if: !IWorkApp.numbers.isInstalled)) func odsToPDFWithoutNumbers() async throws {
+    let dir = try TempDir()
+    let book = try await SheetFixtures.ods(dir.file("Plan.ods"))
+    let result = await Processor(settings: AppSettings()).run(.convertDocument(.pdf), on: try load(book))
+    let out = try #require(result.outputs.first, "\(result.failures)")
+    let text = PDFDocument(url: out)?.string ?? ""
+    #expect(text.contains("Plan") && text.contains("3.0") && text.contains("TRUE"))
+  }
+
+  @Test func sheetTablesEscapeText() {
+    let html = SpreadsheetOps.html([Sheet(name: "A<B", rows: [["x", "<y>"], ["z"]])], title: "t")
+    #expect(html.contains("<h2>A&lt;B</h2>") && html.contains("<td>&lt;y&gt;</td>") == false)
+    #expect(html.contains("<th>&lt;y&gt;</th>") && html.contains("<tr><td>z</td><td></td></tr>"))
   }
 }

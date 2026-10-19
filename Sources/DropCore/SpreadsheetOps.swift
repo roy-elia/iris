@@ -91,6 +91,31 @@ public enum SpreadsheetOps {
     ]
   }
 
+  /// The workbook's sheets as a PDF of tables, each headed by its sheet name. Used when
+  /// neither Numbers nor Quick Look can render the file.
+  public static func renderPDF(_ source: URL, format: OfficeFormat, to destination: URL) async throws {
+    let sheets = try await read(source, format: format).filter { !$0.isEmpty }
+    guard !sheets.isEmpty else {
+      throw DropError.wrongInput("\(source.lastPathComponent) has no cells to save.")
+    }
+    let text = try await RichText.readHTML(html(sheets, title: source.lastPathComponent), baseURL: nil)
+    try RichText.renderPDF(text, to: destination)
+  }
+
+  static func html(_ sheets: [Sheet], title: String) -> String {
+    let body = sheets.map { sheet in
+      let rows = padded(sheet.rows).enumerated().map { i, row in
+        let tag = i == 0 ? "th" : "td"
+        return "<tr>" + row.map { "<\(tag)>\(Markdown.escape($0))</\(tag)>" }.joined() + "</tr>"
+      }.joined()
+      return
+        "<h2>\(Markdown.escape(sheet.name))</h2><table border=\"1\" cellpadding=\"4\" cellspacing=\"0\">\(rows)</table>"
+    }.joined()
+    return
+      "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>\(Markdown.escape(title))</title></head>"
+      + "<body>\(body)</body></html>"
+  }
+
   // MARK: Helpers
 
   /// Rows padded to the widest one, so every CSV line has the same number of fields.
