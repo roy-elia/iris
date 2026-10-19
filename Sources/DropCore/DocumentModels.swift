@@ -58,6 +58,9 @@ public enum OfficeFormat: String, CaseIterable, Codable, Sendable {
   /// Tables the app reads itself (and can convert to any text output).
   public var isTable: Bool { self == .csv || self == .tsv }
 
+  /// Keynote and PowerPoint decks, which can also be saved as one image per slide.
+  public var isPresentation: Bool { self == .key || self == .ppt || self == .pptx }
+
   /// The iWork app that opens this format, when one is needed.
   public var app: IWorkApp? {
     switch self {

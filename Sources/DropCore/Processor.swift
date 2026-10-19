@@ -104,7 +104,9 @@ public struct Processor: Sendable {
         return problem
       }
     case .pdfToImages(let format):
-      if files.contains(where: { $0.kind != .pdf }) { return "\(operation.summary) works on PDFs only." }
+      if !files.allSatisfy(\.kind.hasPages) {
+        return "\(operation.summary) works on PDFs and presentations only."
+      }
       if !format.isWritable { return "\(format.displayName) can't be written on this Mac." }
     case .pdfToTIFF, .pdfToCBZ, .splitPDF:
       if files.contains(where: { $0.kind != .pdf }) { return "\(operation.summary) works on PDFs only." }
@@ -436,8 +438,19 @@ public struct Processor: Sendable {
     case .pdfToImages(let format):
       for file in files {
         do {
-          let outs = try PDFPageOps.images(file.url, format: format) { index in
-            target(file, suffix: "page \(index + 1)", ext: format.fileExtension)
+          // A presentation is exported to PDF first, then saved slide by slide.
+          var pages = file.url
+          var scratch: URL?
+          defer { scratch.map { try? FileManager.default.removeItem(at: $0) } }
+          if case .office(let office) = file.kind, office.isPresentation {
+            let dir = try SystemProcess.scratchDirectory()
+            scratch = dir
+            pages = dir.appendingPathComponent("slides.pdf")
+            try await IWorkOps.exportPDF(file.url, app: office.app, destination: pages)
+          }
+          let word = scratch == nil ? "page" : "slide"
+          let outs = try PDFPageOps.images(pages, format: format) { index in
+            target(file, suffix: "\(word) \(index + 1)", ext: format.fileExtension)
           }
           result.outputs += outs
         } catch {

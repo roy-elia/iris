@@ -226,6 +226,15 @@ public enum FileKind: Equatable, Sendable {
   }
 
   /// Text documents, PDFs and tables or presentations: anything `convertDocument` takes.
+  /// PDFs and presentations: files that `pdfToImages` saves page by page.
+  public var hasPages: Bool {
+    switch self {
+    case .pdf: true
+    case .office(let format): format.isPresentation
+    default: false
+    }
+  }
+
   public var isDocumentLike: Bool {
     switch self {
     case .document, .office, .pdf: true

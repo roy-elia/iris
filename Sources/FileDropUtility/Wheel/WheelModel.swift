@@ -219,6 +219,14 @@ extension WheelKind {
           WheelItem(id: "d-cbz", title: "CBZ", systemImage: nil, command: .pdfToCBZ),
         ] + [DocumentOutput.docx, .rtf, .txt, .md, .html, .epub, .epubFixed].map(convert)
       }
+      if files.allSatisfy(\.kind.hasPages) {
+        // Presentations: PDF, or one image per slide.
+        return [convert(.pdf)]
+          + [ImageFormat.png, .jpeg].map {
+            WheelItem(
+              id: "d-\($0.rawValue)", title: $0.displayName, systemImage: nil, command: .pdfToImages($0))
+          }
+      }
       // CSV tables also convert to JSON and vCard.
       return [DocumentOutput.pdf, .docx, .rtf, .txt, .md, .html, .epub, .pages].map(convert)
         + (files.allSatisfy { $0.kind == .office(.csv) } ? dataItems(for: files) : [])
