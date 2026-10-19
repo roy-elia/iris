@@ -277,3 +277,102 @@ private func load(_ urls: URL...) throws -> [DroppedFile] { try urls.map { try D
     #expect(WheelHitTest.segment(dx: 0, dy: -100, outerRadius: 170, count: 0) == nil)
   }
 }
+
+@Suite struct DragTriggerTests {
+  enum K: Equatable, Sendable { case convert, tools }
+  typealias T = DragTrigger<K>
+
+  /// Presses, then starts a drag (pasteboard bump), with no modifier yet.
+  private func dragging() -> (T, TimeInterval) {
+    var t = T(graceInterval: 0.2)
+    _ = t.update(.init(time: 0, buttonDown: false, pasteboardChangeCount: 10, kind: nil))
+    _ = t.update(.init(time: 0.1, buttonDown: true, pasteboardChangeCount: 10, kind: nil))
+    _ = t.update(.init(time: 0.2, buttonDown: true, pasteboardChangeCount: 11, kind: nil))
+    return (t, 0.2)
+  }
+
+  @Test func modifierDuringDragOpensWheelWithoutMouseMovement() {
+    var (t, now) = dragging()
+    #expect(t.isDragging)
+    #expect(
+      t.update(.init(time: now + 0.02, buttonDown: true, pasteboardChangeCount: 11, kind: .convert))
+        == .show(.convert))
+    now += 0.02
+    #expect(
+      t.update(.init(time: now + 0.02, buttonDown: true, pasteboardChangeCount: 11, kind: .convert)) == .none)
+  }
+
+  @Test func modifierWithoutDragDoesNothing() {
+    var t = T()
+    _ = t.update(.init(time: 0, buttonDown: false, pasteboardChangeCount: 5, kind: nil))
+    #expect(t.update(.init(time: 0.1, buttonDown: true, pasteboardChangeCount: 5, kind: .convert)) == .none)
+    #expect(t.update(.init(time: 0.2, buttonDown: false, pasteboardChangeCount: 5, kind: .convert)) == .none)
+  }
+
+  @Test func switchingModifierSwitchesWheel() {
+    var (t, now) = dragging()
+    _ = t.update(.init(time: now, buttonDown: true, pasteboardChangeCount: 11, kind: .convert))
+    #expect(
+      t.update(.init(time: now + 0.05, buttonDown: true, pasteboardChangeCount: 11, kind: .tools))
+        == .show(.tools))
+  }
+
+  @Test func releasingModifierClosesAfterGraceUnlessInside() {
+    var (t, now) = dragging()
+    _ = t.update(.init(time: now, buttonDown: true, pasteboardChangeCount: 11, kind: .convert))
+    #expect(t.update(.init(time: now + 0.1, buttonDown: true, pasteboardChangeCount: 11, kind: nil)) == .none)
+    #expect(t.update(.init(time: now + 0.3, buttonDown: true, pasteboardChangeCount: 11, kind: nil)) == .hide)
+
+    var (u, later) = dragging()
+    _ = u.update(.init(time: later, buttonDown: true, pasteboardChangeCount: 11, kind: .convert))
+    later += 1
+    #expect(
+      u.update(
+        .init(time: later, buttonDown: true, pasteboardChangeCount: 11, kind: nil, dragInsideWheel: true))
+        == .none)
+    #expect(u.shownKind == .convert)
+  }
+
+  @Test func escapeClosesForTheRestOfTheDrag() {
+    var (t, now) = dragging()
+    _ = t.update(.init(time: now, buttonDown: true, pasteboardChangeCount: 11, kind: .convert))
+    #expect(
+      t.update(
+        .init(time: now + 0.05, buttonDown: true, pasteboardChangeCount: 11, kind: .convert, escapeDown: true)
+      )
+        == .hide)
+    #expect(
+      t.update(.init(time: now + 0.1, buttonDown: true, pasteboardChangeCount: 11, kind: .convert)) == .none)
+  }
+
+  @Test func releaseHidesAfterDropAndResets() {
+    var (t, now) = dragging()
+    _ = t.update(.init(time: now, buttonDown: true, pasteboardChangeCount: 11, kind: .convert))
+    #expect(
+      t.update(.init(time: now + 0.05, buttonDown: false, pasteboardChangeCount: 11, kind: .convert))
+        == .hideAfterDrop)
+    #expect(!t.isDragging)
+    // A plain click with the modifier afterwards doesn't reopen it.
+    #expect(
+      t.update(.init(time: now + 0.2, buttonDown: true, pasteboardChangeCount: 11, kind: .convert)) == .none)
+  }
+
+  @Test func readableNonFileDragIsIgnored() {
+    var t = T()
+    _ = t.update(.init(time: 0, buttonDown: false, pasteboardChangeCount: 1, kind: nil))
+    _ = t.update(.init(time: 0.1, buttonDown: true, pasteboardChangeCount: 1, kind: .convert))
+    #expect(
+      t.update(
+        .init(time: 0.2, buttonDown: true, pasteboardChangeCount: 2, mayHoldFiles: false, kind: .convert))
+        == .none)
+    #expect(!t.isDragging)
+  }
+
+  @Test func mouseDownMonitorCountWinsOverLateSample() {
+    var t = T()
+    t.mouseDown(pasteboardChangeCount: 7)
+    // The first timer sample arrives after the drag already bumped the count.
+    #expect(
+      t.update(.init(time: 0.1, buttonDown: true, pasteboardChangeCount: 8, kind: .tools)) == .show(.tools))
+  }
+}

@@ -80,10 +80,34 @@ Each sheet shows light, dark, light + Increase Contrast, dark + Increase Contras
 - Each segment has its own contact and ambient shadow.
 - Segments aren't wrapped in a `GlassEffectContainer`, because it melted them into one shape and hid the labels.
 
+### 7. Drag trigger rebuilt after the first hand test
+
+The first version reacted only to mouse events, so it felt unreliable in a real drag. Tangerine's binary was inspected for the macOS APIs and class layout it uses (names only; none of its code was copied). Its `DragGestureMonitor` polls the button state, modifier flags, Escape and the drag pasteboard's change count on a timer, with a trigger grace interval and an "is the drag inside the overlay" check. Its overlay view implements the same seven `NSDraggingDestination` methods as `WheelDropView`, and its sound player plays from a pool of copies.
+
+Ours now works the same way, written from scratch:
+- **`DragTrigger`** (DropCore, 8 unit tests) holds the rules:
+  - A drag starts when the drag pasteboard changes while the button is held.
+  - Holding a modifier opens its wheel at the pointer, even if the pointer isn't moving.
+  - Changing modifier switches the wheel in place.
+  - Letting go of the modifier closes the wheel after 0.18s, unless the drag is over the wheel.
+  - Escape closes the wheel for the rest of that drag.
+  - Releasing the button closes the wheel 0.25s after the drop lands.
+- **`DragWatcher`** feeds it samples:
+  - It reads `CGEventSource` button, flag and key state plus the drag pasteboard.
+  - It samples every 80ms while idle and at 60Hz while the button is down or the wheel is open.
+  - A mouse-down monitor records the change count at the exact moment of the press.
+- **Overlay controller:**
+  - It reuses one drop view when switching wheels, so a drag in progress isn't interrupted.
+  - It fades out over 0.12s.
+  - The old mouse-up timer is gone.
+- **Sounds:** each sound plays from a pool of voices taken in turn (4 for the tick, 2 for the pop).
+
+Checked live with a synthesised drag: pressing ⇧ mid-drag with the pointer still opens the Convert wheel, and releasing ⇧ closes it.
+
 ## Verification
 
 - **Code checks:**
-  - `scripts/test.sh`: 74 tests pass, including 3 new hit-test tests.
+  - `scripts/test.sh`: 82 tests pass, including 3 hit-test and 8 drag-trigger tests.
   - `scripts/lint.sh`: clean.
   - `swift build` and `scripts/bundle.sh`: succeed.
 - **Snapshots:** every preview recaptured (65 captures, 14 sheets).
@@ -96,7 +120,7 @@ Each sheet shows light, dark, light + Increase Contrast, dark + Increase Contras
 | Requirement | How it's met |
 |---|---|
 | Remove all outlines from bubble elements | Stroke token and every stroke overlay deleted. The glass rim and shadows define edges, and the lit segment glows instead. |
-| Functional drag-and-drop with sound | AppKit drop target with segment hit-testing. Drag detection fixed for macOS 26 pasteboard privacy. Tick on hover, pop on drop, plus haptics. Real-drag check pending. |
+| Functional drag-and-drop with sound | Polling trigger modelled on Tangerine's approach: it opens on a key press without movement, switches wheels, closes on key release or Escape, and stays open while over the wheel. AppKit drop target with segment hit-testing. Pooled tick and pop sounds, plus haptics. A real drop by hand is still pending. |
 | Hover illumination for the selected task | The segment under the pointer fills with the accent colour, glows and scales, and the centre names it. |
 | Top-bar dropdown matching the screenshot | Native `.menu`-style menu with the same structure, order, separators and shortcuts. Licensing items left out. |
 | Genuine Apple Liquid Glass | `glassEffect` on every surface, tinted glass for the lit state, free-floating segments, no strokes. Opaque only under Reduce Transparency. |

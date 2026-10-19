@@ -2,79 +2,110 @@ import AppKit
 import DropCore
 import SwiftUI
 
-/// Watches for files being dragged anywhere on screen. While a file drag is in progress
-/// and Shift, Command or Control is held, it shows the matching wheel under the pointer.
+/// Watches for files being dragged anywhere on screen and opens the matching wheel while
+/// Shift, Command or Control is held.
 ///
-/// Uses global mouse monitors plus `NSEvent.modifierFlags`, so it needs no Accessibility
-/// or Input Monitoring permission. Key events are never monitored.
+/// It polls the mouse button, modifier keys, Escape and the drag pasteboard on a timer:
+/// slowly while idle, at display rate while the button is down. Another app's drag
+/// session swallows many mouse events, so polling reacts to a key press even when the
+/// pointer is still, where event monitors alone miss it. A mouse-down monitor still
+/// records the pasteboard count at the exact moment of the press. The decisions
+/// themselves live in `DragTrigger`. No Accessibility or Input Monitoring permission is
+/// needed.
 @MainActor
 final class DragWatcher {
   static let shared = DragWatcher()
 
+  private let idleInterval: TimeInterval = 0.08
+  private let activeInterval: TimeInterval = 1.0 / 60
+  private var timer: Timer?
+  private var isPollingActively = false
   private var monitors: [Any] = []
-  private var dragPasteboardCount = NSPasteboard(name: .drag).changeCount
-  private var isFileDrag = false
+  private var trigger = DragTrigger<WheelKind>()
+  private let dragPasteboard = NSPasteboard(name: .drag)
   private let overlay = WheelOverlayController()
+  private var hideWork: DispatchWorkItem?
 
   func start() {
-    guard monitors.isEmpty else { return }
-    let handler: (NSEvent) -> Void = { [weak self] event in
-      MainActor.assumeIsolated { self?.handle(event) }
+    guard timer == nil else { return }
+    let onMouseDown: (NSEvent) -> Void = { [weak self] _ in
+      MainActor.assumeIsolated {
+        guard let self else { return }
+        self.trigger.mouseDown(pasteboardChangeCount: self.dragPasteboard.changeCount)
+        self.setPolling(active: true)
+      }
     }
-    if let global = NSEvent.addGlobalMonitorForEvents(
-      matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp], handler: handler)
-    {
+    if let global = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown, handler: onMouseDown) {
       monitors.append(global)
     }
     if let local = NSEvent.addLocalMonitorForEvents(
-      matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp],
+      matching: .leftMouseDown,
       handler: { event in
-        handler(event)
+        onMouseDown(event)
         return event
       })
     {
       monitors.append(local)
     }
+    setPolling(active: false)
   }
 
   func stop() {
+    timer?.invalidate()
+    timer = nil
     monitors.forEach(NSEvent.removeMonitor)
     monitors = []
     overlay.hide()
   }
 
-  private func handle(_ event: NSEvent) {
-    guard AppModel.shared.settings.wheelTriggerEnabled else { return }
-    switch event.type {
-    case .leftMouseDown:
-      dragPasteboardCount = NSPasteboard(name: .drag).changeCount
-      isFileDrag = false
-    case .leftMouseDragged:
-      if !isFileDrag {
-        let pasteboard = NSPasteboard(name: .drag)
-        // A new drag session writes to the drag pasteboard. macOS 26's pasteboard privacy
-        // often hides its types from apps that aren't the drop target, so an unreadable
-        // pasteboard still counts; only a readable one without files rules the drag out.
-        // The wheel's drop target accepts file URLs only either way.
-        if pasteboard.changeCount != dragPasteboardCount {
-          let types = pasteboard.types ?? []
-          isFileDrag = types.isEmpty || types.contains(.fileURL)
-          dragPasteboardCount = pasteboard.changeCount
-        }
-      }
-      guard isFileDrag else { return }
-      if let kind = WheelKind.forModifiers(NSEvent.modifierFlags) {
-        overlay.show(kind, at: NSEvent.mouseLocation)
-      }
-    case .leftMouseUp:
-      isFileDrag = false
-      // Let the drop land before the panel goes away.
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [overlay] in
-        MainActor.assumeIsolated { overlay.hide() }
-      }
-    default:
-      break
+  private func setPolling(active: Bool) {
+    guard timer == nil || active != isPollingActively else { return }
+    isPollingActively = active
+    timer?.invalidate()
+    let t = Timer(timeInterval: active ? activeInterval : idleInterval, repeats: true) { [weak self] _ in
+      MainActor.assumeIsolated { self?.tick() }
     }
+    t.tolerance = active ? 0.002 : 0.02
+    // .common keeps it firing while menus or drag loops run in this app.
+    RunLoop.main.add(t, forMode: .common)
+    timer = t
+  }
+
+  private func tick() {
+    guard AppModel.shared.settings.wheelTriggerEnabled else {
+      if overlay.isVisible { overlay.hide() }
+      return
+    }
+    let buttonDown = CGEventSource.buttonState(.combinedSessionState, button: .left)
+    let flags = NSEvent.ModifierFlags(
+      rawValue: UInt(CGEventSource.flagsState(.combinedSessionState).rawValue))
+    let changeCount = dragPasteboard.changeCount
+    let types = dragPasteboard.types ?? []
+    let sample = DragTrigger<WheelKind>.Sample(
+      time: ProcessInfo.processInfo.systemUptime,
+      buttonDown: buttonDown,
+      pasteboardChangeCount: changeCount,
+      mayHoldFiles: types.isEmpty || types.contains(.fileURL),
+      kind: WheelKind.forModifiers(flags),
+      escapeDown: CGEventSource.keyState(.combinedSessionState, key: 53),
+      dragInsideWheel: overlay.isDragInside)
+
+    let action = trigger.update(sample)
+    switch action {
+    case .none:
+      break
+    case .show(let kind):
+      hideWork?.cancel()
+      overlay.show(kind, at: NSEvent.mouseLocation)
+    case .hide:
+      overlay.hide()
+    case .hideAfterDrop:
+      // performDragOperation runs on release; give it a moment before the panel goes.
+      let work = DispatchWorkItem { [overlay] in MainActor.assumeIsolated { overlay.hide() } }
+      hideWork = work
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
+    }
+    setPolling(active: buttonDown || overlay.isVisible)
   }
 }
 
@@ -88,6 +119,14 @@ final class WheelOverlayController {
   private let dropState = WheelDropState()
   private let diameter: CGFloat = 340
 
+  private var host: NSHostingView<DropWheelHost>?
+  private var dropView: WheelDropView?
+  private var isShowing = false
+
+  var isVisible: Bool { isShowing }
+  var isDragInside: Bool { dropState.isDragInside }
+
+  /// Opens the wheel centred on `point`, or switches the open wheel in place.
   func show(_ kind: WheelKind, at point: NSPoint) {
     let panel = self.panel ?? makePanel()
     self.panel = panel
@@ -95,50 +134,52 @@ final class WheelOverlayController {
       currentKind = kind
       dropState.hotID = nil
       let items = kind.items(for: [])
-      let container = NSView(frame: NSRect(origin: .zero, size: size))
-      let host = NSHostingView(
-        rootView: DropWheelHost(kind: kind, items: items, diameter: diameter, state: dropState))
-      host.frame = container.bounds
-      host.autoresizingMask = [.width, .height]
-      let dropView = WheelDropView(state: dropState)
-      dropView.items = items
-      dropView.diameter = diameter
-      dropView.onDrop = { item, urls in
-        AppModel.shared.perform(item.command, urls: urls, origin: .overlay)
+      let root = DropWheelHost(kind: kind, items: items, diameter: diameter, state: dropState)
+      if let host, let dropView {
+        // Same drop view, so a drag already over the panel keeps going.
+        host.rootView = root
+        dropView.items = items
+      } else {
+        let container = NSView(frame: NSRect(origin: .zero, size: size))
+        let host = NSHostingView(rootView: root)
+        host.frame = container.bounds
+        host.autoresizingMask = [.width, .height]
+        let dropView = WheelDropView(state: dropState)
+        dropView.items = items
+        dropView.diameter = diameter
+        dropView.onDrop = { item, urls in
+          AppModel.shared.perform(item.command, urls: urls, origin: .overlay)
+        }
+        dropView.frame = container.bounds
+        dropView.autoresizingMask = [.width, .height]
+        container.addSubview(host)
+        container.addSubview(dropView)  // On top, so it is the drag destination.
+        panel.contentView = container
+        self.host = host
+        self.dropView = dropView
       }
-      dropView.frame = container.bounds
-      dropView.autoresizingMask = [.width, .height]
-      container.addSubview(host)
-      container.addSubview(dropView)  // On top, so it is the drag destination.
-      panel.contentView = container
     }
-    if !panel.isVisible {
+    if !isShowing {
+      isShowing = true
       panel.setFrameOrigin(NSPoint(x: point.x - size.width / 2, y: point.y - size.height / 2))
       panel.alphaValue = 1
       panel.orderFrontRegardless()
-      startReleaseWatch()
     }
   }
 
   func hide() {
-    releaseTimer?.invalidate()
-    releaseTimer = nil
-    panel?.orderOut(nil)
+    guard isShowing, let panel else { return }
+    isShowing = false
     dropState.hotID = nil
+    dropState.isDragInside = false
     currentKind = nil
-  }
-
-  private var releaseTimer: Timer?
-
-  /// During another app's drag session the mouse-up often never reaches our monitors, so
-  /// also watch the physical button state and close shortly after it's released.
-  private func startReleaseWatch() {
-    releaseTimer?.invalidate()
-    releaseTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+    NSAnimationContext.runAnimationGroup { context in
+      context.duration = 0.12
+      panel.animator().alphaValue = 0
+    } completionHandler: { [weak self] in
       MainActor.assumeIsolated {
-        guard NSEvent.pressedMouseButtons & 1 == 0 else { return }
-        self?.releaseTimer?.invalidate()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { self?.hide() }
+        // A show() during the fade wins.
+        if self?.isShowing == false { panel.orderOut(nil) }
       }
     }
   }

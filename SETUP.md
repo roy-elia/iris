@@ -38,7 +38,7 @@ wording, code or bundled tools.
 | Tools | ⌘ Command | Compress, Metadata (strip), Edit, Annotate, Remove BG, Crop, Redact |
 | Actions | ⌃ Control | AirDrop, Float, Copy, Move, Copy Path, Terminal |
 
-A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the queued files don't fit it. While dragging over the overlay wheel, the segment under the pointer lights up in the accent colour with a soft glow, the centre pill shows its name, and a soft tick plays (with a trackpad tap). A drop plays a pop, runs the command, and reports the result in a glass toast at the top of the screen.
+A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the queued files don't fit it. Press the modifier any time during the drag, even with the pointer still. Switching modifiers switches the wheel. Letting go of the key closes the wheel unless you're over it, and Escape closes it. While dragging over the overlay wheel, the segment under the pointer lights up in the accent colour with a soft glow, the centre pill shows its name, and a soft tick plays (with a trackpad tap). A drop plays a pop, runs the command, and reports the result in a glass toast at the top of the screen.
 
 **Other windows:**
 - **Editor:** adjust brightness, contrast and saturation; crop; annotate (colour and width); redact (black bar or pixelate); rotate; undo. Save Copy writes `name edited.ext` and never touches the original.
@@ -58,6 +58,7 @@ All adaptive values live in one file. Change them there and every screen follows
 | Floating tab bar (morphing selection) | `Sources/FileDropUtility/Design/FloatingTabBar.swift` |
 | Radial wheel, ring segment shape, shared wheel geometry | `Sources/FileDropUtility/Wheel/RadialWheel.swift` |
 | AppKit drop target, hover state, sounds and haptics | `Sources/FileDropUtility/Wheel/WheelDrop.swift` |
+| Drag trigger rules (unit-tested) | `Sources/DropCore/DragTrigger.swift` |
 | Segment hit-testing (unit-tested) | `Sources/DropCore/WheelHitTest.swift` |
 | Wheel definitions, overlay, drag watcher, toast | `Sources/FileDropUtility/Wheel/WheelModel.swift`, `WheelOverlay.swift` |
 | Panel screens | `Sources/FileDropUtility/Panel/` |
@@ -157,7 +158,7 @@ Without Xcode, the snapshot harness renders the same screens in real windows. Gl
 - The floating card no longer moves when you drag its image; it starts a file drag. (Found and fixed during this check.)
 
 - The native menu shows all eight items with the right enabled states and shortcuts (read back through Accessibility and captured in `docs/previews/Menu.png`).
-- A synthesised Shift-drag from a test window opens the Convert wheel under the pointer. (It failed before: macOS 26 hides the drag pasteboard's types from other apps, so the watcher never recognised the drag. Fixed.)
+- A synthesised drag from a test window, then ⇧ pressed with the pointer still, opens the Convert wheel under the pointer; releasing ⇧ closes it. (It failed before: macOS 26 hides the drag pasteboard's types from other apps, so the watcher never recognised the drag. Fixed.)
 
 Not confirmed: **a drop onto an overlay segment**. Synthesised mouse events can't drive a drag session on this Mac: even a plain AppKit test window registered for files got no drag events, and the session never ended. The drop target is ordinary AppKit (`registerForDraggedTypes`, `draggingUpdated`, `performDragOperation`), and its segment maths is covered by unit tests, but a real drag by hand is the remaining check. See manual steps.
 

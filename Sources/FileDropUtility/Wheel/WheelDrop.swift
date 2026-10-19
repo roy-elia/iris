@@ -1,35 +1,44 @@
 import AppKit
 import SwiftUI
 
-/// Sound and trackpad feedback for the wheel. Uses built-in macOS system sounds.
+/// Sound and trackpad feedback for the wheel, using built-in macOS system sounds.
 @MainActor
 enum WheelFeedback {
-  private static let hoverSound: NSSound? = {
-    let sound = NSSound(named: "Tink")?.copy() as? NSSound
-    sound?.volume = 0.45
-    return sound
-  }()
-  private static let dropSound: NSSound? = {
-    let sound = NSSound(named: "Pop")?.copy() as? NSSound
-    sound?.volume = 0.7
-    return sound
-  }()
+  private static let hoverSounds = SoundPool(name: "Tink", volume: 0.45, voices: 4)
+  private static let dropSounds = SoundPool(name: "Pop", volume: 0.7, voices: 2)
 
   /// A light tick when the pointer moves onto a new segment.
   static func hover() {
-    restart(hoverSound)
+    hoverSounds.play()
     NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
   }
 
   /// A pop when files are dropped on a segment.
   static func drop() {
-    restart(dropSound)
+    dropSounds.play()
     NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
   }
+}
 
-  private static func restart(_ sound: NSSound?) {
-    guard let sound else { return }
-    // Quick moves across segments retrigger the sound instead of being dropped.
+/// A few copies of one sound played in turn, so quick moves across segments overlap
+/// naturally instead of cutting the previous tick off.
+@MainActor
+private final class SoundPool {
+  private let voices: [NSSound]
+  private var next = 0
+
+  init(name: NSSound.Name, volume: Float, voices count: Int) {
+    voices = (0..<count).compactMap { _ in
+      let sound = NSSound(named: name)?.copy() as? NSSound
+      sound?.volume = volume
+      return sound
+    }
+  }
+
+  func play() {
+    guard !voices.isEmpty else { return }
+    let sound = voices[next]
+    next = (next + 1) % voices.count
     sound.stop()
     sound.play()
   }
@@ -40,6 +49,8 @@ enum WheelFeedback {
 @MainActor
 final class WheelDropState: ObservableObject {
   @Published var hotID: String?
+  /// The drag is over the wheel, so letting go of the modifier keeps it open.
+  var isDragInside = false
 }
 
 /// Wraps a drop-mode wheel so it redraws when the lit segment changes.
@@ -100,11 +111,15 @@ final class WheelDropView: NSView {
     return id == nil ? [] : .copy
   }
 
-  override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { update(sender) }
+  override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+    state.isDragInside = true
+    return update(sender)
+  }
   override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation { update(sender) }
   override func wantsPeriodicDraggingUpdates() -> Bool { false }
 
   override func draggingExited(_ sender: NSDraggingInfo?) {
+    state.isDragInside = false
     state.hotID = nil
   }
 
@@ -127,6 +142,7 @@ final class WheelDropView: NSView {
   }
 
   override func concludeDragOperation(_ sender: NSDraggingInfo?) {
+    state.isDragInside = false
     state.hotID = nil
   }
 }
