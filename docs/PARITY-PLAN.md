@@ -52,11 +52,11 @@ Formats found in the executable: `png jpg heic avif tiff bmp webp gif svg ai pdf
 | Text documents | docx, pages, rtf, rtfd, txt, md, html, text clippings ↔ docx, pages ("Creates a native Pages document"), rtf, txt, md, html, pdf | ✅ |
 | EPUB | epub ↔ pdf, docx and others; reflowable or fixed-layout ("fixed layout book of page images") | ✅ |
 | PDF out | pdf → images, text, docx ("This PDF has no selectable text…") | ✅ (plus OCR) |
-| Presentations | key, ppt, pptx → pdf, images ("Bundled PowerPoint converter") | 🟡 PDF only: Keynote scripting, else Quick Look first slide |
-| Spreadsheets | numbers, xls, xlsx, ods, csv, tsv → pdf, csv ("Bundled spreadsheet converter") | 🟡 PDF (Numbers scripting, else Quick Look); csv/tsv fully |
+| Presentations | key, ppt, pptx → pdf, images ("Bundled PowerPoint converter") | ✅ PDF, and PNG or JPEG per slide. Keynote does the export when installed, else the deck's saved preview or Quick Look (first slide only) |
+| Spreadsheets | numbers, xls, xlsx, ods, csv, tsv → pdf, csv ("Bundled spreadsheet converter") | ✅ PDF (Numbers scripting, else Quick Look); CSV per sheet, read directly from xlsx and ods, via Numbers for numbers and xls; csv/tsv fully |
 | Subtitles | srt ↔ vtt (`SubtitleConverter`, "No valid subtitle cues") | ✅ |
 | Archives | zip → extracted folder ("Extracting archive") | ✅ |
-| Per-format settings | "Conversion defaults are configured on the output format you choose"; Preserve metadata; Keep original dimensions; Maximum video height | 🟡 images done (quality, metadata); video and audio options come with phases 2–3 |
+| Per-format settings | "Conversion defaults are configured on the output format you choose"; Preserve metadata; Keep original dimensions; Maximum video height | ✅ images (quality, metadata, keep animation), video (keep original dimensions, maximum height, bitrate) and audio (bitrate, bit depth) |
 
 ### 1.3 Tools wheel
 
@@ -87,14 +87,14 @@ Formats found in the executable: `png jpg heic avif tiff bmp webp gif svg ai pdf
 | Action | Ours |
 |---|---|
 | AirDrop ("Share files and folders with AirDrop") | ✅ |
-| Float | 🟡 (see 1.1) |
+| Float | ✅ (see 1.1). The wheel's Add to Float targets the latest Float; drop on a tab to pick another |
 | Copy files and folders | ✅ |
 | Copy file and folder paths | ✅ |
 | Move to a chosen folder | ✅ |
-| Open terminal in folder | 🟡 Terminal only |
-| Share menu for the selection ("No shared actions for selected files") | 🟡 in the panel, not on the wheel |
+| Open terminal in folder | ✅ Terminal, iTerm2, Warp, Ghostty and others when installed, picked in Settings; falls back to Terminal |
+| Share menu for the selection ("No shared actions for selected files") | ✅ in the panel and on the Actions wheel |
 
-**Count:** 53 rows (some rows group related tools): 14 ✅ · 17 🟡 · 22 ❌. Two more areas are ⛔ and listed in section 6.
+**Count:** 53 rows (some rows group related tools): 52 ✅ · 0 🟡 · 1 ❌ (folder access, not needed while the app is unsandboxed). Two more areas are ⛔ and listed in section 6.
 
 ## 2. Architecture
 
@@ -283,6 +283,13 @@ public struct VideoRecipe: Codable, Sendable {
   - update check against a GitHub-style releases feed, opt-in, HTTPS only, feed set at build time
   - onboarding page for every file kind; wheel blurbs updated
   - 9 new tests
+- **Partial rows finished** (2026-10-19):
+  - video defaults in Settings: keep original dimensions, maximum height, bitrate
+  - Share on the Actions wheel
+  - terminal list moved into DropCore, with a fallback to Terminal
+  - Keynote and PowerPoint slides to PNG or JPEG
+  - Excel, OpenDocument and Numbers sheets to CSV
+  - 11 new unit tests, and a self-test check for Share on the wheel
 - **Open from Phase 2:**
   - WebM output: added after Phase 2 with libvpx 1.17.0 (VP9) and ffmpeg's Opus encoder.
   - Timeline handles for redaction ranges are buttons ("Set Start/End"), not draggable edges.
