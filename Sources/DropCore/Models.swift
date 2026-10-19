@@ -323,6 +323,8 @@ public enum FileOperation: Codable, Equatable, Sendable {
   case editVideo(VideoRecipe)
   case splitVideo(SplitPlan)
   case joinVideos
+  /// Save each text subtitle track as SRT.
+  case extractSubtitles
   /// Save the frames at these times (seconds).
   case videoSnapshots([Double])
   /// Convert audio files (or videos' audio tracks).
@@ -348,7 +350,9 @@ public enum FileOperation: Codable, Equatable, Sendable {
   /// Whether the operation is long-running media work.
   public var isMedia: Bool {
     switch self {
-    case .convertVideo, .compressVideo, .editVideo, .splitVideo, .joinVideos, .videoSnapshots, .convertAudio,
+    case .convertVideo, .compressVideo, .editVideo, .splitVideo, .joinVideos, .videoSnapshots,
+      .extractSubtitles,
+      .convertAudio,
       .editAudio, .audioVisualizer, .convertDocument, .pdfToImages, .pdfToTIFF,
       .pdfToCBZ, .extractArchive, .zipFiles:
       true
@@ -381,6 +385,7 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .editVideo: "Edit video"
     case .splitVideo(let plan): plan.joinKept ? "Cut video" : "Split video"
     case .joinVideos: "Join videos"
+    case .extractSubtitles: "Save subtitles"
     case .videoSnapshots(let times): times.count == 1 ? "Save frame" : "Save frames"
     case .convertAudio(let output): "Convert to \(output.displayName)"
     case .editAudio: "Edit audio"

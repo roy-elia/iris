@@ -40,9 +40,9 @@ wording, code or bundled tools.
 
 A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the queued files don't fit it. Press the modifier any time during the drag, even with the pointer still. Switching modifiers switches the wheel. Letting go of the key closes the wheel unless you're over it, and Escape closes it. While dragging over the overlay wheel, the segment under the pointer lights up in the accent colour with a soft glow, the centre pill shows its name, and a soft tick plays (with a trackpad tap). A drop plays a pop, runs the command, and reports the result in a glass toast at the top of the screen.
 
-**Video** (when every dropped file is a video: MP4, MOV, M4V, WebM, MKV, AVI):
-- **Convert wheel:** MP4, MOV, M4V, MKV, AVI, WebM (VP9 + Opus), GIF (palette-optimised, 15 fps), and MP3 or M4A audio.
-- **Tools wheel:** Compress (Light, Medium or Strong, or a target size), Trim, Split, Join, Speed, Frames, Crop, Redact.
+**Video** (when every dropped file is a video: MP4, MOV, M4V, WebM, MKV, AVI, WMV/ASF, FLV, MPEG, TS, M2TS/MTS, 3GP, OGV, VOB):
+- **Convert wheel:** MP4, HEVC (H.265 MP4 from the hardware encoder, saved as "name HEVC.mp4"), 720p (H.264 MP4 at most 720 px high, "name 720p.mp4"), MOV, M4V, MKV, AVI, WebM (VP9 + Opus), GIF (palette-optimised, 15 fps), and MP3 or M4A audio.
+- **Tools wheel:** Compress (Light, Medium or Strong, or a target size), Trim, Split, Join, Speed, Frames, Crop, Redact, Subtitles (each text subtitle track saved as SRT, named by language when there are several).
 - **Video editor:**
   - the picture fills the window, with a glass timeline of thumbnails under it
   - tools: trim handles, split points with removable clips (export separately or join what's kept), speed 0.25–4×, frame snapshots as PNG, crop, and timed redactions (solid, pixelate or blur, each with its own time range)
@@ -50,7 +50,7 @@ A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the
 - **Join window:** set the order. Videos of different sizes are fitted to the first one's frame, and silent clips get a silent track.
 - Encoding uses Apple's hardware H.264 encoder through the bundled ffmpeg; progress shows in the status menu, and Stop Current Task cancels.
 
-**Audio** (when every dropped file is audio: MP3, WAV, M4A, AAC, FLAC, AIFF, OGG, Opus, WMA, CAF):
+**Audio** (when every dropped file is audio: MP3, WAV, M4A, AAC, FLAC, AIFF, OGG, Opus, WMA, CAF, AMR, APE, AC-3):
 - **Convert wheel:** MP3, M4A, AAC, WAV, AIFF, FLAC, OGG (Vorbis), Opus. Videos can be converted to audio too. Bit depth (WAV 16/24/32, AIFF and FLAC 16/24) and bitrate are set per format under Settings › Audio defaults.
 - **Tools wheel:** Trim, Bleep, Volume, Channels (the audio editor), and Visualizer.
 - **Audio editor:**
@@ -235,7 +235,7 @@ Confirmed by you by hand (2026-10-18): a real drag with the redrawn wheel looks 
 
 ## Feature self-test
 
-`.build/debug/FileDropUtility --selftest <folder>` (debug builds) makes sample files of every kind (images, QR, SVG, video, audio, PDFs including a scanned page, Word, RTF, Markdown, HTML, CSV, a text clipping, subtitles, a zip) and runs every wheel segment for each: operations through the Processor with their outputs checked, window segments by opening the window and running what it saves, and actions by their effect (clipboard, Floats). The clipboard is restored afterwards. `FDU_SELFTEST_ONLY=png/Metadata` narrows it. The last run is in `docs/FEATURE-TEST.md`: 282 passed, 0 failed, 7 correct refusals (for example "No QR codes found" on a photo); AirDrop, Move and Terminal are skipped because they open system UI.
+`.build/debug/FileDropUtility --selftest <folder>` (debug builds) makes sample files of every kind (images including PSD, TGA, OpenEXR, ICO and HDR; QR; SVG; video in MP4, MOV, MKV with a subtitle track, WMV, FLV, MPEG, TS, 3GP, OGV and VOB; audio including AC-3; PDFs including a scanned page; Word, RTF, Markdown, HTML, CSV, JSON, XML, plist and vCard; a text clipping; SRT, VTT, ASS, a CP949 SAMI and LRC subtitles; zip, 7z, tar.gz, ISO and a single .gz) and runs every wheel segment for each: operations through the Processor with their outputs checked, window segments by opening the window and running what it saves, and actions by their effect (clipboard, Floats). The clipboard is restored afterwards. `FDU_SELFTEST_ONLY=png/Metadata` narrows it. The last run is in `docs/FEATURE-TEST.md`: 781 passed, 0 failed, 24 correct refusals (for example "No QR codes found" on a photo, or "has no subtitle tracks" on a video without any); AirDrop, Move and Terminal are skipped because they open system UI.
 
 Bugs it found, now fixed:
 - Opening the Metadata window crashed the app. Tool windows and the main window sized themselves live to their content, and a height change after opening sent AppKit into an endless constraints loop. Windows now size from a measured ideal size.

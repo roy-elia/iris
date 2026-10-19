@@ -135,7 +135,9 @@
         if !result.failures.isEmpty {
           let text = result.failures.map { "\($0.file) \($0.message)" }.joined(separator: "; ")
           // Inputs that rightly have nothing to find get a clear message instead of output.
-          let refusals = ["No QR codes found", "No clear subject", "already as small as it gets"]
+          let refusals = [
+            "No QR codes found", "No clear subject", "already as small as it gets", "has no subtitle tracks",
+          ]
           if result.failures.allSatisfy({ f in refusals.contains { f.message.contains($0) } }) {
             return ("refused", text)
           }
@@ -189,6 +191,7 @@
       case .splitPDF: return await window("Split", then: .splitPDF(.ranges("1, 2-")))
       case .convertSubtitles(let f): return await check(.convertSubtitles(f))
       case .extractArchive: return await check(.extractArchive)
+      case .extractSubtitles: return await check(.extractSubtitles)
       case .convertData(let f): return await check(.convertData(f))
       case .zip: return await check(.zipFiles)
 
@@ -384,6 +387,39 @@
         mp3.path,
       ])
 
+      // Other containers the bundled ffmpeg decodes, each with its usual codecs.
+      let pattern = [
+        "-f", "lavfi", "-i", "testsrc=size=320x240:rate=25:duration=2", "-f", "lavfi", "-i",
+        "sine=frequency=550:duration=2",
+      ]
+      let containers: [(String, [String])] = [
+        ("legacy.wmv", ["-c:v", "wmv2", "-c:a", "wmav2"]),
+        ("flash.flv", ["-c:v", "flv", "-c:a", "libmp3lame", "-ar", "44100"]),
+        ("broadcast.mpg", ["-c:v", "mpeg2video", "-c:a", "mp2"]),
+        ("stream.ts", ["-c:v", "h264_videotoolbox", "-c:a", "aac"]),
+        ("phone.3gp", ["-s", "176x144", "-c:v", "h263", "-c:a", "aac", "-ar", "8000", "-ac", "1"]),
+        ("open.ogv", ["-c:v", "libvpx", "-c:a", "opus", "-strict", "-2", "-ar", "48000"]),
+        ("disc.vob", ["-c:v", "mpeg2video", "-c:a", "ac3", "-f", "vob"]),
+      ]
+      var legacyVideos: [(String, [URL])] = []
+      for (name, codecs) in containers {
+        try await ffmpeg(pattern + codecs + ["-shortest", file(name).path])
+        legacyVideos.append((URL(fileURLWithPath: name).pathExtension, [file(name)]))
+      }
+      // A video with an English subtitle track.
+      let subsSource = file("subs-src.srt")
+      try "1\n00:00:00,200 --> 00:00:01,200\nSubtitle track\n".write(
+        to: subsSource, atomically: true, encoding: .utf8)
+      let subbed = file("subbed.mkv")
+      try await ffmpeg([
+        "-i", mp4.path, "-i", subsSource.path, "-map", "0", "-map", "1", "-c", "copy", "-c:s", "srt",
+        "-metadata:s:s:0", "language=eng", subbed.path,
+      ])
+      let ac3 = file("surround.ac3")
+      try await ffmpeg([
+        "-f", "lavfi", "-i", "sine=frequency=440:duration=1.5", "-ac", "2", "-c:a", "ac3", ac3.path,
+      ])
+
       // Documents.
       let rich = NSMutableAttributedString()
       rich.append(
@@ -508,8 +544,8 @@
         ("png", [scene]), ("jpg", [jpg]), ("heic", [heic]), ("svg", [svg]), ("qr", [qr]),
         ("psd", [psd]), ("tga", [tga]), ("exr", [exr]), ("ico", [ico]), ("hdr", [hdr]),
         ("images×2", [scene, jpg]),
-        ("mp4", [mp4]), ("videos×2", [mp4, mov]),
-        ("wav", [wav]), ("audio×2", [wav, mp3]),
+        ("mp4", [mp4]), ("videos×2", [mp4, mov]), ("subbed.mkv", [subbed]),
+        ("wav", [wav]), ("audio×2", [wav, mp3]), ("ac3", [ac3]),
         ("pdf", [pdf]), ("pdfs×2", [pdf, pdf2]),
         ("docx", [docx]), ("rtf", [rtf]), ("md", [md]), ("html", [html]), ("csv", [csv]),
         ("contacts.csv", [contactsCSV]), ("json", [json]), ("xml", [xml]), ("plist", [plist]), ("vcf", [vcf]),
@@ -517,6 +553,7 @@
         ("srt", [srt]), ("vtt", [vtt]), ("ass", [ass]), ("smi", [smi]), ("lrc", [lrc]), ("zip", [zip]),
         ("7z", [sevenZip]), ("tar.gz", [tarball]), ("iso", [iso]), ("gz", [gz]),
       ]
+      f.groups += legacyVideos
       return f
     }
 

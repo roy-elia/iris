@@ -3,6 +3,8 @@ import Foundation
 /// Video containers the app reads.
 public enum VideoFormat: String, CaseIterable, Codable, Sendable {
   case mp4, mov, m4v, webm, mkv, avi
+  case wmv, flv, mpeg, ts, m2ts, ogv, vob
+  case threeGP = "3gp"
 
   public init?(fileExtension ext: String) {
     switch ext.lowercased() {
@@ -12,38 +14,80 @@ public enum VideoFormat: String, CaseIterable, Codable, Sendable {
     case "webm": self = .webm
     case "mkv": self = .mkv
     case "avi": self = .avi
+    case "wmv", "asf": self = .wmv
+    case "flv": self = .flv
+    case "mpg", "mpeg", "m1v", "m2v", "mpe": self = .mpeg
+    case "ts": self = .ts
+    case "m2ts", "mts": self = .m2ts
+    case "ogv": self = .ogv
+    case "vob": self = .vob
+    case "3gp", "3g2": self = .threeGP
     default: return nil
     }
   }
 
-  public var displayName: String { rawValue.uppercased() == "WEBM" ? "WebM" : rawValue.uppercased() }
+  public var displayName: String {
+    switch self {
+    case .webm: "WebM"
+    case .ogv: "OGV"
+    default: rawValue.uppercased()
+    }
+  }
 }
 
 /// What a video can be converted to: another container, an animated GIF, or its audio.
 public enum VideoOutput: String, CaseIterable, Codable, Sendable {
   case mp4, mov, m4v, webm, mkv, avi, gif, mp3, m4a
+  /// MP4 with HEVC (H.265) video from Apple's hardware encoder.
+  case hevc
+  /// MP4 (H.264) scaled down to at most 720 pixels high.
+  case mp4720 = "mp4-720"
 
-  public var fileExtension: String { rawValue }
+  public var fileExtension: String {
+    switch self {
+    case .hevc, .mp4720: "mp4"
+    default: rawValue
+    }
+  }
 
   public var displayName: String {
     switch self {
     case .webm: "WebM"
     case .m4a: "M4A"
+    case .hevc: "HEVC"
+    case .mp4720: "720p"
     default: rawValue.uppercased()
     }
   }
+
+  /// Added to the output's name, so these MP4s don't read as plain MP4 conversions.
+  public var nameSuffix: String {
+    switch self {
+    case .hevc: "HEVC"
+    case .mp4720: "720p"
+    default: ""
+    }
+  }
+
+  /// The tallest frame this output allows.
+  public var maxHeight: Int? { self == .mp4720 ? 720 : nil }
 
   public var isAudioOnly: Bool { self == .mp3 || self == .m4a }
 
   /// WebM needs a VP8/VP9 encoder, which the bundled LGPL ffmpeg doesn't include.
   public var isAvailable: Bool {
     guard ToolLocator.isAvailable(.ffmpeg) else { return false }
-    return self != .webm || VideoOps.hasEncoder("libvpx-vp9")
+    switch self {
+    case .webm: return VideoOps.hasEncoder("libvpx-vp9")
+    case .hevc: return VideoOps.hasEncoder("hevc_videotoolbox")
+    default: return true
+    }
   }
 
   public var unavailableReason: String? {
     guard !isAvailable else { return nil }
-    return ToolLocator.isAvailable(.ffmpeg) ? "Needs a VP9 encoder" : "ffmpeg is missing"
+    guard ToolLocator.isAvailable(.ffmpeg) else { return "ffmpeg is missing" }
+    return self == .hevc ? "Needs an HEVC encoder" : "Needs a VP9 encoder"
   }
 }
 

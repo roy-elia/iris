@@ -47,7 +47,8 @@ public enum AudioOps {
     case .aiff: .aiff
     case .ogg: .ogg
     case .opus: .opus
-    case .wma, .caf, nil: .m4a
+    case .ape: .flac  // Lossless in, lossless out.
+    case .wma, .caf, .amr, .ac3, nil: .m4a
     }
   }
 

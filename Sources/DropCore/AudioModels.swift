@@ -2,7 +2,7 @@ import Foundation
 
 /// Audio files the app reads.
 public enum AudioFormat: String, CaseIterable, Codable, Sendable {
-  case mp3, wav, m4a, aac, flac, aiff, ogg, opus, wma, caf
+  case mp3, wav, m4a, aac, flac, aiff, ogg, opus, wma, caf, amr, ape, ac3
 
   public init?(fileExtension ext: String) {
     switch ext.lowercased() {
@@ -16,6 +16,9 @@ public enum AudioFormat: String, CaseIterable, Codable, Sendable {
     case "opus": self = .opus
     case "wma": self = .wma
     case "caf": self = .caf
+    case "amr", "awb": self = .amr
+    case "ape": self = .ape
+    case "ac3": self = .ac3
     default: return nil
     }
   }
@@ -24,6 +27,7 @@ public enum AudioFormat: String, CaseIterable, Codable, Sendable {
     switch self {
     case .aiff: "AIFF"
     case .opus: "Opus"
+    case .ape: "Monkey's Audio"
     default: rawValue.uppercased()
     }
   }

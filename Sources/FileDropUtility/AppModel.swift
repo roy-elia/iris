@@ -181,6 +181,8 @@ final class AppModel: ObservableObject {
     case .videoEditor(let tool):
       guard let video = targets.first(where: \.kind.isVideo) else { return }
       WindowManager.shared.openVideoEditor(for: video.url, tool: tool)
+    case .extractSubtitles:
+      run(.extractSubtitles, on: targets, origin: origin)
     case .joinVideos:
       WindowManager.shared.openTool("join", title: "Join Videos") { JoinView(urls: fileURLs) }
     case .convertAudio(let output):

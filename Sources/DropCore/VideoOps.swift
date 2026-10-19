@@ -119,10 +119,16 @@ public enum VideoOps {
       ?? ["-q:v", "\(quality)"]
     var args: [String]
     switch output {
-    case .mp4, .m4v, .mov:
+    case .mp4, .m4v, .mov, .mp4720:
       args =
         ["-c:v", "h264_videotoolbox"] + rate + [
           "-pix_fmt", "yuv420p", "-tag:v", "avc1", "-movflags", "+faststart",
+        ]
+    case .hevc:
+      // "hvc1" lets QuickTime and Photos play it.
+      args =
+        ["-c:v", "hevc_videotoolbox"] + rate + [
+          "-pix_fmt", "yuv420p", "-tag:v", "hvc1", "-movflags", "+faststart",
         ]
     case .mkv:
       args = ["-c:v", "h264_videotoolbox"] + rate + ["-pix_fmt", "yuv420p"]
@@ -300,6 +306,8 @@ public enum VideoOps {
       throw DropError.wrongInput("\(source.lastPathComponent) has no playable video track.")
     }
     try validate(recipe, info: info, name: source.lastPathComponent)
+    var recipe = recipe
+    if let limit = output.maxHeight { recipe.maxHeight = min(recipe.maxHeight ?? limit, limit) }
     let args = renderArgs(
       source: source, info: info, recipe: recipe, output: output, destination: destination)
     try await render(

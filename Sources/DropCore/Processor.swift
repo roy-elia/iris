@@ -82,6 +82,8 @@ public struct Processor: Sendable {
       if case .videoSnapshots(let times) = operation, times.isEmpty {
         return "Select at least one frame within the video."
       }
+    case .extractSubtitles:
+      if !allVideos { return videosOnly(operation) }
     case .convertAudio:
       if !allSound { return "\(operation.summary) works on audio and video files." }
     case .editAudio(let recipe):
@@ -309,7 +311,7 @@ public struct Processor: Sendable {
 
     case .convertVideo(let output):
       for (i, file) in files.enumerated() {
-        let out = target(file, suffix: "", ext: output.fileExtension)
+        let out = target(file, suffix: output.nameSuffix, ext: output.fileExtension)
         await record(&result, file: file, output: out) {
           try await VideoOps.convert(file.url, to: output, destination: out) { p in
             progress?((Double(i) + p) / Double(files.count))
@@ -370,6 +372,17 @@ public struct Processor: Sendable {
       } catch {
         for out in outs { try? FileManager.default.removeItem(at: out) }
         result.failures.append(.init(file: file.name, message: Self.message(for: error)))
+      }
+
+    case .extractSubtitles:
+      for file in files {
+        do {
+          result.outputs += try await VideoOps.extractSubtitles(file.url) { label in
+            target(file, suffix: label, ext: "srt")
+          }
+        } catch {
+          result.failures.append(.init(file: file.name, message: Self.message(for: error)))
+        }
       }
 
     case .convertAudio(let output):

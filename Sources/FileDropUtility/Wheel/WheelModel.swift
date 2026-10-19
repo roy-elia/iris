@@ -101,6 +101,7 @@ enum WheelCommand: Equatable {
   case convertVideo(VideoOutput)
   case videoEditor(VideoTool)
   case joinVideos
+  case extractSubtitles
   case convertAudio(AudioOutput)
   case audioEditor(AudioTool)
   case visualizer
@@ -140,7 +141,7 @@ extension WheelKind {
     let oneVideo: String? = count == 1 ? nil : "One video at a time"
     switch self {
     case .convert:
-      let outputs: [VideoOutput] = [.mp4, .mov, .m4v, .mkv, .avi, .webm, .gif, .mp3, .m4a]
+      let outputs: [VideoOutput] = [.mp4, .hevc, .mp4720, .mov, .m4v, .mkv, .avi, .webm, .gif, .mp3, .m4a]
       return outputs.map { output in
         WheelItem(
           id: "v-\(output.rawValue)", title: output.displayName, systemImage: nil,
@@ -162,6 +163,8 @@ extension WheelKind {
           id: "v-join", title: "Join", systemImage: "rectangle.stack.badge.plus", command: .joinVideos,
           disabledReason: count >= 2 ? nil : "Two or more videos"),
         tool(.speed, oneVideo), tool(.frames, oneVideo), tool(.crop, oneVideo), tool(.redact, oneVideo),
+        WheelItem(
+          id: "v-subtitles", title: "Subtitles", systemImage: "captions.bubble", command: .extractSubtitles),
       ]
     case .actions:
       return items(for: [])
