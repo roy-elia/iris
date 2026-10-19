@@ -25,7 +25,7 @@ or draws its own substitute.
 | Files tab | `Panel/FilesTab.swift` | Drop zone `glassPanel(tint:interactive:)`; wheel launchers `.buttonStyle(.glass)` in a `GlassEffectContainer`; lists and result card in `GroupBox` |
 | History / Settings | `Panel/HistoryAndSettings.swift` | `GroupBox`; `Form` + `.formStyle(.grouped)`, `LabeledContent` |
 | Share button | `Panel/ShareButton.swift` | `NSButton.BezelStyle.glass` |
-| Radial wheel | `Wheel/RadialWheel.swift` | Disc `glassEffect(theme.glass, in: Circle())`: Regular → `.regular`, Clear → `.clear`, Tinted → `.regular.tint(.accentColor)`; petals in `.tint`/`.quaternary` |
+| Radial wheel | `Wheel/RadialWheel.swift` | Disc `glassEffect(theme.glass, in: Circle())`: Regular → `.regular`, Clear → `.clear`, Tinted → `.regular` over a 60% teal fill; lit petal a solid teal gradient (`WheelTeal`, #00578F → #0378A8); idle petals `.quaternary` |
 | Toast | `Wheel/WheelOverlay.swift` | `glassPanel` capsule, borderless text button inside |
 | Floats | `Windows/FloatView.swift` | `glassEffect(.regular.interactive())`; collapsed and expanded share `glassEffectID("float", in:)` so opening morphs one shape; rows on `.quinary` |
 | Onboarding | `Windows/OnboardingView.swift` | Standard opaque window; `.glassProminent` / `.glass` buttons; cards and mock menu bar on system fills, toggles in `GroupBox` |
@@ -40,6 +40,9 @@ or draws its own substitute.
 - The main window's tabs and More menu moved into the system toolbar; Settings is a grouped `Form`.
 - The toast's Show button is a text button (glass shouldn't sit on the glass toast).
 - Onboarding opens as an opaque standard window instead of a transparent one.
+- The wheel keeps the app's original teal for the lit petal (and the Tinted disc) as a fill,
+  not a glass tint: the wheel's panel is non-activating, and macOS draws glass tints on
+  inactive windows untinted, so a tinted-glass petal turned grey in real use.
 - Kept on purpose: media overlays in the editors (crop dimming, the redaction preview's black and
   `.ultraThinMaterial` blur, white playheads with a shadow, the PDF page's white paper and shadow).
   They depict the output or must stay visible over arbitrary media, so they aren't chrome.
@@ -59,4 +62,4 @@ appearance and "dark-largest-text": 205 captures, all produced.
 | Reduce Motion | Not run, for the same reason; the fade path in `DesignTokens.Motion` is in the code but not checked on screen. |
 | Largest Dynamic Type | Ran, with no effect: macOS doesn't apply SwiftUI `dynamicTypeSize`, so text stays at the system size. Text uses text styles throughout, so it follows the macOS text-size settings that do exist. |
 | `#Preview` canvas | Not available: only the Command Line Tools are installed (no Xcode). The snapshot harness stands in for it. |
-| Contrast notes | The Tinted wheel renders as near-solid accent; its black labels on system blue are about 5:1 and the lit petal is light with tinted text. Clear wheel labels depend on what's behind the glass, as with any `.clear` glass. |
+| Contrast notes | White labels on the teal lit petal are about 7.8:1 at the top and 4.9:1 at the bottom of the gradient. On the Tinted wheel the lit petal is the background colour with teal text. Clear wheel labels depend on what's behind the glass, as with any `.clear` glass. |

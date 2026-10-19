@@ -73,7 +73,7 @@ struct PetalShape: Shape {
 }
 
 /// The radial action wheel: rounded petals on a Liquid Glass disc, around a centre well with
-/// a label. The petal under the pointer fills with the accent colour, swells past the rim and
+/// a label. The petal under the pointer turns teal, swells past the rim and
 /// leans toward the pointer. The wheel springs open from a third of its size, and the labels
 /// fade in just after. Everything is drawn with system glass, fills and colours, so it
 /// follows light and dark, Increase Contrast and Reduce Transparency.
@@ -86,9 +86,18 @@ extension WheelTheme {
     switch self {
     case .dark: .regular
     case .light: .clear
-    case .tinted: .regular.tint(.accentColor)
+    case .tinted: .regular
     }
   }
+}
+
+/// The wheel's signature teal, kept from the app's original design. The wheel's panel never
+/// becomes key, and the system drops glass tints on inactive windows, so teal is drawn as a
+/// fill rather than a glass tint. White labels stay above 4.5:1 across the gradient.
+enum WheelTeal {
+  static let deep = Color(red: 0.00, green: 0.34, blue: 0.56)
+  static let color = Color(red: 0.01, green: 0.47, blue: 0.66)
+  static let gradient = LinearGradient(colors: [deep, color], startPoint: .top, endPoint: .bottom)
 }
 
 private struct WheelThemeKey: EnvironmentKey {
@@ -184,7 +193,9 @@ struct RadialWheel: View {
   /// The disc is the wheel's only glass; the system draws its edge and depth, and makes it
   /// solid under Reduce Transparency.
   private func disc(diameter d: CGFloat, scale s: CGFloat) -> some View {
-    Color.clear.glassEffect(theme.glass, in: Circle())
+    Circle()
+      .fill(theme == .tinted ? AnyShapeStyle(WheelTeal.color.opacity(0.6)) : AnyShapeStyle(.clear))
+      .glassEffect(theme.glass, in: Circle())
   }
 
   @ViewBuilder
@@ -205,10 +216,10 @@ struct RadialWheel: View {
     let lean = isHot ? leanOffset(toward: pointer, from: labelOffset, limit: 7 * s) : .zero
 
     ZStack {
-      // System fills on the glass: the accent for the lit petal, hierarchical fills otherwise.
-      // On accent-tinted glass the lit petal flips to the background colour so it stands out.
+      // The lit petal is teal; the rest use hierarchical fills on the glass. On the teal
+      // disc the lit petal flips to the background colour so it stands out.
       if isHot {
-        shape.fill(theme == .tinted ? AnyShapeStyle(.background) : AnyShapeStyle(.tint))
+        shape.fill(theme == .tinted ? AnyShapeStyle(.background) : AnyShapeStyle(WheelTeal.gradient))
       } else if theme == .tinted {
         shape.fill(.background.opacity(item.isEnabled ? 0.18 : 0.08))
       } else {
@@ -231,7 +242,7 @@ struct RadialWheel: View {
       .foregroundStyle(
         isHot
           ? (theme == .tinted
-            ? AnyShapeStyle(.tint) : AnyShapeStyle(Color(nsColor: .alternateSelectedControlTextColor)))
+            ? AnyShapeStyle(WheelTeal.color) : AnyShapeStyle(Color.white))
           : (item.isEnabled ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
       )
       .frame(width: 64 * s)
