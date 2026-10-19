@@ -170,7 +170,7 @@ Increase Contrast can't be switched on per window, so the snapshots use macOS's 
 - Editor tools work on one image at a time. Wheel tools on several files edit the first image.
 - Rotating in the editor clears that edit's redactions, strokes and crop, rather than guessing how to rotate them.
 - The menu-bar icon opens a native menu, as in your screenshot; the Files, History and Settings content moved to a window opened by Settings…. Left out of the menu: the free-uses line and Unlock, since there's no licensing.
-- The hover and drop sounds are the system's Tink and Pop. Your sample video had no audio track, and Tangerine's own sound file wasn't copied.
+- The hover sound is the app's own highlight tap, synthesised in code (`DropCore/HighlightSound.swift`: a soft D6 + A6 tap, 75 ms, fading out); the drop sound is the system Pop. No third-party sound files are used.
 - Not built: licensing, free-use counts and purchases from the screenshots. You asked for features, and a paywall would need a payment account.
 
 ## Dependencies and licences

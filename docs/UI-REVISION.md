@@ -56,7 +56,7 @@ Each sheet shows light, dark, light + Increase Contrast, dark + Increase Contras
 - In click mode (the main window and onboarding), pointer hover does the same.
 
 ### 4. Sound and haptics
-- **Hover:** the system "Tink" at 45% volume, plus an alignment haptic on Force Touch trackpads.
+- **Hover:** the app's own synthesised highlight tap (`HighlightSound`), plus an alignment haptic on Force Touch trackpads.
 - **Drop:** the system "Pop" at 70% volume, plus a level-change haptic.
 - Sounds restart on quick moves instead of being skipped.
 - They are built-in macOS sounds. Tangerine's bundled sound wasn't used.
