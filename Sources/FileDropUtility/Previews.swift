@@ -169,6 +169,8 @@ import SwiftUI
       ("Wheel-Convert", CGSize(width: 420, height: 420)),
       ("Wheel-Tools", CGSize(width: 420, height: 420)),
       ("Wheel-Actions", CGSize(width: 420, height: 420)),
+      ("Wheel-Recipes", CGSize(width: 420, height: 420)),
+      ("Recipe-Editor", CGSize(width: 460, height: 480)),
       ("Wheel-DropHover", CGSize(width: 420, height: 420)),
       ("Onboarding-Welcome", CGSize(width: 820, height: 520)),
       ("Onboarding-Tools", CGSize(width: 820, height: 520)),
@@ -216,6 +218,9 @@ import SwiftUI
       case "Wheel-Convert": wheel(.convert, model)
       case "Wheel-Tools": wheel(.tools, model)
       case "Wheel-Actions": wheel(.actions, model)
+      case "Wheel-Recipes": recipesWheel()
+      case "Recipe-Editor":
+        RecipeEditor(recipe: sampleRecipes[0], onSave: { _ in }, onCancel: {})
       case "Wheel-DropHover": dropHover(model)
       case "MenuBar-Icon":
         // Idle, just started, a third done and nearly done, enlarged so the ring is visible.
@@ -346,6 +351,23 @@ import SwiftUI
     }
 
     /// A file being dragged over the Actions wheel, with Terminal lit as in a live drag.
+    static let sampleRecipes = [
+      Recipe(
+        name: "Web-ready images",
+        steps: [.action(.resize(.maxEdge(1600))), .action(.convertImage(.jpeg)), .rename("{name}-web")]),
+      Recipe(name: "Shrink for email", steps: [.action(.resize(.percent(50))), .action(.compress)]),
+    ]
+
+    /// The Actions wheel with two saved recipes, the second one lit.
+    private static func recipesWheel() -> some View {
+      WheelKind.savedRecipes = sampleRecipes
+      let items = WheelKind.actions.items(for: [])
+      return RadialWheel(
+        kind: .actions, items: items, centerText: "5 KB", mode: .drop, hotID: items.last?.id
+      ) { _, _ in }
+      .padding(DesignTokens.Spacing.inset)
+    }
+
     private static func dropHover(_ model: AppModel) -> some View {
       let items = WheelKind.actions.items(for: [])
       return RadialWheel(

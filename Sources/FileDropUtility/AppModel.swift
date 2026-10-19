@@ -22,6 +22,7 @@ final class AppModel: ObservableObject {
   @Published var settings: AppSettings {
     didSet {
       saveSettings()
+      WheelKind.savedRecipes = settings.recipes
       if oldValue.appearance != settings.appearance { applyAppearance() }
       if oldValue.checkForUpdates != settings.checkForUpdates { scheduleUpdateChecks() }
     }
@@ -40,6 +41,7 @@ final class AppModel: ObservableObject {
     historyStore = HistoryStore(fileURL: folder.appendingPathComponent("history.json"))
     settings = settingsStore.load()
     history = historyStore.load()
+    WheelKind.savedRecipes = settings.recipes
   }
 
   var totalSizeText: String {
@@ -243,6 +245,34 @@ final class AppModel: ObservableObject {
       openTerminal(at: fileURLs)
     case .zip:
       break  // Handled above, before the files are loaded.
+    case .recipe(let id):
+      runRecipe(id, on: fileURLs, origin: origin)
+    }
+  }
+
+  /// Runs a saved recipe on `urls` and shows the result like any other action.
+  func runRecipe(_ id: UUID, on urls: [URL], origin: Origin) {
+    guard let recipe = settings.recipes.first(where: { $0.id == id }) else {
+      Toast.show("That recipe no longer exists.", outputs: [], isError: true)
+      return
+    }
+    guard !isRunning else {
+      Toast.show("File Drop Utility is busy. Try again when it finishes.", outputs: [], isError: true)
+      return
+    }
+    isRunning = true
+    progress = 0
+    let settings = settings
+    quickActionTask = Task {
+      let result = await RecipeRunner.run(recipe, on: urls, settings: settings) { fraction in
+        Task { @MainActor in
+          if AppModel.shared.quickActionTask != nil { AppModel.shared.progress = fraction }
+        }
+      }
+      quickActionTask = nil
+      isRunning = false
+      progress = nil
+      finish(result, operation: recipe.displayName, origin: origin, inputCount: urls.count)
     }
   }
 

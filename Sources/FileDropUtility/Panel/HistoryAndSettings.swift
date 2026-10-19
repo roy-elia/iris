@@ -104,6 +104,7 @@ struct SettingsTab: View {
         }
       }
 
+      RecipesSection()
       Section("Wheels") {
         Toggle("Wheels while dragging", isOn: $model.settings.wheelTriggerEnabled)
           .accessibilityIdentifier("wheelTrigger")

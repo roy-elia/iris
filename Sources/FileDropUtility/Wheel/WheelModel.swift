@@ -124,6 +124,8 @@ enum WheelCommand: Equatable {
   case zip
   case move
   case terminal
+  /// A saved recipe, by id.
+  case recipe(UUID)
 }
 
 struct WheelItem: Identifiable, Equatable {
@@ -373,7 +375,25 @@ extension WheelKind {
         WheelItem(id: "copypath", title: "Copy Path", systemImage: "doc.text", command: .copyPath),
         WheelItem(id: "zip", title: "Zip", systemImage: "doc.zipper", command: .zip),
         WheelItem(id: "terminal", title: "Terminal", systemImage: "terminal", command: .terminal),
-      ]
+      ] + recipeItems
+    }
+  }
+}
+
+extension WheelKind {
+  /// The most recipes the Actions wheel shows, so its petals stay a usable size.
+  static let maxRecipesOnWheel = 5
+
+  /// The saved recipes, mirrored from the settings by `AppModel` so the wheel can read them
+  /// from any thread.
+  nonisolated(unsafe) static var savedRecipes: [Recipe] = []
+
+  /// Saved recipes, after the built-in actions.
+  var recipeItems: [WheelItem] {
+    Self.savedRecipes.prefix(Self.maxRecipesOnWheel).map { recipe in
+      WheelItem(
+        id: "recipe-\(recipe.id.uuidString)", title: recipe.displayName, systemImage: "wand.and.stars",
+        command: .recipe(recipe.id))
     }
   }
 }

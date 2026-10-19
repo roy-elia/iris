@@ -64,6 +64,10 @@
       if ProcessInfo.processInfo.environment["FDU_SELFTEST_ONLY"] == nil {
         await shellChecks()
       }
+      // Put one recipe on the Actions wheel so its segment is exercised too.
+      let recipesBefore = WheelKind.savedRecipes
+      WheelKind.savedRecipes = [Recipe(name: "Self-test recipe", steps: [.rename("{name}")])]
+      defer { WheelKind.savedRecipes = recipesBefore }
       for (name, urls) in fixtures.groups {
         let files = urls.compactMap { try? DroppedFile.load($0) }
         guard files.count == urls.count else {
@@ -333,6 +337,17 @@
           ? ("PASS", "share picker asked for \(shared.count) file(s)") : ("FAIL", "picker got \(shared)")
       case .move:
         return ("skip", "opens a folder picker (FileActions.move is unit-tested)")
+      case .recipe:
+        guard first.kind.isImage else { return ("skip", "the sample recipe resizes images") }
+        let recipe = Recipe(
+          name: "Self-test", steps: [.action(.resize(.percent(50))), .rename("{name}-recipe")])
+        var settings = AppModel.shared.settings
+        settings.outputLocation = .folder(out)
+        let result = await RecipeRunner.run(recipe, on: [first.url], settings: settings)
+        let name = result.outputs.first?.deletingPathExtension().lastPathComponent ?? ""
+        return result.failures.isEmpty && result.outputs.count == 1 && name.hasSuffix("-recipe")
+          ? ("PASS", "resized and renamed to \(result.outputs[0].lastPathComponent)")
+          : ("FAIL", "\(result.outputs.map(\.lastPathComponent)) \(result.failures.map(\.message))")
       case .terminal:
         let app = NSWorkspace.shared.urlForApplication(
           withBundleIdentifier: AppModel.shared.settings.terminalBundleID)
