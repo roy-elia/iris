@@ -106,6 +106,14 @@ A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the
 - **Float:** an always-on-top glass card per file. Move it by its header; drag the preview to drop the file somewhere else.
 - **Onboarding:** six pages shown on first launch and from Getting Started: Welcome, the three wheels with key caps, folder access, and Finish (launch at login and the wheel toggle).
 
+**Outside the wheel:**
+- **Finder Quick Actions / Services** (right-click › Quick Actions or Services): Convert Image to PNG, Convert Image to JPEG, Convert Video to MP4, Convert to MP3, Convert Document to PDF, Compress Images, PDFs and Videos, Resize Image to 50%, and Make PDF from Files. They are NSServices entries written by `scripts/bundle.sh`; macOS launches the app if it isn't running, and the result shows as the usual toast and history entry. If an item is missing, turn it on in System Settings › Keyboard › Keyboard Shortcuts › Services › Files and Folders.
+- **Command line, for Shortcuts:** `FileDropUtility --run <action> [--out <folder>] <file>…` runs the same actions without the menu-bar app, prints each output path on its own line and exits non-zero if anything failed. `--list-actions` prints the action forms (`convert-image:png`, `convert-audio:mp3`, `convert-video:mp4`, `convert-document:pdf`, `compress`, `resize:50%` or `resize:1920`, `make-pdf`). In Shortcuts, add **Run Shell Script** with input passed as arguments:
+  ```sh
+  "/Applications/File Drop Utility.app/Contents/MacOS/FileDropUtility" --run convert-image:png "$@"
+  ```
+  Both routes go through DropCore's `QuickAction` and `QuickActionRunner`, which submit the existing `Processor` operations to the `JobEngine`.
+
 **Output names:** `name.ext` (convert), `name edited.mp4`, `name part 1.mp4`, `Joined.mp4`, `name 0m01.5s.png` (video frames), `name no-metadata.ext`, `name metadata.ext`, `name compressed.ext`, `name no-bg.png`, `name edited.ext`, `name framed.png`, `Collage.png`, `Merged.pdf`, `Images.pdf`. Existing files are never overwritten; a collision becomes `name (1).ext`.
 
 ## Design system
@@ -257,6 +265,7 @@ Bugs it found, now fixed:
 - **Launch at login:** not exercised, because it registers a real login item.
 - **Signing:** ad-hoc signed, not notarized.
 - **UI tests:** none automated; XCUITest needs Xcode.
+- **App Intents:** not built. With only the Command Line Tools, SwiftPM compiles App Intents code but writes no `Metadata.appintents`, because `appintentsmetadataprocessor` ships only with Xcode. Without that metadata Shortcuts doesn't list the intents, so the Finder services and the `--run` command line cover it instead. With Xcode installed, App Intents could wrap `QuickActionRunner` directly.
 
 ## Manual steps for you
 
