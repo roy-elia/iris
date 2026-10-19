@@ -218,14 +218,14 @@ struct RadialWheel: View {
   ) -> some View {
     let step = 360.0 / Double(items.count)
     let start = WheelGeometry.startAngle(index: index, count: items.count)
-    // The lit petal grows into a soft, rounded blob: wider, past the rim, lifted off the
-    // centre well, with much rounder corners.
-    let widen = Angle(degrees: isHot ? 5 : 0)
-    let inner = 50 * s + (isHot ? 4 * s : 0)
-    let outer = d / 2 - 8 * s + (isHot ? 14 * s : 0)
+    // The lit petal keeps the same concentric shape as the others, its edges following the
+    // circle with the same corners, and swells outward past the rim.
+    let widen = Angle(degrees: isHot ? 2 : 0)
+    let inner = 50 * s
+    let outer = d / 2 - 8 * s + (isHot ? 12 * s : 0)
     let shape = PetalShape(
       startAngle: start - widen, endAngle: start + .degrees(step) + widen, innerRadius: inner,
-      outerRadius: outer, gap: 7 * s, cornerRadius: (isHot ? 28 : 15) * s)
+      outerRadius: outer, gap: 7 * s, cornerRadius: 15 * s)
     let mid = Angle(degrees: start.degrees + step / 2)
     let labelRadius = (inner + outer) / 2
     let labelOffset = CGSize(width: cos(mid.radians) * labelRadius, height: sin(mid.radians) * labelRadius)

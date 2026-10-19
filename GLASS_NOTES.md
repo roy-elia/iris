@@ -25,7 +25,7 @@ or draws its own substitute.
 | Files tab | `Panel/FilesTab.swift` | Drop zone `glassPanel(tint:interactive:)`; wheel launchers `.buttonStyle(.glass)` in a `GlassEffectContainer`; lists and result card in `GroupBox` |
 | History / Settings | `Panel/HistoryAndSettings.swift` | `GroupBox`; `Form` + `.formStyle(.grouped)`, `LabeledContent` |
 | Share button | `Panel/ShareButton.swift` | `NSButton.BezelStyle.glass` |
-| Radial wheel | `Wheel/RadialWheel.swift` | Disc `glassEffect(theme.glass, in: Circle())`: Regular → `.regular`, Clear → `.clear`, Tinted → `.regular` over a 60% teal fill; lit petal is teal Liquid Glass (`glassEffect(.regular.tint(teal).interactive())` under a 62% teal gradient layer, #00578F → #0378A8) shaped as a soft rounded blob; petals' glass sits in its own `GlassEffectContainer`; idle petals `.quaternary` |
+| Radial wheel | `Wheel/RadialWheel.swift` | Disc `glassEffect(theme.glass, in: Circle())`: Regular → `.regular`, Clear → `.clear`, Tinted → `.regular` over a 60% teal fill; lit petal is teal Liquid Glass (`glassEffect(.regular.tint(teal).interactive())` under a 62% teal gradient layer, #00578F → #0378A8) with the same concentric shape as the other petals, swelling past the rim; petals' glass sits in its own `GlassEffectContainer`; idle petals `.quaternary` |
 | Toast | `Wheel/WheelOverlay.swift` | `glassPanel` capsule, borderless text button inside |
 | Floats | `Windows/FloatView.swift` | `glassEffect(.regular.interactive())`; collapsed and expanded share `glassEffectID("float", in:)` so opening morphs one shape; rows on `.quinary` |
 | Onboarding | `Windows/OnboardingView.swift` | Standard opaque window; `.glassProminent` / `.glass` buttons; cards and mock menu bar on system fills, toggles in `GroupBox` |
