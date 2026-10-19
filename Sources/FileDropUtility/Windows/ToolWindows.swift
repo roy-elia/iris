@@ -120,7 +120,7 @@ private struct PreviewImage: View {
     .frame(maxWidth: .infinity)
     .frame(height: height)
     .background(
-      .black.opacity(0.12),
+      .quinary,
       in: RoundedRectangle(cornerRadius: DesignTokens.Radius.control, style: .continuous)
     )
     .accessibilityLabel("Preview")
@@ -434,8 +434,10 @@ struct FrameView: View {
                 Circle().fill(swatch(preset.background)).frame(width: 30, height: 30)
                   .overlay {
                     if presetName == preset.name {
-                      Image(systemName: "checkmark").font(.caption.weight(.bold)).foregroundStyle(.white)
-                        .shadow(radius: 1)
+                      Image(systemName: "checkmark.circle.fill").font(.body)
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(
+                          Color(nsColor: .alternateSelectedControlTextColor), Color.accentColor)
                     }
                   }
                 Text(preset.name).font(.caption2)
@@ -718,7 +720,7 @@ struct QRResultsView: View {
         }
         .padding(10)
         .background(
-          .black.opacity(0.06),
+          .quinary,
           in: RoundedRectangle(cornerRadius: DesignTokens.Radius.control, style: .continuous))
       }
       HStack {
@@ -773,7 +775,7 @@ struct JoinView: View {
           }
           .padding(.horizontal, 10)
           .padding(.vertical, 8)
-          .background(.black.opacity(0.06), in: Capsule(style: .continuous))
+          .background(.quinary, in: Capsule(style: .continuous))
         }
       }
     }

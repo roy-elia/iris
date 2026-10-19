@@ -38,8 +38,7 @@ struct OnboardingView: View {
       dots.padding(.bottom, 18)
     }
     .padding(.top, 28)
-    .glassPanel(cornerRadius: DesignTokens.Radius.window)
-    .padding(DesignTokens.Spacing.inset)
+    .padding(.horizontal, DesignTokens.Spacing.inset)
   }
 
   // MARK: Pages
@@ -113,7 +112,7 @@ struct OnboardingView: View {
           }
           .padding(12)
           .frame(maxWidth: .infinity, alignment: .leading)
-          .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+          .background(.quinary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
           .accessibilityElement(children: .combine)
         }
       }
@@ -192,13 +191,17 @@ struct OnboardingView: View {
           Image(systemName: "wifi").foregroundStyle(Color.secondary)
           Image(systemName: "tray.and.arrow.down")
             .padding(8)
-            .glassPanel(
-              cornerRadius: DesignTokens.Radius.chip, tint: Color.accentColor.opacity(0.3))
+            .background(
+              .tint.opacity(0.3),
+              in: RoundedRectangle(cornerRadius: DesignTokens.Radius.chip, style: .continuous))
           Text("9:41").monospacedDigit()
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .trailing)
-        .glassPanel(cornerRadius: DesignTokens.Radius.control)
+        .background(
+          .quinary,
+          in: RoundedRectangle(cornerRadius: DesignTokens.Radius.control, style: .continuous)
+        )
         .accessibilityHidden(true)
         Image(systemName: "arrow.up")
           .foregroundStyle(Color.accentColor)
@@ -214,7 +217,8 @@ struct OnboardingView: View {
             Text(error).font(.caption).foregroundStyle(Color.red)
           }
         }
-        .glassCard()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .groupBoxed()
       }
       .frame(width: 320)
       VStack(alignment: .leading, spacing: 16) {

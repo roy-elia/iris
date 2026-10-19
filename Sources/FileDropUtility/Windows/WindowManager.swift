@@ -112,7 +112,7 @@ final class WindowManager {
     let view = OnboardingView { [weak self] in self?.onboarding?.close() }
       .environmentObject(AppModel.shared)
     let window = makeWindow(
-      content: view, size: NSSize(width: 820, height: 520), title: "Welcome", transparent: true)
+      content: view, size: NSSize(width: 820, height: 520), title: "Welcome", transparent: false)
     track(window) { [weak self] in self?.onboarding = nil }
     onboarding = window
     show(window)

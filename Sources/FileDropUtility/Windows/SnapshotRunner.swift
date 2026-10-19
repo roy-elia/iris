@@ -52,7 +52,7 @@
       let model = PreviewData.model()
       // Screens that are whole windows with a toolbar are captured in a real titled window,
       // over the window's own background; the rest float over a busy backdrop.
-      let windowed = screen.hasPrefix("Panel-")
+      let windowed = screen.hasPrefix("Panel-") || screen.hasPrefix("Onboarding-")
       let content = ZStack {
         if !windowed { SnapshotBackdrop() }
         Screens.view(screen, model: model)
