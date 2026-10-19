@@ -74,6 +74,18 @@ public enum VideoOutput: String, CaseIterable, Codable, Sendable {
 
   public var isAudioOnly: Bool { self == .mp3 || self == .m4a }
 
+  /// Outputs whose Settings defaults (maximum height, bitrate) apply. GIF has its own
+  /// size rule and shares its settings key with the GIF image format.
+  public var usesVideoDefaults: Bool { !isAudioOnly && self != .gif }
+
+  /// Outputs encoded with VideoToolbox, which take a bitrate setting.
+  public var usesBitrate: Bool {
+    switch self {
+    case .mp4, .m4v, .mov, .mkv, .hevc, .mp4720: true
+    default: false
+    }
+  }
+
   /// WebM needs a VP8/VP9 encoder, which the bundled LGPL ffmpeg doesn't include.
   public var isAvailable: Bool {
     guard ToolLocator.isAvailable(.ffmpeg) else { return false }

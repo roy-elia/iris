@@ -507,18 +507,31 @@ public struct FormatSettings: Codable, Equatable, Sendable {
   public var preserveMetadata: Bool
   /// Keep pixel dimensions (needed to keep an animation).
   public var keepOriginalDimensions: Bool
+  /// The tallest frame a video conversion writes, when `keepOriginalDimensions` is off.
   public var maxVideoHeight: Int?
+  /// Video bitrate for H.264/HEVC outputs; nil keeps constant quality.
+  public var videoBitrateKbps: Int?
   public var audioBitrateKbps: Int?
   public var audioBitDepth: Int?
 
+  /// Heights offered for `maxVideoHeight`.
+  public static let videoHeights = [2160, 1440, 1080, 720, 480, 360]
+  /// Bitrates offered for `videoBitrateKbps`.
+  public static let videoBitrates = [2_000, 4_000, 8_000, 12_000, 20_000]
+
+  /// The height limit a video conversion should apply.
+  public var videoHeightLimit: Int? { keepOriginalDimensions ? nil : maxVideoHeight }
+
   public init(
     quality: Double? = nil, preserveMetadata: Bool = true, keepOriginalDimensions: Bool = true,
-    maxVideoHeight: Int? = nil, audioBitrateKbps: Int? = nil, audioBitDepth: Int? = nil
+    maxVideoHeight: Int? = nil, videoBitrateKbps: Int? = nil, audioBitrateKbps: Int? = nil,
+    audioBitDepth: Int? = nil
   ) {
     self.quality = quality.map(AppSettings.clampQuality)
     self.preserveMetadata = preserveMetadata
     self.keepOriginalDimensions = keepOriginalDimensions
     self.maxVideoHeight = maxVideoHeight
+    self.videoBitrateKbps = videoBitrateKbps
     self.audioBitrateKbps = audioBitrateKbps
     self.audioBitDepth = audioBitDepth
   }
@@ -532,6 +545,7 @@ public struct FormatSettings: Codable, Equatable, Sendable {
     keepOriginalDimensions =
       (try? c.decode(Bool.self, forKey: .keepOriginalDimensions)) ?? d.keepOriginalDimensions
     maxVideoHeight = (try? c.decodeIfPresent(Int.self, forKey: .maxVideoHeight)).flatMap { $0 }
+    videoBitrateKbps = (try? c.decodeIfPresent(Int.self, forKey: .videoBitrateKbps)).flatMap { $0 }
     audioBitrateKbps = (try? c.decodeIfPresent(Int.self, forKey: .audioBitrateKbps)).flatMap { $0 }
     audioBitDepth = (try? c.decodeIfPresent(Int.self, forKey: .audioBitDepth)).flatMap { $0 }
   }

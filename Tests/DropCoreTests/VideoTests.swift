@@ -84,6 +84,23 @@ private let hasFFmpeg = ToolLocator.isAvailable(.ffmpeg) && ToolLocator.isAvaila
     }
   }
 
+  @Test func videoDefaultsMapToEncoderArguments() throws {
+    let info = MediaInfo(duration: 2, width: 1920, height: 1080, hasVideo: true, hasAudio: true)
+    let src = URL(fileURLWithPath: "/a.mp4")
+    let dst = URL(fileURLWithPath: "/b.mp4")
+    let args = VideoOps.renderArgs(
+      source: src, info: info, recipe: VideoRecipe(maxHeight: 720), output: .mp4, videoKbps: 4000,
+      destination: dst)
+    #expect(args.joined(separator: " ").contains("scale=-2:720"))
+    #expect(args.contains("4000k") && !args.contains("-q:v"))
+    #expect(FormatSettings(keepOriginalDimensions: false, maxVideoHeight: 720).videoHeightLimit == 720)
+    #expect(FormatSettings(maxVideoHeight: 720).videoHeightLimit == nil)
+    #expect(VideoOutput.mov.usesVideoDefaults && !VideoOutput.gif.usesVideoDefaults)
+    #expect(VideoOutput.hevc.usesBitrate && !VideoOutput.webm.usesBitrate)
+    let old = try JSONDecoder().decode(FormatSettings.self, from: Data(#"{"preserveMetadata":true}"#.utf8))
+    #expect(old.videoBitrateKbps == nil)
+  }
+
   @Test func webmNeedsAVP9Encoder() {
     #expect(VideoOutput.webm.isAvailable == (hasFFmpeg && VideoOps.hasEncoder("libvpx-vp9")))
     if hasFFmpeg { #expect(VideoOps.hasEncoder("h264_videotoolbox")) }
@@ -110,6 +127,21 @@ private let hasFFmpeg = ToolLocator.isAvailable(.ffmpeg) && ToolLocator.isAvaila
     let info = try await VideoOps.probe(out)
     #expect(info.hasVideo == !output.isAudioOnly)
     if output == .gif { #expect(ImageConvert.frameCount(out) > 5) }
+  }
+
+  @Test func conversionHonoursFormatDefaults() async throws {
+    let dir = try TempDir()
+    let clip = try await VideoFixtures.make(dir.file("a.mp4"), seconds: 1, width: 640, height: 480)
+    var settings = AppSettings()
+    settings.formatSettings["mov"] = FormatSettings(keepOriginalDimensions: false, maxVideoHeight: 240)
+    let result = await Processor(settings: settings).run(.convertVideo(.mov), on: try load(clip))
+    let out = try #require(result.outputs.first, "\(result.failures)")
+    let info = try await VideoOps.probe(out)
+    #expect(info.height == 240 && info.width == 320)
+    // With "keep original dimensions" on, the stored height is ignored.
+    settings.formatSettings["mkv"] = FormatSettings(keepOriginalDimensions: true, maxVideoHeight: 240)
+    let kept = await Processor(settings: settings).run(.convertVideo(.mkv), on: try load(clip))
+    #expect(try await VideoOps.probe(try #require(kept.outputs.first)).height == 480)
   }
 
   @Test func compressesByStrength() async throws {

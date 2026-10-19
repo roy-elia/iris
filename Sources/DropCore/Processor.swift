@@ -311,10 +311,11 @@ public struct Processor: Sendable {
       }
 
     case .convertVideo(let output):
+      let options = settings.format(output.rawValue)
       for (i, file) in files.enumerated() {
         let out = target(file, suffix: output.nameSuffix, ext: output.fileExtension)
         await record(&result, file: file, output: out) {
-          try await VideoOps.convert(file.url, to: output, destination: out) { p in
+          try await VideoOps.convert(file.url, to: output, options: options, destination: out) { p in
             progress?((Double(i) + p) / Double(files.count))
           }
         }
