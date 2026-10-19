@@ -48,12 +48,14 @@ struct EditorView: View {
             } label: {
               Label(tool.title, systemImage: tool.systemImage)
                 .font(.callout.weight(model.tool == tool ? .semibold : .regular))
-                .foregroundStyle(model.tool == tool ? DesignTokens.Palette.onAccent : .primary)
+                .foregroundStyle(
+                  model.tool == tool ? Color(nsColor: .alternateSelectedControlTextColor) : .primary
+                )
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background {
                   if model.tool == tool {
-                    Capsule(style: .continuous).fill(DesignTokens.Palette.accentFill)
+                    Capsule(style: .continuous).fill(Color.accentColor)
                   }
                 }
             }
@@ -111,7 +113,7 @@ struct EditorView: View {
         Button("Reset") { model.resetAdjustments() }.buttonStyle(.glass)
       case .crop:
         Text("Drag over the image to choose the area to keep.").font(.callout).foregroundStyle(
-          DesignTokens.Palette.secondaryText)
+          Color.secondary)
         if !model.batch.isEmpty {
           Toggle(
             "Use this crop, as the same share of each image, for all \(model.batch.count + 1) images",
@@ -126,7 +128,7 @@ struct EditorView: View {
         annotateInspector
       case .redact:
         Text("Drag over anything you want hidden.").font(.callout).foregroundStyle(
-          DesignTokens.Palette.secondaryText)
+          Color.secondary)
         Picker(
           "Style",
           selection: Binding(
@@ -139,14 +141,14 @@ struct EditorView: View {
         .pickerStyle(.segmented)
         if model.recipe.redactStyle != .blackout {
           Text("Blur and pixelate soften details. Use Solid for sensitive information.")
-            .font(.caption).foregroundStyle(DesignTokens.Palette.warningText)
+            .font(.caption).foregroundStyle(Color.orange)
         }
         if !model.recipe.redactions.isEmpty {
           Button("Clear Redactions") { model.commit { $0.redactions = [] } }.buttonStyle(.glass)
         }
       }
       Spacer(minLength: 0)
-      Text(model.url.lastPathComponent).font(.caption).foregroundStyle(DesignTokens.Palette.secondaryText)
+      Text(model.url.lastPathComponent).font(.caption).foregroundStyle(Color.secondary)
         .lineLimit(1)
         .truncationMode(.middle)
     }
@@ -166,10 +168,12 @@ struct EditorView: View {
               Text(kind.title).font(.caption2)
             }
             .frame(maxWidth: .infinity, minHeight: 40)
-            .foregroundStyle(model.annotateKind == kind ? DesignTokens.Palette.onAccent : .primary)
+            .foregroundStyle(
+              model.annotateKind == kind ? Color(nsColor: .alternateSelectedControlTextColor) : .primary
+            )
             .background(
               model.annotateKind == kind
-                ? AnyShapeStyle(DesignTokens.Palette.accentFill) : AnyShapeStyle(.clear),
+                ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.clear),
               in: RoundedRectangle(cornerRadius: DesignTokens.Radius.chip, style: .continuous)
             )
             .contentShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.chip, style: .continuous))
@@ -179,7 +183,7 @@ struct EditorView: View {
           .accessibilityAddTraits(model.annotateKind == kind ? .isSelected : [])
         }
       }
-      Text(model.annotateKind.hint).font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+      Text(model.annotateKind.hint).font(.callout).foregroundStyle(Color.secondary)
       if model.annotateKind != .magnifier && model.annotateKind != .sticker {
         ColorPicker("Colour", selection: $model.strokeColor, supportsOpacity: false)
       }
@@ -253,7 +257,7 @@ struct EditorView: View {
         .accessibilityElement()
         .accessibilityLabel("Image canvas, \(model.tool.title) tool")
       } else if let error = model.loadError {
-        Text(error).foregroundStyle(DesignTokens.Palette.secondaryText).frame(
+        Text(error).foregroundStyle(Color.secondary).frame(
           maxWidth: .infinity, maxHeight: .infinity)
       } else {
         ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)

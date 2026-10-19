@@ -8,7 +8,7 @@ struct HistoryTab: View {
     VStack(alignment: .leading, spacing: DesignTokens.Spacing.stack) {
       if model.history.isEmpty {
         Text("Nothing yet. Finished operations appear here.")
-          .foregroundStyle(DesignTokens.Palette.secondaryText)
+          .foregroundStyle(Color.secondary)
           .frame(maxWidth: .infinity, minHeight: 90)
           .glassCard()
       } else {
@@ -18,7 +18,7 @@ struct HistoryTab: View {
               HStack(alignment: .top, spacing: 10) {
                 Image(systemName: entry.succeeded ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                   .foregroundStyle(
-                    entry.succeeded ? DesignTokens.Palette.accentText : DesignTokens.Palette.warningText
+                    entry.succeeded ? Color.accentColor : Color.orange
                   )
                   .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
@@ -28,9 +28,9 @@ struct HistoryTab: View {
                       + entry.date.formatted(date: .abbreviated, time: .shortened)
                   )
                   .font(.caption)
-                  .foregroundStyle(DesignTokens.Palette.secondaryText)
+                  .foregroundStyle(Color.secondary)
                   ForEach(entry.errors, id: \.self) {
-                    Text($0).font(.caption).foregroundStyle(DesignTokens.Palette.errorText)
+                    Text($0).font(.caption).foregroundStyle(Color.red)
                   }
                 }
               }
@@ -44,7 +44,7 @@ struct HistoryTab: View {
         HStack {
           Spacer()
           Button("Clear History") { model.clearHistory() }
-            .buttonStyle(.subtleGlass)
+            .buttonStyle(.glass)
             .accessibilityIdentifier("clearHistory")
         }
       }
@@ -89,16 +89,16 @@ struct SettingsTab: View {
         Text("Save to").font(.callout.weight(.medium))
         Text(locationLabel)
           .font(.caption)
-          .foregroundStyle(DesignTokens.Palette.secondaryText)
+          .foregroundStyle(Color.secondary)
           .lineLimit(1)
           .truncationMode(.middle)
           .accessibilityIdentifier("saveLocation")
         HStack {
           Button("Next to Original") { model.settings.outputLocation = .nextToSource }
-            .buttonStyle(.subtleGlass)
+            .buttonStyle(.glass)
             .accessibilityIdentifier("nextToOriginal")
           Button("Choose Folder…") { model.chooseOutputFolder() }
-            .buttonStyle(.subtleGlass)
+            .buttonStyle(.glass)
             .accessibilityIdentifier("chooseFolder")
         }
       }
@@ -159,12 +159,12 @@ struct SettingsTab: View {
             Button("Check Now") { model.checkForUpdates(manual: true) }.buttonStyle(.glass).controlSize(
               .small)
             if let status = model.updateStatus {
-              Text(status).font(.caption).foregroundStyle(DesignTokens.Palette.secondaryText)
+              Text(status).font(.caption).foregroundStyle(Color.secondary)
             }
           }
         }
         if let error = model.settingsError {
-          Text(error).font(.caption).foregroundStyle(DesignTokens.Palette.errorText)
+          Text(error).font(.caption).foregroundStyle(Color.red)
         }
       }
       .glassCard()

@@ -52,11 +52,13 @@ struct VideoEditorView: View {
             } label: {
               Label(tool.title, systemImage: tool.systemImage)
                 .font(.callout.weight(model.tool == tool ? .semibold : .regular))
-                .foregroundStyle(model.tool == tool ? DesignTokens.Palette.onAccent : .primary)
+                .foregroundStyle(
+                  model.tool == tool ? Color(nsColor: .alternateSelectedControlTextColor) : .primary
+                )
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background {
-                  if model.tool == tool { Capsule(style: .continuous).fill(DesignTokens.Palette.accentFill) }
+                  if model.tool == tool { Capsule(style: .continuous).fill(Color.accentColor) }
                 }
             }
             .buttonStyle(.plain)
@@ -82,11 +84,10 @@ struct VideoEditorView: View {
       .accessibilityLabel(model.isPlaying ? "Pause" : "Play")
       Text("\(formatTime(model.time)) / \(formatTime(model.duration))")
         .font(.callout.monospacedDigit())
-        .foregroundStyle(DesignTokens.Palette.secondaryText)
+        .foregroundStyle(Color.secondary)
       Spacer()
       Button(model.saveTitle) { model.save() }
         .buttonStyle(.glassProminent)
-        .tint(DesignTokens.Palette.accentFill)
         .disabled(!model.canSave)
         .keyboardShortcut("s")
         .accessibilityIdentifier("saveVideo")
@@ -127,7 +128,7 @@ struct VideoEditorView: View {
         .accessibilityElement()
         .accessibilityLabel("Video preview, \(model.tool.title) tool")
       } else if let error = model.loadError {
-        Text(error).foregroundStyle(DesignTokens.Palette.secondaryText).frame(
+        Text(error).foregroundStyle(Color.secondary).frame(
           maxWidth: .infinity, maxHeight: .infinity)
       } else {
         ProgressView("Loading video").frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -156,7 +157,7 @@ struct VideoEditorView: View {
         .overlay {
           if model.tool == .redact && model.selectedRedaction == index {
             RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(
-              DesignTokens.Palette.accentFill, lineWidth: 2)
+              Color.accentColor, lineWidth: 2)
           }
         }
         .frame(width: box.width, height: box.height)
@@ -248,7 +249,7 @@ struct VideoEditorView: View {
         .pickerStyle(.segmented)
         if model.redactStyle != .blackout {
           Text("Blur softens details. Use Solid for sensitive information.")
-            .font(.caption).foregroundStyle(DesignTokens.Palette.warningText)
+            .font(.caption).foregroundStyle(Color.orange)
         }
         if let i = model.selectedRedaction, model.redactions.indices.contains(i) {
           let r = model.redactions[i]
@@ -273,7 +274,7 @@ struct VideoEditorView: View {
         }
       }
       Spacer(minLength: 0)
-      Text(model.url.lastPathComponent).font(.caption).foregroundStyle(DesignTokens.Palette.secondaryText)
+      Text(model.url.lastPathComponent).font(.caption).foregroundStyle(Color.secondary)
         .lineLimit(1).truncationMode(.middle)
     }
     .frame(maxHeight: .infinity, alignment: .top)
@@ -281,7 +282,7 @@ struct VideoEditorView: View {
   }
 
   private func hint(_ text: String) -> some View {
-    Text(text).font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+    Text(text).font(.callout).foregroundStyle(Color.secondary)
   }
 
   // MARK: Geometry
@@ -354,13 +355,13 @@ struct VideoTimeline: View {
         case .frames:
           ForEach(model.frameTimes, id: \.self) { t in
             Image(systemName: "camera.fill").font(.caption2).foregroundStyle(.white).padding(3)
-              .background(DesignTokens.Palette.accentFill, in: Circle())
+              .background(Color.accentColor, in: Circle())
               .offset(x: x(t) - 9, y: h - 20).allowsHitTesting(false)
           }
         case .redact:
           ForEach(Array(model.redactions.enumerated()), id: \.offset) { index, r in
             Capsule(style: .continuous)
-              .fill(DesignTokens.Palette.accentFill.opacity(model.selectedRedaction == index ? 0.95 : 0.55))
+              .fill(Color.accentColor.opacity(model.selectedRedaction == index ? 0.95 : 0.55))
               .frame(width: max(x(r.end) - x(r.start), 6), height: 12)
               .offset(x: x(r.start), y: h - 16)
               .onTapGesture { model.selectedRedaction = index }

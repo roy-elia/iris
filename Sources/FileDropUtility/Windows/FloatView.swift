@@ -280,14 +280,14 @@ struct FloatTabView: View {
     VStack(spacing: 4) {
       Image(systemName: "paperclip")
         .font(.system(size: 13, weight: .semibold))
-        .foregroundStyle(DesignTokens.Palette.accentText)
+        .foregroundStyle(Color.accentColor)
         .rotationEffect(.degrees(stack.edge == .right ? -30 : 30))
       thumb(stack.urls.first, size: 36)
       Text("\(stack.urls.count)")
         .font(.caption2.monospacedDigit().weight(.bold))
         .padding(.horizontal, 7).padding(.vertical, 1)
-        .background(DesignTokens.Palette.accentFill, in: Capsule())
-        .foregroundStyle(DesignTokens.Palette.onAccent)
+        .background(Color.accentColor, in: Capsule())
+        .foregroundStyle(Color(nsColor: .alternateSelectedControlTextColor))
     }
     .padding(.vertical, 10)
     .padding(stack.edge == .right ? .trailing : .leading, FloatPlacement.tuck)
@@ -304,7 +304,7 @@ struct FloatTabView: View {
       HStack(spacing: 6) {
         Image(systemName: "line.3.horizontal")
           .font(.caption.weight(.bold))
-          .foregroundStyle(DesignTokens.Palette.secondaryText)
+          .foregroundStyle(Color.secondary)
           .frame(width: 26, height: 26)
           .contentShape(Rectangle())
           .gesture(
@@ -314,7 +314,7 @@ struct FloatTabView: View {
           )
           .help("Drag to move the Float")
           .accessibilityLabel("Move Float")
-        Image(systemName: "paperclip").foregroundStyle(DesignTokens.Palette.accentText)
+        Image(systemName: "paperclip").foregroundStyle(Color.accentColor)
         Text("\(stack.urls.count) file\(stack.urls.count == 1 ? "" : "s")")
           .font(.callout.weight(.semibold))
           .frame(maxWidth: .infinity, alignment: .leading)
@@ -349,7 +349,7 @@ struct FloatTabView: View {
       VStack(alignment: .leading, spacing: 1) {
         Text(url.lastPathComponent).font(.callout).lineLimit(1).truncationMode(.middle)
         Text(url.deletingLastPathComponent().lastPathComponent).font(.caption)
-          .foregroundStyle(DesignTokens.Palette.secondaryText).lineLimit(1)
+          .foregroundStyle(Color.secondary).lineLimit(1)
       }
       Spacer(minLength: 0)
     }

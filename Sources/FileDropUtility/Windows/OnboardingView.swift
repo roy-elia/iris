@@ -48,13 +48,13 @@ struct OnboardingView: View {
     VStack(spacing: 18) {
       Image(systemName: "tray.and.arrow.down.fill")
         .font(.system(size: 54, weight: .medium))
-        .foregroundStyle(DesignTokens.Palette.accentText)
+        .foregroundStyle(Color.accentColor)
         .accessibilityHidden(true)
-      Text("Welcome to").font(.title2).foregroundStyle(DesignTokens.Palette.secondaryText)
+      Text("Welcome to").font(.title2).foregroundStyle(Color.secondary)
       Text("File Drop Utility").font(.system(.largeTitle, design: .rounded).weight(.bold))
       Text("Convert, fix and send files without opening another app.")
         .font(.title3)
-        .foregroundStyle(DesignTokens.Palette.secondaryText)
+        .foregroundStyle(Color.secondary)
         .multilineTextAlignment(.center)
       continueButton
     }
@@ -75,7 +75,7 @@ struct OnboardingView: View {
           Text("2. Hold").font(.title2.weight(.semibold))
           Keycap(symbol: kind.keySymbol, name: kind.keyName)
         }
-        Text(blurb(kind)).font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText).fixedSize(
+        Text(blurb(kind)).font(.callout).foregroundStyle(Color.secondary).fixedSize(
           horizontal: false, vertical: true)
         continueButton
       }
@@ -93,7 +93,7 @@ struct OnboardingView: View {
       }
       Text("The wheels fit the file").font(.largeTitle.weight(.bold))
       Text("Drop a different kind of file and each wheel offers what makes sense for it.")
-        .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+        .font(.callout).foregroundStyle(Color.secondary)
       LazyVGrid(
         columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12
       ) {
@@ -101,12 +101,12 @@ struct OnboardingView: View {
           HStack(alignment: .top, spacing: 12) {
             Image(systemName: card.symbol)
               .font(.title2)
-              .foregroundStyle(DesignTokens.Palette.accentText)
+              .foregroundStyle(Color.accentColor)
               .frame(width: 30)
               .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
               Text(card.title).font(.headline)
-              Text(card.detail).font(.caption).foregroundStyle(DesignTokens.Palette.secondaryText)
+              Text(card.detail).font(.caption).foregroundStyle(Color.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
@@ -157,14 +157,14 @@ struct OnboardingView: View {
       VStack(spacing: 14) {
         Image(systemName: "folder.fill.badge.person.crop")
           .font(.system(size: 96))
-          .foregroundStyle(DesignTokens.Palette.accentText)
+          .foregroundStyle(Color.accentColor)
           .accessibilityHidden(true)
         Button("Check Folder Access…") { checkFolders() }
-          .buttonStyle(.subtleGlass)
+          .buttonStyle(.glass)
           .accessibilityIdentifier("checkFolders")
         Text(folderStatus ?? "Skip for now and macOS will ask the first time it's needed.")
           .font(.caption)
-          .foregroundStyle(DesignTokens.Palette.secondaryText)
+          .foregroundStyle(Color.secondary)
           .multilineTextAlignment(.center)
           .frame(maxWidth: 260)
       }
@@ -176,7 +176,7 @@ struct OnboardingView: View {
           "Results are saved next to the originals. macOS asks once per protected folder (Desktop, Documents, Downloads). Checking now gets those prompts out of the way."
         )
         .font(.callout)
-        .foregroundStyle(DesignTokens.Palette.secondaryText)
+        .foregroundStyle(Color.secondary)
         .fixedSize(horizontal: false, vertical: true)
         continueButton
       }
@@ -189,20 +189,19 @@ struct OnboardingView: View {
     HStack(spacing: 36) {
       VStack(spacing: 10) {
         HStack(spacing: 14) {
-          Image(systemName: "wifi").foregroundStyle(DesignTokens.Palette.secondaryText)
+          Image(systemName: "wifi").foregroundStyle(Color.secondary)
           Image(systemName: "tray.and.arrow.down")
             .padding(8)
             .glassPanel(
-              cornerRadius: DesignTokens.Radius.chip, tint: DesignTokens.Palette.accentFill.opacity(0.3),
-              shadowed: false)
+              cornerRadius: DesignTokens.Radius.chip, tint: Color.accentColor.opacity(0.3))
           Text("9:41").monospacedDigit()
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .trailing)
-        .glassPanel(cornerRadius: DesignTokens.Radius.control, shadowed: false)
+        .glassPanel(cornerRadius: DesignTokens.Radius.control)
         .accessibilityHidden(true)
         Image(systemName: "arrow.up")
-          .foregroundStyle(DesignTokens.Palette.accentText)
+          .foregroundStyle(Color.accentColor)
           .frame(maxWidth: .infinity, alignment: .trailing)
           .padding(.trailing, 70)
           .accessibilityHidden(true)
@@ -212,7 +211,7 @@ struct OnboardingView: View {
             isOn: Binding(get: { model.settings.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
           Toggle("Wheels while dragging", isOn: $model.settings.wheelTriggerEnabled)
           if let error = model.settingsError {
-            Text(error).font(.caption).foregroundStyle(DesignTokens.Palette.errorText)
+            Text(error).font(.caption).foregroundStyle(Color.red)
           }
         }
         .glassCard()
@@ -223,13 +222,13 @@ struct OnboardingView: View {
         Text("Finish setup").font(.largeTitle.weight(.bold))
         Text("The app lives in the menu bar. You can change these and everything else in Settings.")
           .font(.callout)
-          .foregroundStyle(DesignTokens.Palette.secondaryText)
+          .foregroundStyle(Color.secondary)
           .fixedSize(horizontal: false, vertical: true)
         Button("Done") {
           model.settings.hasCompletedOnboarding = true
           onFinish()
         }
-        .buttonStyle(.prominentGlass)
+        .buttonStyle(.glassProminent)
         .keyboardShortcut(.defaultAction)
         .accessibilityIdentifier("onboardingDone")
       }
@@ -242,7 +241,7 @@ struct OnboardingView: View {
 
   private var continueButton: some View {
     Button("Continue") { go(+1) }
-      .buttonStyle(.prominentGlass)
+      .buttonStyle(.glassProminent)
       .keyboardShortcut(.defaultAction)
       .accessibilityIdentifier("onboardingContinue")
   }
@@ -254,7 +253,7 @@ struct OnboardingView: View {
       Label("Back", systemImage: "arrow.left").font(.callout)
     }
     .buttonStyle(.plain)
-    .foregroundStyle(DesignTokens.Palette.secondaryText)
+    .foregroundStyle(Color.secondary)
     .accessibilityIdentifier("onboardingBack")
   }
 
@@ -262,7 +261,7 @@ struct OnboardingView: View {
     HStack(spacing: 7) {
       ForEach(Page.allCases, id: \.self) { p in
         Capsule(style: .continuous)
-          .fill(p == page ? DesignTokens.Palette.accentText : Color.secondary.opacity(0.4))
+          .fill(p == page ? Color.accentColor : Color.secondary.opacity(0.4))
           .frame(width: p == page ? 18 : 7, height: 7)
       }
     }

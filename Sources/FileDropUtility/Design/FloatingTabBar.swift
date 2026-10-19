@@ -22,7 +22,7 @@ struct FloatingTabBar<Tab: Hashable & Identifiable>: View {
             Label(title(tab), systemImage: systemImage(tab))
               .labelStyle(.titleAndIcon)
               .font(.callout.weight(isSelected ? .semibold : .regular))
-              .foregroundStyle(isSelected ? DesignTokens.Palette.onAccent : .primary)
+              .foregroundStyle(isSelected ? Color(nsColor: .alternateSelectedControlTextColor) : .primary)
               .padding(.horizontal, 12)
               .padding(.vertical, 7)
               .frame(maxWidth: .infinity)
@@ -32,8 +32,8 @@ struct FloatingTabBar<Tab: Hashable & Identifiable>: View {
           .background {
             if isSelected {
               Capsule(style: .continuous)
-                .fill(DesignTokens.Palette.accentFill)
-                .glassEffect(.regular.tint(DesignTokens.Palette.accentFill), in: Capsule(style: .continuous))
+                .fill(Color.accentColor)
+                .glassEffect(.regular.tint(Color.accentColor), in: Capsule(style: .continuous))
                 .glassEffectID("selection", in: glassNamespace)
             }
           }
@@ -43,7 +43,7 @@ struct FloatingTabBar<Tab: Hashable & Identifiable>: View {
         }
       }
       .padding(4)
-      .glassPanel(cornerRadius: 999, shadowed: true)
+      .glassPanel(cornerRadius: 999)
     }
   }
 }

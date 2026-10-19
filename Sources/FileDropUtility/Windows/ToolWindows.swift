@@ -22,7 +22,7 @@ struct ToolPanel<Content: View>: View {
     VStack(alignment: .leading, spacing: 14) {
       VStack(alignment: .leading, spacing: 2) {
         Text(title).font(.title3.weight(.semibold))
-        Text(subtitle).font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+        Text(subtitle).font(.callout).foregroundStyle(Color.secondary)
           .lineLimit(1).truncationMode(.middle)
       }
       content
@@ -36,7 +36,6 @@ struct ToolPanel<Content: View>: View {
           dismiss()
         }
         .buttonStyle(.glassProminent)
-        .tint(DesignTokens.Palette.accentFill)
         .disabled(primaryDisabled)
         .keyboardShortcut(.defaultAction)
       }
@@ -101,7 +100,7 @@ struct LoadingLabel: View {
   var body: some View {
     Label("\(text)…", systemImage: "hourglass")
       .font(.callout)
-      .foregroundStyle(DesignTokens.Palette.secondaryText)
+      .foregroundStyle(Color.secondary)
   }
 }
 
@@ -217,13 +216,13 @@ struct CompressView: View {
         Text(
           "Re-encodes with Apple's hardware H.264 encoder. Stronger means smaller files with more visible loss."
         )
-        .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+        .font(.callout).foregroundStyle(Color.secondary)
       } else if mode == .preset {
         Picker("Preset", selection: $preset) {
           ForEach(Preset.allCases) { Text($0.title).tag($0) }
         }
         .pickerStyle(.menu)
-        Text(preset.detail).font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+        Text(preset.detail).font(.callout).foregroundStyle(Color.secondary)
       } else {
         HStack {
           TextField("Size", value: $amount, format: .number.precision(.fractionLength(0...1)))
@@ -239,13 +238,13 @@ struct CompressView: View {
           .fixedSize()
         }
         Text("Each file is compressed to this size or below, separately.")
-          .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+          .font(.callout).foregroundStyle(Color.secondary)
         if let targetError {
-          Text(targetError).font(.callout).foregroundStyle(DesignTokens.Palette.errorText)
+          Text(targetError).font(.callout).foregroundStyle(Color.red)
         }
       }
       Text("Original: \(ByteCountFormatter.string(fromByteCount: originalTotal, countStyle: .file))")
-        .font(.caption).foregroundStyle(DesignTokens.Palette.secondaryText)
+        .font(.caption).foregroundStyle(Color.secondary)
     }
     .frame(width: 400)
   }
@@ -303,7 +302,7 @@ struct MetadataView: View {
           .disabled(!hasLocation || !canEdit)
         if urls.count > 1 {
           Text("Changes apply to all \(urls.count) files. Values shown are from the first.")
-            .font(.caption).foregroundStyle(DesignTokens.Palette.secondaryText)
+            .font(.caption).foregroundStyle(Color.secondary)
         }
         DisclosureGroup("All metadata (\(fields.count) fields)", isExpanded: $showAll) {
           ScrollView {
@@ -385,7 +384,7 @@ struct BackgroundView: View {
       switch mode {
       case .remove:
         Text("Lifts the subject onto a transparent background (PNG).")
-          .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+          .font(.callout).foregroundStyle(Color.secondary)
       case .color:
         ColorPicker("Colour", selection: $color, supportsOpacity: false)
       case .image:
@@ -532,10 +531,10 @@ struct SplitPDFView: View {
         Text(problem ?? "Each range becomes its own PDF. A range ending in \"-\" runs to the last page.")
           .font(.callout)
           .foregroundStyle(
-            problem == nil ? DesignTokens.Palette.secondaryText : DesignTokens.Palette.errorText)
+            problem == nil ? Color.secondary : Color.red)
       } else if let pageCount {
         Text("Makes \(pageCount) PDF\(pageCount == 1 ? "" : "s"), one per page.")
-          .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+          .font(.callout).foregroundStyle(Color.secondary)
       }
     }
     .frame(width: 400)
@@ -586,7 +585,7 @@ struct ResizeView: View {
         if let size = sourceSize, isValid {
           let new = spec.size(width: size.width, height: size.height)
           Text("\(size.width)×\(size.height) → \(new.width)×\(new.height)")
-            .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+            .font(.callout).foregroundStyle(Color.secondary)
         }
       }
       .textFieldStyle(.roundedBorder)
@@ -705,7 +704,7 @@ struct QRResultsView: View {
       Text(codes.count == 1 ? "QR Code" : "\(codes.count) QR Codes").font(.title3.weight(.semibold))
       ForEach(Array(codes.enumerated()), id: \.offset) { _, code in
         HStack(alignment: .top, spacing: 10) {
-          Image(systemName: "qrcode").foregroundStyle(DesignTokens.Palette.accentText).accessibilityHidden(
+          Image(systemName: "qrcode").foregroundStyle(Color.accentColor).accessibilityHidden(
             true)
           Text(code).font(.callout).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
           if let url = URL(string: code), url.scheme?.hasPrefix("http") == true {
@@ -724,7 +723,7 @@ struct QRResultsView: View {
       }
       HStack {
         Spacer()
-        Button("Done") { dismiss() }.buttonStyle(.glassProminent).tint(DesignTokens.Palette.accentFill)
+        Button("Done") { dismiss() }.buttonStyle(.glassProminent)
           .keyboardShortcut(.defaultAction)
       }
     }
@@ -749,12 +748,12 @@ struct JoinView: View {
       runTool(.joinVideos, on: urls)
     } content: {
       Text("Plays in this order. Different sizes are fitted to the first video's frame.")
-        .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+        .font(.callout).foregroundStyle(Color.secondary)
       VStack(spacing: 6) {
         ForEach(Array(urls.enumerated()), id: \.element) { index, url in
           HStack(spacing: 10) {
             Text("\(index + 1)").font(.callout.monospacedDigit().weight(.semibold)).frame(width: 18)
-            Image(systemName: "film").foregroundStyle(DesignTokens.Palette.accentText).accessibilityHidden(
+            Image(systemName: "film").foregroundStyle(Color.accentColor).accessibilityHidden(
               true)
             Text(url.lastPathComponent).font(.callout).lineLimit(1).truncationMode(.middle)
             Spacer()
@@ -811,7 +810,7 @@ struct VisualizerView: View {
       runTool(.audioVisualizer(recipe), on: urls)
     } content: {
       Text("Makes an MP4 of the sound moving over a still background.")
-        .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+        .font(.callout).foregroundStyle(Color.secondary)
         .fixedSize(horizontal: false, vertical: true)
       Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
         GridRow {

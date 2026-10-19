@@ -151,12 +151,11 @@ struct PDFOrganizerView: View {
       Toggle("Equal widths", isOn: $model.equalWidths)
         .toggleStyle(.checkbox)
         .help("Scale every page to the widest page's width")
-      Text(summary).font(.callout.monospacedDigit()).foregroundStyle(DesignTokens.Palette.secondaryText)
+      Text(summary).font(.callout.monospacedDigit()).foregroundStyle(Color.secondary)
       Spacer()
       Button("Reset") { model.reset() }.buttonStyle(.glass)
       Button("Save Organized PDF") { model.save() }
         .buttonStyle(.glassProminent)
-        .tint(DesignTokens.Palette.accentFill)
         .disabled(!model.canSave)
         .keyboardShortcut("s")
     }
@@ -194,17 +193,17 @@ struct PDFOrganizerView: View {
       .frame(width: 150, height: 150)
       .background(
         RoundedRectangle(cornerRadius: 16, style: .continuous)
-          .fill(selected ? DesignTokens.Palette.accentFill.opacity(0.22) : .clear)
+          .fill(selected ? Color.accentColor.opacity(0.22) : .clear)
       )
       .overlay(
         RoundedRectangle(cornerRadius: 16, style: .continuous)
-          .strokeBorder(selected ? DesignTokens.Palette.accentFill : .clear, lineWidth: 2)
+          .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 2)
       )
       Text("\(position + 1)")
         .font(.callout.monospacedDigit().weight(selected ? .semibold : .regular))
         .padding(.horizontal, 10).padding(.vertical, 3)
-        .background(selected ? DesignTokens.Palette.accentFill : Color.black.opacity(0.08), in: Capsule())
-        .foregroundStyle(selected ? DesignTokens.Palette.onAccent : .primary)
+        .background(selected ? Color.accentColor : Color.black.opacity(0.08), in: Capsule())
+        .foregroundStyle(selected ? Color(nsColor: .alternateSelectedControlTextColor) : .primary)
     }
     .contentShape(Rectangle())
     .onTapGesture {

@@ -70,11 +70,11 @@ struct StatusHeader: View {
     HStack(alignment: .center, spacing: 10) {
       Image(systemName: model.isRunning ? "hourglass" : "checkmark.circle")
         .font(.title3)
-        .foregroundStyle(DesignTokens.Palette.accentText)
+        .foregroundStyle(Color.accentColor)
         .accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 1) {
         Text(model.isRunning ? "Working…" : "Ready").font(.headline)
-        Text(hint).font(.caption).foregroundStyle(DesignTokens.Palette.secondaryText)
+        Text(hint).font(.caption).foregroundStyle(Color.secondary)
       }
       Spacer()
       Menu {

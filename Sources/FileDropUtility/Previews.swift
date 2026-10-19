@@ -373,9 +373,9 @@ import SwiftUI
   struct ToastPreview: View {
     var body: some View {
       HStack(spacing: 10) {
-        Image(systemName: "checkmark.circle.fill").foregroundStyle(DesignTokens.Palette.accentText)
+        Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.accentColor)
         Text("Convert to JPEG: saved 2 files").font(.callout)
-        Button("Show") {}.buttonStyle(.subtleGlass)
+        Button("Show") {}.buttonStyle(.glass)
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 10)

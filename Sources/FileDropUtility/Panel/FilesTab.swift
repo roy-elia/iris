@@ -16,7 +16,7 @@ struct FilesTab: View {
         VStack(alignment: .leading, spacing: 4) {
           ForEach(model.rejected, id: \.self) { message in
             Label(message, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(
-              DesignTokens.Palette.warningText)
+              Color.orange)
           }
         }
         .glassCard()
@@ -42,16 +42,16 @@ struct FilesTab: View {
     VStack(spacing: 6) {
       Image(systemName: "tray.and.arrow.down")
         .font(.system(size: 26, weight: .medium))
-        .foregroundStyle(isTargeted ? DesignTokens.Palette.accentText : .secondary)
+        .foregroundStyle(isTargeted ? Color.accentColor : .secondary)
         .accessibilityHidden(true)
       Text("Drop files here").font(.callout)
       Button("Choose Files…") { model.chooseFiles() }
-        .buttonStyle(.subtleGlass)
+        .buttonStyle(.glass)
         .accessibilityIdentifier("chooseFiles")
     }
     .frame(maxWidth: .infinity, minHeight: 110)
     .padding(DesignTokens.Spacing.cardPadding)
-    .glassPanel(tint: isTargeted ? DesignTokens.Palette.accentFill.opacity(0.35) : nil)
+    .glassPanel(tint: isTargeted ? Color.accentColor.opacity(0.35) : nil)
     .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
       URLLoader.load(providers) { model.add($0) }
       return true
@@ -67,7 +67,7 @@ struct FilesTab: View {
           .font(.headline)
         Spacer()
         Button("Clear") { model.clear() }
-          .buttonStyle(.subtleGlass)
+          .buttonStyle(.glass)
           .accessibilityIdentifier("clearFiles")
       }
       // Only scroll once the list is long; a short list sizes to its rows.
@@ -85,17 +85,17 @@ struct FilesTab: View {
       ForEach(model.files) { file in
         HStack(spacing: 8) {
           Image(systemName: file.kind == .pdf ? "doc.richtext" : "photo")
-            .foregroundStyle(DesignTokens.Palette.secondaryText)
+            .foregroundStyle(Color.secondary)
             .accessibilityHidden(true)
           Text(file.name).lineLimit(1).truncationMode(.middle)
           Spacer()
           Text(ByteCountFormatter.string(fromByteCount: file.byteSize, countStyle: .file))
-            .foregroundStyle(DesignTokens.Palette.secondaryText)
+            .foregroundStyle(Color.secondary)
             .monospacedDigit()
           Button {
             model.remove(file)
           } label: {
-            Image(systemName: "xmark.circle.fill").foregroundStyle(DesignTokens.Palette.secondaryText)
+            Image(systemName: "xmark.circle.fill").foregroundStyle(Color.secondary)
           }
           .buttonStyle(.plain)
           .accessibilityLabel("Remove \(file.name)")
@@ -116,7 +116,7 @@ struct FilesTab: View {
             Image(systemName: kind.systemImage).font(.title3).accessibilityHidden(true)
             Text(kind.title).font(.callout.weight(.medium))
             Text("\(kind.keySymbol) \(kind.keyName)").font(.caption2).foregroundStyle(
-              DesignTokens.Palette.secondaryText)
+              Color.secondary)
           }
           .frame(maxWidth: .infinity)
           .padding(.vertical, 10)
@@ -138,7 +138,7 @@ struct FilesTab: View {
         } label: {
           Label("Back", systemImage: "chevron.left")
         }
-        .buttonStyle(.subtleGlass)
+        .buttonStyle(.glass)
         .accessibilityIdentifier("wheelBack")
         Spacer()
         Text(kind.longTitle).font(.headline)
@@ -168,17 +168,17 @@ struct ResultCard: View {
           "\(operation): saved \(result.outputs.count) file\(result.outputs.count == 1 ? "" : "s")",
           systemImage: "checkmark.circle.fill"
         )
-        .foregroundStyle(DesignTokens.Palette.accentText)
+        .foregroundStyle(Color.accentColor)
         .font(.callout.weight(.semibold))
         ForEach(result.outputs, id: \.self) { url in
           Text(url.lastPathComponent).font(.caption).lineLimit(1).truncationMode(.middle)
         }
         HStack {
           Button("Show in Finder") { model.reveal(result.outputs) }
-            .buttonStyle(.subtleGlass)
+            .buttonStyle(.glass)
             .accessibilityIdentifier("reveal")
           Button("AirDrop") { model.perform(.airDrop, urls: result.outputs, origin: .panel) }
-            .buttonStyle(.subtleGlass)
+            .buttonStyle(.glass)
             .accessibilityIdentifier("airdrop")
           ShareButton(items: result.outputs).fixedSize()
         }
@@ -189,7 +189,7 @@ struct ResultCard: View {
           systemImage: "xmark.octagon"
         )
         .font(.caption)
-        .foregroundStyle(DesignTokens.Palette.errorText)
+        .foregroundStyle(Color.red)
       }
     }
     .glassCard()

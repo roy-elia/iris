@@ -263,11 +263,13 @@ struct AudioEditorView: View {
             } label: {
               Label(tool.title, systemImage: tool.systemImage)
                 .font(.callout.weight(model.tool == tool ? .semibold : .regular))
-                .foregroundStyle(model.tool == tool ? DesignTokens.Palette.onAccent : .primary)
+                .foregroundStyle(
+                  model.tool == tool ? Color(nsColor: .alternateSelectedControlTextColor) : .primary
+                )
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background {
-                  if model.tool == tool { Capsule(style: .continuous).fill(DesignTokens.Palette.accentFill) }
+                  if model.tool == tool { Capsule(style: .continuous).fill(Color.accentColor) }
                 }
             }
             .buttonStyle(.plain)
@@ -293,11 +295,10 @@ struct AudioEditorView: View {
       .accessibilityLabel(model.isPlaying ? "Pause" : "Play")
       Text("\(formatTime(model.time)) / \(formatTime(model.duration))")
         .font(.callout.monospacedDigit())
-        .foregroundStyle(DesignTokens.Palette.secondaryText)
+        .foregroundStyle(Color.secondary)
       Spacer()
       Button("Save Edited Copy") { model.save() }
         .buttonStyle(.glassProminent)
-        .tint(DesignTokens.Palette.accentFill)
         .disabled(!model.canSave)
         .keyboardShortcut("s")
         .accessibilityIdentifier("saveAudio")
@@ -325,7 +326,7 @@ struct AudioEditorView: View {
 
   @ViewBuilder private var trimInspector: some View {
     Text("Drag the ends of the waveform, or set them at the playhead.")
-      .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+      .font(.callout).foregroundStyle(Color.secondary)
     HStack {
       Button("Start at Playhead") { model.setTrimStartToPlayhead() }.buttonStyle(.glass)
       Button("End") { model.setTrimEndToPlayhead() }.buttonStyle(.glass).help("End at the playhead")
@@ -342,7 +343,7 @@ struct AudioEditorView: View {
           .onChange(of: model.silenceThreshold) { model.refreshSilence() }
           .accessibilityLabel("Silence threshold")
         Text("Raise it to cut more background hiss.").font(.caption)
-          .foregroundStyle(DesignTokens.Palette.secondaryText)
+          .foregroundStyle(Color.secondary)
       }
     }
   }
@@ -351,7 +352,7 @@ struct AudioEditorView: View {
     Toggle("Bleep the whole file", isOn: $model.bleepAll)
     if !model.bleepAll {
       Text("Add a bleep at the playhead, then drag its ends on the waveform.")
-        .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+        .font(.callout).foregroundStyle(Color.secondary)
       Button("Add Bleep") { model.addBleepAtPlayhead() }.buttonStyle(.glass)
       ForEach(Array(model.bleeps.enumerated()), id: \.offset) { index, bleep in
         Button {
@@ -366,7 +367,7 @@ struct AudioEditorView: View {
           .padding(.horizontal, 10).padding(.vertical, 6)
           .background(
             model.selectedBleep == index
-              ? DesignTokens.Palette.accentFill.opacity(0.25) : .black.opacity(0.06),
+              ? Color.accentColor.opacity(0.25) : .black.opacity(0.06),
             in: Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
@@ -390,7 +391,7 @@ struct AudioEditorView: View {
       .labelsHidden()
     }
     Text("Evens out loudness to a standard level (EBU R128), so files play back at the same volume.")
-      .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+      .font(.callout).foregroundStyle(Color.secondary)
   }
 
   @ViewBuilder private var channelsInspector: some View {
@@ -401,7 +402,7 @@ struct AudioEditorView: View {
     .labelsHidden()
     if let info = model.info {
       Text(info.audioChannels == 1 ? "The file is mono." : "The file has \(info.audioChannels) channels.")
-        .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+        .font(.callout).foregroundStyle(Color.secondary)
     }
     if model.channels != .mono {
       VStack(alignment: .leading, spacing: 4) {
@@ -415,7 +416,7 @@ struct AudioEditorView: View {
         .font(.callout.weight(.semibold))
         HStack {
           Text(balanceText).font(.caption.monospacedDigit()).foregroundStyle(
-            DesignTokens.Palette.secondaryText)
+            Color.secondary)
           Spacer()
           Button("Centre") { model.balance = 0 }.buttonStyle(.glass).controlSize(.small)
             .disabled(model.balance == 0)
@@ -445,7 +446,7 @@ struct WaveformTimeline: View {
         WaveformShape(peaks: model.peaks)
           .fill(
             LinearGradient(
-              colors: [DesignTokens.Palette.accentText, DesignTokens.Palette.accentFill], startPoint: .top,
+              colors: [Color.accentColor, Color.accentColor], startPoint: .top,
               endPoint: .bottom)
           )
           .frame(width: w, height: h)

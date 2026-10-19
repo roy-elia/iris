@@ -48,7 +48,6 @@
         SnapshotBackdrop()
         Screens.view(screen, model: model)
           .dynamicTypeSize(variant.largestText ? .accessibility5 : .large)
-          .environment(\.forceIncreasedContrast, variant.name.hasSuffix("contrast"))
       }
       .frame(width: size.width, height: variant.largestText ? size.height * 1.5 : size.height)
 
