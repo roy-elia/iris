@@ -23,6 +23,12 @@ extension View {
     modifier(GlassPanel(cornerRadius: cornerRadius, tint: tint, interactive: interactive))
   }
 
+  /// Content grouped in the system's group box. Content isn't glass: glass is for the
+  /// controls and navigation that float above it.
+  func groupBoxed() -> some View {
+    GroupBox { self }
+  }
+
   /// A padded glass card for grouping content inside a window.
   func glassCard() -> some View {
     padding(DesignTokens.Spacing.cardPadding).frame(maxWidth: .infinity, alignment: .leading).glassPanel()

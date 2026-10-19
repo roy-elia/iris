@@ -27,7 +27,7 @@ final class WindowManager {
         DispatchQueue.main.async { holder?.fitContent(size) }
       }
     let window = makeWindow(
-      content: view, size: NSSize(width: 424, height: 560), title: "File Drop Utility", transparent: true)
+      content: view, size: NSSize(width: 424, height: 560), title: "File Drop Utility", toolbar: true)
     holder = window
     window.styleMask.remove(.resizable)
     window.isMovableByWindowBackground = true
@@ -151,8 +151,10 @@ final class WindowManager {
 
   /// A window whose content floats over the desktop. With `transparent`, only the SwiftUI
   /// glass panels are drawn, so the window has no opaque background of its own.
+  /// With `toolbar`, the SwiftUI view's `.toolbar` items become the window's own toolbar,
+  /// which the system draws in Liquid Glass.
   private func makeWindow<Content: View>(
-    content: Content, size: NSSize, title: String, transparent: Bool = false
+    content: Content, size: NSSize, title: String, transparent: Bool = false, toolbar: Bool = false
   ) -> NSWindow {
     let window = NSWindow(
       contentRect: NSRect(origin: .zero, size: size),
@@ -165,6 +167,10 @@ final class WindowManager {
     window.animationBehavior = AppWindowAnimation.behavior
     let hosting = NSHostingController(rootView: AnyView(content))
     hosting.sizingOptions = []
+    if toolbar {
+      hosting.sceneBridgingOptions = [.toolbars]
+      window.toolbarStyle = .unified
+    }
     window.contentViewController = hosting
     window.setContentSize(size)
     if transparent {

@@ -10,7 +10,7 @@ struct HistoryTab: View {
         Text("Nothing yet. Finished operations appear here.")
           .foregroundStyle(Color.secondary)
           .frame(maxWidth: .infinity, minHeight: 90)
-          .glassCard()
+          .groupBoxed()
       } else {
         ScrollView {
           VStack(alignment: .leading, spacing: 10) {
@@ -40,7 +40,8 @@ struct HistoryTab: View {
           .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxHeight: 300)
-        .glassCard()
+        .padding(4)
+        .groupBoxed()
         HStack {
           Spacer()
           Button("Clear History") { model.clearHistory() }
@@ -58,8 +59,8 @@ struct SettingsTab: View {
   @State private var audioForDefaults: AudioOutput = .mp3
 
   var body: some View {
-    VStack(alignment: .leading, spacing: DesignTokens.Spacing.stack) {
-      VStack(alignment: .leading, spacing: 10) {
+    Form {
+      Section("Output") {
         Picker("Appearance", selection: $model.settings.appearance) {
           Text("System").tag(AppearancePreference.system)
           Text("Light").tag(AppearancePreference.light)
@@ -71,22 +72,21 @@ struct SettingsTab: View {
           ForEach(ImageFormat.writable, id: \.self) { Text($0.displayName).tag($0) }
         }
         .accessibilityIdentifier("defaultFormat")
-        HStack {
-          Text("Quality")
-          Slider(value: $model.settings.quality, in: AppSettings.qualityRange)
-            .accessibilityLabel("Quality")
-            .accessibilityValue("\(Int(model.settings.quality * 100)) percent")
-          Text("\(Int(model.settings.quality * 100))%").monospacedDigit().frame(
-            width: 42, alignment: .trailing)
+        LabeledContent("Quality") {
+          HStack {
+            Slider(value: $model.settings.quality, in: AppSettings.qualityRange)
+              .labelsHidden()
+              .accessibilityLabel("Quality")
+              .accessibilityValue("\(Int(model.settings.quality * 100)) percent")
+            Text("\(Int(model.settings.quality * 100))%").monospacedDigit().frame(
+              width: 42, alignment: .trailing)
+          }
         }
       }
-      .glassCard()
 
-      formatDefaults
-        .glassCard()
+      Section("Format defaults") { formatDefaults }
 
-      VStack(alignment: .leading, spacing: 6) {
-        Text("Save to").font(.callout.weight(.medium))
+      Section("Save to") {
         Text(locationLabel)
           .font(.caption)
           .foregroundStyle(Color.secondary)
@@ -102,28 +102,20 @@ struct SettingsTab: View {
             .accessibilityIdentifier("chooseFolder")
         }
       }
-      .glassCard()
 
-      VStack(alignment: .leading, spacing: 8) {
+      Section("Wheels") {
         Toggle("Wheels while dragging", isOn: $model.settings.wheelTriggerEnabled)
           .accessibilityIdentifier("wheelTrigger")
-        Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 6) {
-          ForEach(WheelKind.allCases) { kind in
-            GridRow {
-              Text(kind.title)
-              Picker(kind.title, selection: modifierBinding(for: kind)) {
-                ForEach(ModifierCombo.choices, id: \.self) { combo in
-                  Text("\(combo.symbols)  \(combo.names)").tag(combo)
-                }
-              }
-              .pickerStyle(.menu)
-              .labelsHidden()
-              .fixedSize()
-              .accessibilityIdentifier("modifier-\(kind.rawValue)")
+        ForEach(WheelKind.allCases) { kind in
+          Picker(kind.title, selection: modifierBinding(for: kind)) {
+            ForEach(ModifierCombo.choices, id: \.self) { combo in
+              Text("\(combo.symbols)  \(combo.names)").tag(combo)
             }
           }
+          .pickerStyle(.menu)
+          .disabled(!model.settings.wheelTriggerEnabled)
+          .accessibilityIdentifier("modifier-\(kind.rawValue)")
         }
-        .disabled(!model.settings.wheelTriggerEnabled)
         Toggle("Sound and haptic feedback", isOn: $model.settings.soundAndHaptics)
           .accessibilityIdentifier("soundAndHaptics")
         Picker("Wheel theme", selection: $model.settings.wheelTheme) {
@@ -132,9 +124,8 @@ struct SettingsTab: View {
         .pickerStyle(.menu)
         .accessibilityIdentifier("wheelTheme")
       }
-      .glassCard()
 
-      VStack(alignment: .leading, spacing: 8) {
+      Section("General") {
         Picker("Terminal app", selection: $model.settings.terminalBundleID) {
           ForEach(model.installedTerminals, id: \.bundleID) { app in
             Text(app.name).tag(app.bundleID)
@@ -167,13 +158,14 @@ struct SettingsTab: View {
           Text(error).font(.caption).foregroundStyle(Color.red)
         }
       }
-      .glassCard()
     }
+    .formStyle(.grouped)
+    .scrollContentBackground(.hidden)
   }
 
   /// Defaults for one output format, used whenever you convert to it.
-  private var formatDefaults: some View {
-    VStack(alignment: .leading, spacing: 8) {
+  @ViewBuilder private var formatDefaults: some View {
+    Group {
       Picker("Format defaults", selection: $formatForDefaults) {
         ForEach(ImageFormat.writable, id: \.self) { Text($0.displayName).tag($0) }
       }
@@ -194,7 +186,6 @@ struct SettingsTab: View {
       if formatForDefaults == .gif {
         Toggle("Keep animation (original dimensions)", isOn: formatBinding(\.keepOriginalDimensions))
       }
-      Divider()
       Picker("Audio defaults", selection: $audioForDefaults) {
         ForEach(AudioOutput.allCases, id: \.self) { Text($0.displayName).tag($0) }
       }

@@ -6,6 +6,12 @@
   /// backdrop in several appearances, captures each real window with `screencapture`, and
   /// quits. Real windows are used because Liquid Glass is composited by the window server
   /// and doesn't appear in offscreen renders.
+  /// A borderless window that can still become key, so its controls draw as active.
+  final class KeyableWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+  }
+
   @MainActor
   enum SnapshotRunner {
     struct Variant {
@@ -44,21 +50,35 @@
 
     private static func capture(screen: String, size: CGSize, variant: Variant, folder: URL) async {
       let model = PreviewData.model()
+      // Screens that are whole windows with a toolbar are captured in a real titled window,
+      // over the window's own background; the rest float over a busy backdrop.
+      let windowed = screen.hasPrefix("Panel-")
       let content = ZStack {
-        SnapshotBackdrop()
+        if !windowed { SnapshotBackdrop() }
         Screens.view(screen, model: model)
           .dynamicTypeSize(variant.largestText ? .accessibility5 : .large)
       }
-      .frame(width: size.width, height: variant.largestText ? size.height * 1.5 : size.height)
+      .frame(
+        width: size.width, height: variant.largestText ? size.height * 1.5 : size.height,
+        alignment: windowed ? .top : .center)
 
-      let window = NSWindow(
+      let window = KeyableWindow(
         contentRect: NSRect(x: 60, y: 60, width: size.width, height: size.height),
-        styleMask: [.borderless], backing: .buffered, defer: false)
+        styleMask: windowed ? [.titled, .fullSizeContentView] : [.borderless], backing: .buffered,
+        defer: false)
       window.appearance = NSAppearance(named: variant.appearance)
-      window.contentViewController = NSHostingController(rootView: content)
+      let hosting = NSHostingController(rootView: content)
+      if windowed {
+        hosting.sceneBridgingOptions = [.toolbars]
+        window.titleVisibility = .hidden
+        window.toolbarStyle = .unified
+      }
+      window.contentViewController = hosting
       window.setContentSize(window.contentViewController!.view.fittingSize)
       window.level = .floating
-      window.orderFrontRegardless()
+      // Key and active, so controls draw as they do in use rather than as inactive.
+      NSApp.activate()
+      window.makeKeyAndOrderFront(nil)
       try? await Task.sleep(for: .milliseconds(screen == "Editor" || screen.hasPrefix("Video-") ? 3000 : 900))
 
       let out = folder.appendingPathComponent("\(screen)--\(variant.name).png")

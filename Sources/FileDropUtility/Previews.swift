@@ -207,9 +207,9 @@ import SwiftUI
     @ViewBuilder
     static func view(_ name: String, model: AppModel) -> some View {
       switch name {
-      case "Panel-Files": PanelPreview(tab: .files).environmentObject(model)
-      case "Panel-History": PanelPreview(tab: .history).environmentObject(model)
-      case "Panel-Settings": PanelPreview(tab: .settings).environmentObject(model)
+      case "Panel-Files": PanelView(initialTab: .files).environmentObject(model)
+      case "Panel-History": PanelView(initialTab: .history).environmentObject(model)
+      case "Panel-Settings": PanelView(initialTab: .settings).environmentObject(model)
       case "Wheel-Convert": wheel(.convert, model)
       case "Wheel-Tools": wheel(.tools, model)
       case "Wheel-Actions": wheel(.actions, model)
@@ -346,27 +346,6 @@ import SwiftUI
         _, _ in
       }
       .padding(DesignTokens.Spacing.inset)
-    }
-  }
-
-  /// The panel with a chosen tab, since the real panel keeps its tab in private state.
-  struct PanelPreview: View {
-    let tab: PanelTab
-    @EnvironmentObject private var model: AppModel
-
-    var body: some View {
-      VStack(alignment: .leading, spacing: DesignTokens.Spacing.stack) {
-        StatusHeader()
-        FloatingTabBar(
-          tabs: PanelTab.allCases, selection: .constant(tab), title: \.rawValue, systemImage: \.systemImage)
-        switch tab {
-        case .files: FilesTab()
-        case .history: HistoryTab()
-        case .settings: SettingsTab()
-        }
-      }
-      .padding(DesignTokens.Spacing.inset)
-      .frame(width: 400)
     }
   }
 

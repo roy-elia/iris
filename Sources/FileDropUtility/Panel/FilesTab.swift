@@ -19,7 +19,9 @@ struct FilesTab: View {
               Color.orange)
           }
         }
-        .glassCard()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(4)
+        .groupBoxed()
       }
       if !model.files.isEmpty {
         fileList
@@ -51,7 +53,8 @@ struct FilesTab: View {
     }
     .frame(maxWidth: .infinity, minHeight: 110)
     .padding(DesignTokens.Spacing.cardPadding)
-    .glassPanel(tint: isTargeted ? Color.accentColor.opacity(0.35) : nil)
+    // A drop target is a control, so it's glass; it takes the accent tint while files hover.
+    .glassPanel(tint: isTargeted ? .accentColor : nil, interactive: true)
     .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
       URLLoader.load(providers) { model.add($0) }
       return true
@@ -77,7 +80,8 @@ struct FilesTab: View {
         ScrollView { fileRows }.frame(height: 130)
       }
     }
-    .glassCard()
+    .padding(4)
+    .groupBoxed()
   }
 
   private var fileRows: some View {
@@ -107,25 +111,25 @@ struct FilesTab: View {
   }
 
   private var wheelLaunchers: some View {
-    HStack(spacing: DesignTokens.Spacing.tight) {
-      ForEach(WheelKind.allCases) { kind in
-        Button {
-          withMorph(reduceMotion: reduceMotion) { openWheel = kind }
-        } label: {
-          VStack(spacing: 4) {
-            Image(systemName: kind.systemImage).font(.title3).accessibilityHidden(true)
-            Text(kind.title).font(.callout.weight(.medium))
-            Text("\(kind.keySymbol) \(kind.keyName)").font(.caption2).foregroundStyle(
-              Color.secondary)
+    GlassEffectContainer(spacing: DesignTokens.Spacing.tight) {
+      HStack(spacing: DesignTokens.Spacing.tight) {
+        ForEach(WheelKind.allCases) { kind in
+          Button {
+            withMorph(reduceMotion: reduceMotion) { openWheel = kind }
+          } label: {
+            VStack(spacing: 4) {
+              Image(systemName: kind.systemImage).font(.title3).accessibilityHidden(true)
+              Text(kind.title).font(.callout.weight(.medium))
+              Text("\(kind.keySymbol) \(kind.keyName)").font(.caption2).foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
           }
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 10)
-          .contentShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.card, style: .continuous))
+          .buttonStyle(.glass)
+          .buttonBorderShape(.roundedRectangle(radius: DesignTokens.Radius.card))
+          .accessibilityLabel("Open \(kind.longTitle) wheel")
+          .accessibilityIdentifier("open-\(kind.rawValue)")
         }
-        .buttonStyle(.plain)
-        .glassPanel(interactive: true)
-        .accessibilityLabel("Open \(kind.longTitle) wheel")
-        .accessibilityIdentifier("open-\(kind.rawValue)")
       }
     }
   }
@@ -192,6 +196,8 @@ struct ResultCard: View {
         .foregroundStyle(Color.red)
       }
     }
-    .glassCard()
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(4)
+    .groupBoxed()
   }
 }
