@@ -106,6 +106,9 @@ enum WheelCommand: Equatable {
   case visualizer
   case convertDocument(DocumentOutput)
   case pdfToImages(ImageFormat)
+  case pdfToTIFF
+  case pdfToCBZ
+  case splitPDF
   case organizePDF
   case convertSubtitles(SubtitleFormat)
   case extractArchive
@@ -207,6 +210,8 @@ extension WheelKind {
         return [
           WheelItem(id: "d-png", title: "PNG", systemImage: nil, command: .pdfToImages(.png)),
           WheelItem(id: "d-jpeg", title: "JPEG", systemImage: nil, command: .pdfToImages(.jpeg)),
+          WheelItem(id: "d-tiff", title: "TIFF", systemImage: nil, command: .pdfToTIFF),
+          WheelItem(id: "d-cbz", title: "CBZ", systemImage: nil, command: .pdfToCBZ),
         ] + [DocumentOutput.docx, .rtf, .txt, .md, .html, .epub, .epubFixed].map(convert)
       }
       return [DocumentOutput.pdf, .docx, .rtf, .txt, .md, .html, .epub, .pages].map(convert)
@@ -215,6 +220,8 @@ extension WheelKind {
         WheelItem(
           id: "d-organize", title: "Organize", systemImage: "square.grid.3x3.square", command: .organizePDF,
           disabledReason: files.count == 1 ? nil : "One PDF at a time"),
+        WheelItem(
+          id: "d-split", title: "Split", systemImage: "rectangle.split.3x1", command: .splitPDF),
         WheelItem(
           id: "d-compress", title: "Compress", systemImage: "arrow.down.right.and.arrow.up.left",
           command: .compress),

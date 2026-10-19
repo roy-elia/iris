@@ -441,6 +441,39 @@ public enum ArchiveOps {
     try await SystemProcess.run("/usr/bin/ditto", ["-x", "-k", zip.path, directory.path])
   }
 
+  /// Compresses `items` into one zip with ditto, keeping Finder metadata out of the archive.
+  /// A single item is stored under its own name; with `contentsOnly`, a single folder's
+  /// contents go at the archive's root. Several items are cloned (no extra disk space on APFS)
+  /// into a staging folder first, since ditto takes one source.
+  public static func zip(_ items: [URL], contentsOnly: Bool = false, destination: URL) async throws {
+    guard let first = items.first else { throw DropError.wrongInput("Choose files to compress.") }
+    let flags = ["-c", "-k", "--norsrc", "--noextattr", "--noqtn"]
+    if items.count == 1 {
+      try await SystemProcess.run(
+        "/usr/bin/ditto", flags + (contentsOnly ? [] : ["--keepParent"]) + [first.path, destination.path])
+      return
+    }
+    let fm = FileManager.default
+    let staging = fm.temporaryDirectory.appendingPathComponent("fdu-zip-\(UUID().uuidString)")
+    try fm.createDirectory(at: staging, withIntermediateDirectories: true)
+    defer { try? fm.removeItem(at: staging) }
+    var used: Set<String> = []
+    for item in items {
+      // Two items with the same name (from different folders) get "name 2", "name 3", …
+      var name = item.lastPathComponent
+      var n = 2
+      while used.contains(name.lowercased()) {
+        let ext = item.pathExtension
+        let stem = item.deletingPathExtension().lastPathComponent
+        name = ext.isEmpty ? "\(stem) \(n)" : "\(stem) \(n).\(ext)"
+        n += 1
+      }
+      used.insert(name.lowercased())
+      try fm.copyItem(at: item, to: staging.appendingPathComponent(name))
+    }
+    try await SystemProcess.run("/usr/bin/ditto", flags + [staging.path, destination.path])
+  }
+
   static func isSafe(_ entry: String) -> Bool {
     if entry.hasPrefix("/") || entry.hasPrefix("\\") { return false }
     let parts = entry.split(whereSeparator: { $0 == "/" || $0 == "\\" })

@@ -103,6 +103,8 @@ public struct Processor: Sendable {
     case .pdfToImages(let format):
       if files.contains(where: { $0.kind != .pdf }) { return "\(operation.summary) works on PDFs only." }
       if !format.isWritable { return "\(format.displayName) can't be written on this Mac." }
+    case .pdfToTIFF, .pdfToCBZ, .splitPDF:
+      if files.contains(where: { $0.kind != .pdf }) { return "\(operation.summary) works on PDFs only." }
     case .organizePDF(let plan):
       if files.count != 1 || files[0].kind != .pdf { return "Organize works on one PDF at a time." }
       if plan.pages.isEmpty { return "Keep at least one page." }
@@ -415,6 +417,31 @@ public struct Processor: Sendable {
             target(file, suffix: "page \(index + 1)", ext: format.fileExtension)
           }
           result.outputs += outs
+        } catch {
+          result.failures.append(.init(file: file.name, message: Self.message(for: error)))
+        }
+      }
+
+    case .pdfToTIFF:
+      for file in files {
+        let out = target(file, suffix: "", ext: "tiff")
+        await record(&result, file: file, output: out) { try PDFExportOps.tiff(file.url, destination: out) }
+      }
+
+    case .pdfToCBZ:
+      for file in files {
+        let out = target(file, suffix: "", ext: "cbz")
+        await record(&result, file: file, output: out) {
+          try await PDFExportOps.cbz(file.url, destination: out)
+        }
+      }
+
+    case .splitPDF(let plan):
+      for file in files {
+        do {
+          result.outputs += try PDFExportOps.split(file.url, plan: plan) { group in
+            target(file, suffix: PDFSplit.label(group), ext: "pdf")
+          }
         } catch {
           result.failures.append(.init(file: file.name, message: Self.message(for: error)))
         }

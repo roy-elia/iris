@@ -319,6 +319,11 @@ public enum FileOperation: Codable, Equatable, Sendable {
   case convertDocument(DocumentOutput)
   /// Save each PDF page as an image.
   case pdfToImages(ImageFormat)
+  /// Every page in one multi-page TIFF.
+  case pdfToTIFF
+  /// Every page as a JPEG in a comic-book zip.
+  case pdfToCBZ
+  case splitPDF(PDFSplit)
   case organizePDF(PDFPagePlan)
   case convertSubtitles(SubtitleFormat)
   case extractArchive
@@ -327,7 +332,8 @@ public enum FileOperation: Codable, Equatable, Sendable {
   public var isMedia: Bool {
     switch self {
     case .convertVideo, .compressVideo, .editVideo, .splitVideo, .joinVideos, .videoSnapshots, .convertAudio,
-      .editAudio, .audioVisualizer, .convertDocument, .pdfToImages, .extractArchive:
+      .editAudio, .audioVisualizer, .convertDocument, .pdfToImages, .pdfToTIFF,
+      .pdfToCBZ, .extractArchive:
       true
     default: false
     }
@@ -364,6 +370,9 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .audioVisualizer: "Make visualizer video"
     case .convertDocument(let output): "Convert to \(output.displayName)"
     case .pdfToImages(let format): "Save pages as \(format.displayName)"
+    case .pdfToTIFF: "Save pages as a TIFF"
+    case .pdfToCBZ: "Save pages as a comic book"
+    case .splitPDF: "Split PDF"
     case .organizePDF: "Organize PDF"
     case .convertSubtitles(let format): "Convert to \(format.displayName)"
     case .extractArchive: "Extract archive"

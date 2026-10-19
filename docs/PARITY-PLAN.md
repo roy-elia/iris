@@ -335,3 +335,4 @@ Filee (MIT, C#) converts 244 formats. These are the ones macOS or the already-bu
 | Step | Added | How |
 |---|---|---|
 | 1. Images | Inputs: camera RAW (CR2, CR3, NEF, ARW, DNG, RAF, ORF and other ImageIO RAWs), PSD, ICNS, ICO, JPEG 2000, OpenEXR, TGA, PPM/PGM/PBM, Radiance HDR. Outputs: ICO (16–256 px), ICNS (16–1024 px), JPEG 2000, TGA, OpenEXR. Tools: Resize (longest side or %), Grayscale. | ImageIO; icons are squared onto a transparent canvas at each standard size |
+| 2. PDF | Split (one PDF per page, or ranges such as "1-3, 7, 9-"), all pages as one multi-page TIFF, and CBZ (a zip of JPEG pages). | PDFKit, ImageIO, ditto |

@@ -184,6 +184,9 @@
       case .convertAudio(let o): return await check(.convertAudio(o))
       case .convertDocument(let o): return await check(.convertDocument(o))
       case .pdfToImages(let f): return await check(.pdfToImages(f))
+      case .pdfToTIFF: return await check(.pdfToTIFF)
+      case .pdfToCBZ: return await check(.pdfToCBZ)
+      case .splitPDF: return await window("Split", then: .splitPDF(.ranges("1, 2-")))
       case .convertSubtitles(let f): return await check(.convertSubtitles(f))
       case .extractArchive: return await check(.extractArchive)
 

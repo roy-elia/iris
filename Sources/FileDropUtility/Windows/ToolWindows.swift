@@ -1,6 +1,7 @@
 import AppKit
 import DropCore
 import ImageIO
+import PDFKit
 import SwiftUI
 
 // MARK: Shared chrome
@@ -487,6 +488,60 @@ struct FrameView: View {
       AnyShapeStyle(
         RadialGradient(colors: [Color(a), Color(b)], center: .center, startRadius: 0, endRadius: 20))
     case .image: AnyShapeStyle(Color.gray)
+    }
+  }
+}
+
+// MARK: Split PDF
+
+struct SplitPDFView: View {
+  enum Mode: String, CaseIterable {
+    case every = "Every page"
+    case ranges = "Page ranges"
+  }
+
+  let urls: [URL]
+  @State private var mode: Mode = .every
+  @State private var ranges = ""
+  @State private var pageCount: Int?
+
+  private var plan: PDFSplit { mode == .every ? .everyPage : .ranges(ranges) }
+  /// Why the ranges can't be used, checked against the first PDF's page count.
+  private var problem: String? {
+    guard mode == .ranges, let pageCount else { return nil }
+    do {
+      _ = try plan.groups(pageCount: pageCount)
+      return nil
+    } catch {
+      return (error as? LocalizedError)?.errorDescription ?? "Check the page ranges."
+    }
+  }
+
+  var body: some View {
+    ToolPanel(title: "Split PDF", urls: urls, primaryTitle: "Split", primaryDisabled: problem != nil) {
+      runTool(.splitPDF(plan), on: urls)
+    } content: {
+      Picker("Mode", selection: $mode) {
+        ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+      }
+      .pickerStyle(.segmented)
+      .labelsHidden()
+      if mode == .ranges {
+        TextField("Pages, such as 1-3, 7, 9-", text: $ranges)
+          .textFieldStyle(.roundedBorder)
+        Text(problem ?? "Each range becomes its own PDF. A range ending in \"-\" runs to the last page.")
+          .font(.callout)
+          .foregroundStyle(
+            problem == nil ? DesignTokens.Palette.secondaryText : DesignTokens.Palette.errorText)
+      } else if let pageCount {
+        Text("Makes \(pageCount) PDF\(pageCount == 1 ? "" : "s"), one per page.")
+          .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+      }
+    }
+    .frame(width: 400)
+    .task {
+      let url = urls[0]
+      pageCount = await Task.detached { PDFDocument(url: url)?.pageCount }.value
     }
   }
 }

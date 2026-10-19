@@ -69,9 +69,9 @@ A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the
 - Pages, Keynote and Numbers: exported by the app through AppleScript when it's installed; otherwise the document's saved preview, or a Quick Look rendering of the first page. Writing Pages documents needs Pages.
 
 **PDFs:**
-- **Convert wheel:** PNG or JPEG pages (144 dpi), DOCX, RTF, Text, Markdown, HTML, EPUB, and "EPUB Pages" (fixed layout, one image per page).
+- **Convert wheel:** PNG or JPEG pages (144 dpi), TIFF (every page in one multi-page TIFF), CBZ (a comic-book zip of JPEG pages), DOCX, RTF, Text, Markdown, HTML, EPUB, and "EPUB Pages" (fixed layout, one image per page).
 - Pages without selectable text are read with Vision OCR.
-- **Tools wheel:** Organize, Compress, Merge. The organizer is a thumbnail grid: drag or use the arrows to reorder, turn pages, delete them (⌫), and optionally scale every page to the same width.
+- **Tools wheel:** Organize, Split (one PDF per page, or page ranges such as "1-3, 7, 9-"), Compress, Merge. The organizer is a thumbnail grid: drag or use the arrows to reorder, turn pages, delete them (⌫), and optionally scale every page to the same width.
 
 **Subtitles:** SRT ↔ VTT. **Archives:** zip → a folder next to it (checked for unsafe paths, more than 20,000 files, or more than 2 GB unpacked).
 

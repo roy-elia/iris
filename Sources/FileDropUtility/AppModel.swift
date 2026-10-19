@@ -185,6 +185,12 @@ final class AppModel: ObservableObject {
       run(.convertDocument(output), on: targets, origin: origin)
     case .pdfToImages(let format):
       run(.pdfToImages(format), on: targets, origin: origin)
+    case .pdfToTIFF:
+      run(.pdfToTIFF, on: targets, origin: origin)
+    case .pdfToCBZ:
+      run(.pdfToCBZ, on: targets, origin: origin)
+    case .splitPDF:
+      WindowManager.shared.openTool("split-pdf", title: "Split PDF") { SplitPDFView(urls: fileURLs) }
     case .organizePDF:
       guard let pdf = targets.first(where: { $0.kind == .pdf }) else { return }
       WindowManager.shared.openPDFOrganizer(for: pdf.url)
