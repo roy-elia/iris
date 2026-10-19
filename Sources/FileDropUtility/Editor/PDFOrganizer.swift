@@ -202,7 +202,7 @@ struct PDFOrganizerView: View {
       Text("\(position + 1)")
         .font(.callout.monospacedDigit().weight(selected ? .semibold : .regular))
         .padding(.horizontal, 10).padding(.vertical, 3)
-        .background(selected ? Color.accentColor : Color.black.opacity(0.08), in: Capsule())
+        .background(selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary), in: Capsule())
         .foregroundStyle(selected ? Color(nsColor: .alternateSelectedControlTextColor) : .primary)
     }
     .contentShape(Rectangle())

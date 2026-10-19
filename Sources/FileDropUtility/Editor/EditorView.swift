@@ -40,33 +40,9 @@ struct EditorView: View {
 
   private var toolbar: some View {
     HStack(spacing: 8) {
-      GlassEffectContainer(spacing: 4) {
-        HStack(spacing: 4) {
-          ForEach(EditorTool.allCases) { tool in
-            Button {
-              withMorph(reduceMotion: reduceMotion) { model.tool = tool }
-            } label: {
-              Label(tool.title, systemImage: tool.systemImage)
-                .font(.callout.weight(model.tool == tool ? .semibold : .regular))
-                .foregroundStyle(
-                  model.tool == tool ? Color(nsColor: .alternateSelectedControlTextColor) : .primary
-                )
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background {
-                  if model.tool == tool {
-                    Capsule(style: .continuous).fill(Color.accentColor)
-                  }
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(model.tool == tool ? .isSelected : [])
-            .accessibilityIdentifier("tool-\(tool.rawValue)")
-          }
-        }
-        .padding(4)
-        .glassPanel(cornerRadius: 999)
-      }
+      GlassToolPicker(
+        tools: EditorTool.allCases, selection: $model.tool, title: \.title,
+        systemImage: \.systemImage, identifier: { "tool-\($0.rawValue)" })
       Button {
         model.rotate(clockwise: false)
       } label: {

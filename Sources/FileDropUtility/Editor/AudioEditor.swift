@@ -255,31 +255,9 @@ struct AudioEditorView: View {
 
   private var toolbar: some View {
     HStack(spacing: 8) {
-      GlassEffectContainer(spacing: 4) {
-        HStack(spacing: 4) {
-          ForEach(AudioTool.allCases) { tool in
-            Button {
-              withMorph(reduceMotion: reduceMotion) { model.tool = tool }
-            } label: {
-              Label(tool.title, systemImage: tool.systemImage)
-                .font(.callout.weight(model.tool == tool ? .semibold : .regular))
-                .foregroundStyle(
-                  model.tool == tool ? Color(nsColor: .alternateSelectedControlTextColor) : .primary
-                )
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background {
-                  if model.tool == tool { Capsule(style: .continuous).fill(Color.accentColor) }
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(model.tool == tool ? .isSelected : [])
-            .accessibilityIdentifier("audioTool-\(tool.rawValue)")
-          }
-        }
-        .padding(4)
-        .glassPanel(cornerRadius: 999)
-      }
+      GlassToolPicker(
+        tools: AudioTool.allCases, selection: $model.tool, title: \.title,
+        systemImage: \.systemImage, identifier: { "audioTool-\($0.rawValue)" })
       Button {
         model.togglePlay()
       } label: {
@@ -367,7 +345,7 @@ struct AudioEditorView: View {
           .padding(.horizontal, 10).padding(.vertical, 6)
           .background(
             model.selectedBleep == index
-              ? Color.accentColor.opacity(0.25) : .black.opacity(0.06),
+              ? AnyShapeStyle(.tint.opacity(0.25)) : AnyShapeStyle(.quinary),
             in: Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
@@ -527,10 +505,8 @@ struct WaveformTimeline: View {
     at xPos: CGFloat, height: CGFloat, width: CGFloat, thickness: CGFloat = 10, label: String,
     onDrag: @escaping (Double) -> Void
   ) -> some View {
-    Capsule(style: .continuous)
-      .fill(.white)
+    Color.clear
       .frame(width: thickness, height: height + 6)
-      .shadow(color: .black.opacity(0.35), radius: 2)
       .glassEffect(.regular.interactive(), in: Capsule())
       .offset(x: xPos, y: -3)
       .highPriorityGesture(

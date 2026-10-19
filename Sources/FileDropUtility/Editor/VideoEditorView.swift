@@ -44,31 +44,9 @@ struct VideoEditorView: View {
 
   private var toolbar: some View {
     HStack(spacing: 8) {
-      GlassEffectContainer(spacing: 4) {
-        HStack(spacing: 4) {
-          ForEach(VideoTool.allCases) { tool in
-            Button {
-              withMorph(reduceMotion: reduceMotion) { model.tool = tool }
-            } label: {
-              Label(tool.title, systemImage: tool.systemImage)
-                .font(.callout.weight(model.tool == tool ? .semibold : .regular))
-                .foregroundStyle(
-                  model.tool == tool ? Color(nsColor: .alternateSelectedControlTextColor) : .primary
-                )
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background {
-                  if model.tool == tool { Capsule(style: .continuous).fill(Color.accentColor) }
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(model.tool == tool ? .isSelected : [])
-            .accessibilityIdentifier("videoTool-\(tool.rawValue)")
-          }
-        }
-        .padding(4)
-        .glassPanel(cornerRadius: 999)
-      }
+      GlassToolPicker(
+        tools: VideoTool.allCases, selection: $model.tool, title: \.title,
+        systemImage: \.systemImage, identifier: { "videoTool-\($0.rawValue)" })
       Button {
         model.togglePlay()
       } label: {
@@ -321,7 +299,7 @@ struct VideoTimeline: View {
           }
         }
         .frame(width: w, height: h)
-        .background(.black.opacity(0.25))
+        .background(.quaternary)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
         switch model.tool {
@@ -400,10 +378,8 @@ struct VideoTimeline: View {
     -> some View
   {
     GeometryReader { _ in
-      Capsule(style: .continuous)
-        .fill(.white)
+      Color.clear
         .frame(width: 10, height: height + 6)
-        .shadow(color: .black.opacity(0.35), radius: 2)
         .glassEffect(.regular.interactive(), in: Capsule())
     }
     .frame(width: 10, height: height + 6)

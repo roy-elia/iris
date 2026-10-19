@@ -185,6 +185,8 @@ import SwiftUI
       ("Tool-Collage", CGSize(width: 484, height: 600)),
       ("Tool-QR", CGSize(width: 444, height: 230)),
       ("Tool-Join", CGSize(width: 444, height: 300)),
+      ("Tool-Resize", CGSize(width: 424, height: 300)),
+      ("Tool-SplitPDF", CGSize(width: 424, height: 300)),
       ("Wheel-VideoTools", CGSize(width: 420, height: 420)),
       ("Wheel-VideoConvert", CGSize(width: 420, height: 420)),
       ("Video-Trim", CGSize(width: 1000, height: 640)),
@@ -222,6 +224,8 @@ import SwiftUI
       case "Float-Collapsed": floatPreview(expanded: false)
       case "Float-Expanded": floatPreview(expanded: true)
       case "Tool-Compress": CompressView(urls: [PreviewData.sampleImage()])
+      case "Tool-Resize": ResizeView(urls: [PreviewData.sampleImage()])
+      case "Tool-SplitPDF": SplitPDFView(urls: [URL(fileURLWithPath: "/tmp/Deck.pdf")])
       case "Tool-Metadata": MetadataView(urls: [PreviewData.sampleImage()])
       case "Tool-Background": BackgroundView(urls: [PreviewData.sampleImage()])
       case "Tool-Frame": FrameView(urls: [PreviewData.sampleImage()])

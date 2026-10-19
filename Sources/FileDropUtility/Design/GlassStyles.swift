@@ -65,3 +65,47 @@ struct Keycap: View {
     .accessibilityLabel("\(name) key")
   }
 }
+
+/// A row of tool buttons in one Liquid Glass bar. Each button is its own glass capsule inside a
+/// shared container, so neighbours blend into a single bar and the selected one carries the
+/// accent tint; changing the selection morphs the tint across.
+struct GlassToolPicker<Tool: Hashable & Identifiable & Sendable>: View {
+  let tools: [Tool]
+  @Binding var selection: Tool
+  let title: (Tool) -> String
+  let systemImage: (Tool) -> String
+  var identifier: (Tool) -> String? = { _ in nil }
+
+  @Namespace private var namespace
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  var body: some View {
+    GlassEffectContainer(spacing: 4) {
+      HStack(spacing: 0) {
+        ForEach(tools) { tool in
+          let selected = tool == selection
+          Button {
+            withMorph(reduceMotion: reduceMotion) { selection = tool }
+          } label: {
+            Label(title(tool), systemImage: systemImage(tool))
+              .font(.callout.weight(selected ? .semibold : .regular))
+              .foregroundStyle(
+                selected ? Color(nsColor: .alternateSelectedControlTextColor) : Color.primary
+              )
+              .padding(.horizontal, 12)
+              .padding(.vertical, 7)
+              .contentShape(Capsule())
+          }
+          .buttonStyle(.plain)
+          .glassEffect(
+            selected ? Glass.regular.tint(.accentColor).interactive() : Glass.regular.interactive(),
+            in: Capsule()
+          )
+          .glassEffectID(tool, in: namespace)
+          .accessibilityAddTraits(selected ? .isSelected : [])
+          .accessibilityIdentifier(identifier(tool) ?? title(tool))
+        }
+      }
+    }
+  }
+}
