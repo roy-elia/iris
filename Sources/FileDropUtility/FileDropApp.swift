@@ -2,6 +2,13 @@ import AppKit
 import SwiftUI
 
 @main
+enum Main {
+  static func main() {
+    if CommandLineRunner.runIfRequested() { return }
+    FileDropApp.main()
+  }
+}
+
 struct FileDropApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
   @StateObject private var model = AppModel.shared
