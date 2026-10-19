@@ -54,6 +54,7 @@ struct HistoryTab: View {
 
 struct SettingsTab: View {
   @EnvironmentObject private var model: AppModel
+  @State private var formatForDefaults: ImageFormat = .jpeg
 
   var body: some View {
     VStack(alignment: .leading, spacing: DesignTokens.Spacing.stack) {
@@ -79,6 +80,9 @@ struct SettingsTab: View {
         }
       }
       .glassCard()
+
+      formatDefaults
+        .glassCard()
 
       VStack(alignment: .leading, spacing: 6) {
         Text("Save to").font(.callout.weight(.medium))
@@ -143,6 +147,62 @@ struct SettingsTab: View {
       }
       .glassCard()
     }
+  }
+
+  /// Defaults for one output format, used whenever you convert to it.
+  private var formatDefaults: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Picker("Format defaults", selection: $formatForDefaults) {
+        ForEach(ImageFormat.writable, id: \.self) { Text($0.displayName).tag($0) }
+      }
+      .pickerStyle(.menu)
+      .accessibilityIdentifier("formatDefaults")
+      if formatForDefaults.usesQuality {
+        Toggle("Own quality", isOn: ownQuality)
+        if model.settings.formatSettings[formatForDefaults.rawValue]?.quality != nil {
+          HStack {
+            Slider(value: formatQuality, in: AppSettings.qualityRange).accessibilityLabel(
+              "\(formatForDefaults.displayName) quality")
+            Text("\(Int(formatQuality.wrappedValue * 100))%").monospacedDigit().frame(
+              width: 42, alignment: .trailing)
+          }
+        }
+      }
+      Toggle("Preserve metadata", isOn: formatBinding(\.preserveMetadata))
+      if formatForDefaults == .gif {
+        Toggle("Keep animation (original dimensions)", isOn: formatBinding(\.keepOriginalDimensions))
+      }
+    }
+  }
+
+  private func formatBinding(_ keyPath: WritableKeyPath<FormatSettings, Bool>) -> Binding<Bool> {
+    Binding(
+      get: { model.settings.format(formatForDefaults.rawValue)[keyPath: keyPath] },
+      set: { value in
+        var f = model.settings.format(formatForDefaults.rawValue)
+        f[keyPath: keyPath] = value
+        model.settings.formatSettings[formatForDefaults.rawValue] = f
+      })
+  }
+
+  private var ownQuality: Binding<Bool> {
+    Binding(
+      get: { model.settings.formatSettings[formatForDefaults.rawValue]?.quality != nil },
+      set: { on in
+        var f = model.settings.format(formatForDefaults.rawValue)
+        f.quality = on ? model.settings.quality : nil
+        model.settings.formatSettings[formatForDefaults.rawValue] = f
+      })
+  }
+
+  private var formatQuality: Binding<Double> {
+    Binding(
+      get: { model.settings.quality(for: formatForDefaults.rawValue) },
+      set: { value in
+        var f = model.settings.format(formatForDefaults.rawValue)
+        f.quality = AppSettings.clampQuality(value)
+        model.settings.formatSettings[formatForDefaults.rawValue] = f
+      })
   }
 
   /// Picking a combination another wheel uses swaps the two, so no two wheels share one.

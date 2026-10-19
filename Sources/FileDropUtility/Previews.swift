@@ -70,6 +70,12 @@ import SwiftUI
       ("Toast", CGSize(width: 460, height: 90)),
       ("Editor", CGSize(width: 900, height: 640)),
       ("Float", CGSize(width: 284, height: 284)),
+      ("Tool-Compress", CGSize(width: 424, height: 330)),
+      ("Tool-Metadata", CGSize(width: 464, height: 520)),
+      ("Tool-Background", CGSize(width: 404, height: 230)),
+      ("Tool-Frame", CGSize(width: 464, height: 560)),
+      ("Tool-Collage", CGSize(width: 484, height: 600)),
+      ("Tool-QR", CGSize(width: 444, height: 230)),
     ]
 
     @ViewBuilder
@@ -87,6 +93,13 @@ import SwiftUI
       case "Onboarding-Finish": OnboardingView(onFinish: {}, startPage: .finish).environmentObject(model)
       case "Editor": EditorView(model: editorModel()).environmentObject(model)
       case "Float": FloatView(url: PreviewData.sampleImage())
+      case "Tool-Compress": CompressView(urls: [PreviewData.sampleImage()])
+      case "Tool-Metadata": MetadataView(urls: [PreviewData.sampleImage()])
+      case "Tool-Background": BackgroundView(urls: [PreviewData.sampleImage()])
+      case "Tool-Frame": FrameView(urls: [PreviewData.sampleImage()])
+      case "Tool-Collage":
+        CollageView(urls: [PreviewData.sampleImage(), PreviewData.sampleImage(), PreviewData.sampleImage()])
+      case "Tool-QR": QRResultsView(codes: ["https://example.com/menu", "WIFI:S:Studio;T:WPA;P:example;;"])
       default:
         ToastPreview()
       }

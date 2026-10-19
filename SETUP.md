@@ -34,18 +34,33 @@ wording, code or bundled tools.
 
 | Wheel | Key | Segments |
 |---|---|---|
-| Convert | ⇧ Shift | PNG, PDF, JPEG, HEIC, AVIF, TIFF, BMP, WebP (disabled: macOS can't write WebP) |
-| Tools | ⌘ Command | Compress, Metadata (strip), Edit, Annotate, Remove BG, Crop, Redact |
+| Convert | ⇧ Shift (configurable) | PNG, PDF, JPEG, HEIC, AVIF, TIFF, BMP, WebP (bundled cwebp), GIF (animations keep every frame). SVG files are accepted as input. |
+| Tools | ⌘ Command (configurable) | Compress (presets or a target size), Metadata (view, edit, remove location, strip), Annotate, Redact, Crop (one or many images), Add BG (remove, colour or image), Frame, Collage, QR Code, Adjust |
 | Actions | ⌃ Control | AirDrop, Float, Copy, Move, Copy Path, Terminal |
 
 A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the queued files don't fit it. Press the modifier any time during the drag, even with the pointer still. Switching modifiers switches the wheel. Letting go of the key closes the wheel unless you're over it, and Escape closes it. While dragging over the overlay wheel, the segment under the pointer lights up in the accent colour with a soft glow, the centre pill shows its name, and a soft tick plays (with a trackpad tap). A drop plays a pop, runs the command, and reports the result in a glass toast at the top of the screen.
 
+**Tool windows** (floating glass panels opened from the Tools wheel):
+- **Compress:** Smallest, Balanced or Best quality presets, or a target size in KB/MB. Each file is compressed to the target or below, separately. Dimensions shrink only when even the lowest quality is too big.
+- **Metadata:** edit Title, Description, Artist, Copyright, Keywords and Date taken; remove location; browse every field; or strip all. Uses the bundled ExifTool.
+- **Background:** remove it (transparent PNG), or put the subject on a colour or an image.
+- **Frame:** padding, rounded corners and a shadow on a gradient, solid or transparent background, in a free shape or 1:1, 4:3, 16:9, 4:5 or 9:16.
+- **Collage:** an automatic or fixed-column grid with spacing, corners, background colour, fill or fit, name order, and 1200, 2400 or 4000 px width.
+- **QR codes:** every code in the image, with Copy, plus Open for links.
+
 **Other windows:**
-- **Editor:** adjust brightness, contrast and saturation; crop; annotate (colour and width); redact (black bar or pixelate); rotate; undo. Save Copy writes `name edited.ext` and never touches the original.
+- **Editor:**
+  - adjust brightness, contrast and saturation
+  - crop, optionally applying the same crop to every dropped image
+  - annotate: draw, arrow, rectangle, ellipse, highlight, text, numbered callouts, magnifier bubble, image sticker
+  - redact: solid, pixelate or blur
+  - rotate and undo
+  
+  Save Copy writes `name edited.ext` and never touches the original.
 - **Float:** an always-on-top glass card per file. Move it by its header; drag the preview to drop the file somewhere else.
 - **Onboarding:** six pages shown on first launch and from Getting Started: Welcome, the three wheels with key caps, folder access, and Finish (launch at login and the wheel toggle).
 
-**Output names:** `name.ext` (convert), `name no-metadata.ext`, `name compressed.ext`, `name no-bg.png`, `name edited.ext`, `Merged.pdf`, `Images.pdf`. Existing files are never overwritten; a collision becomes `name (1).ext`.
+**Output names:** `name.ext` (convert), `name no-metadata.ext`, `name metadata.ext`, `name compressed.ext`, `name no-bg.png`, `name edited.ext`, `name framed.png`, `Collage.png`, `Merged.pdf`, `Images.pdf`. Existing files are never overwritten; a collision becomes `name (1).ext`.
 
 ## Design system
 
@@ -138,7 +153,7 @@ There are no API keys or network calls at runtime, so there is no `.env`.
 ```bash
 cd /Users/royelia/file-drop-utility
 scripts/fetch-tools.sh          # once: download, verify and build the helpers into Vendor/ (~5 min)
-scripts/test.sh                 # 98 tests (tool tests skip if Vendor/out is missing)
+scripts/test.sh                 # 121 tests (tool tests skip if Vendor/out is missing)
 scripts/lint.sh                 # swift-format --strict
 swift build
 scripts/bundle.sh               # dist/File Drop Utility.app (ad-hoc signed), helpers included

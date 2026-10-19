@@ -30,13 +30,13 @@ final class WindowManager {
     show(window)
   }
 
-  func openEditor(for url: URL, tool: EditorTool) {
+  func openEditor(for url: URL, tool: EditorTool, batch: [URL] = []) {
     if let window = editors[url] {
       window.makeKeyAndOrderFront(nil)
       NSApp.activate()
       return
     }
-    let view = EditorView(model: EditorModel(url: url, tool: tool))
+    let view = EditorView(model: EditorModel(url: url, tool: tool, batch: batch))
       .environmentObject(AppModel.shared)
     let window = makeWindow(
       content: view, size: NSSize(width: 900, height: 640), title: "Edit \(url.lastPathComponent)")
@@ -78,6 +78,26 @@ final class WindowManager {
     track(window) { [weak self] in self?.onboarding = nil }
     onboarding = window
     show(window)
+  }
+
+  private var tools: [String: NSWindow] = [:]
+
+  /// Opens a tool window (one per kind; reopening replaces its contents).
+  func openTool<Content: View>(_ id: String, title: String, @ViewBuilder content: () -> Content) {
+    tools[id]?.close()
+    var window: NSWindow?
+    let view = content()
+      .environment(\.dismissToolWindow, { window?.close() })
+      .environmentObject(AppModel.shared)
+    let made = makeWindow(
+      content: view, size: NSSize(width: 460, height: 420), title: title, transparent: true, fitsContent: true
+    )
+    made.styleMask.remove(.resizable)
+    made.isMovableByWindowBackground = true
+    window = made
+    track(made) { [weak self] in self?.tools[id] = nil }
+    tools[id] = made
+    show(made)
   }
 
   // MARK: Helpers

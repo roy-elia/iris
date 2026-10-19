@@ -109,14 +109,21 @@ final class AppModel: ObservableObject {
       let allPDFs = targets.allSatisfy { $0.kind == .pdf }
       run(allPDFs ? .mergePDFs : .imagesToPDF, on: targets, origin: origin)
     case .compress:
-      run(.compress(quality: CompressOps.defaultQuality), on: targets, origin: origin)
-    case .stripMetadata:
-      run(.stripMetadata, on: targets, origin: origin)
-    case .removeBackground:
-      run(.replaceBackground(.transparent), on: targets, origin: origin)
+      WindowManager.shared.openTool("compress", title: "Compress") { CompressView(urls: fileURLs) }
+    case .metadata:
+      WindowManager.shared.openTool("metadata", title: "Metadata") { MetadataView(urls: fileURLs) }
+    case .background:
+      WindowManager.shared.openTool("background", title: "Background") { BackgroundView(urls: fileURLs) }
+    case .frame:
+      WindowManager.shared.openTool("frame", title: "Frame") { FrameView(urls: fileURLs) }
+    case .collage:
+      WindowManager.shared.openTool("collage", title: "Collage") { CollageView(urls: fileURLs) }
+    case .readQR:
+      run(.readQRCodes, on: targets, origin: origin)
     case .edit(let tool):
-      guard let first = targets.first(where: \.kind.isImage) else { return }
-      WindowManager.shared.openEditor(for: first.url, tool: tool)
+      let images = targets.filter(\.kind.isImage).map(\.url)
+      guard let first = images.first else { return }
+      WindowManager.shared.openEditor(for: first, tool: tool, batch: tool == .crop ? images : [])
     case .airDrop:
       NSSharingService(named: .sendViaAirDrop)?.perform(withItems: fileURLs)
     case .float:
@@ -198,7 +205,12 @@ final class AppModel: ObservableObject {
       operation: operation, inputCount: inputCount, outputs: result.outputs.map(\.lastPathComponent),
       errors: result.failures.map { $0.file.isEmpty ? $0.message : "\($0.file): \($0.message)" })
     if let entries = try? historyStore.append(entry) { history = entries }
-    if origin == .overlay { Toast.show(result: result, operation: operation) }
+    if !result.notes.isEmpty {
+      let codes = result.notes
+      WindowManager.shared.openTool("qr", title: "QR Codes") { QRResultsView(codes: codes) }
+    } else if origin == .overlay {
+      Toast.show(result: result, operation: operation)
+    }
   }
 
   private func move(_ urls: [URL], origin: Origin) {

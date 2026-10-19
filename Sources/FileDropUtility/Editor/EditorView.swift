@@ -70,27 +70,27 @@ struct EditorView: View {
       } label: {
         Image(systemName: "rotate.left")
       }
-      .buttonStyle(.subtleGlass)
+      .buttonStyle(.glass)
       .accessibilityLabel("Rotate left")
       Button {
         model.rotate(clockwise: true)
       } label: {
         Image(systemName: "rotate.right")
       }
-      .buttonStyle(.subtleGlass)
+      .buttonStyle(.glass)
       .accessibilityLabel("Rotate right")
       Button {
         model.undo()
       } label: {
         Image(systemName: "arrow.uturn.backward")
       }
-      .buttonStyle(.subtleGlass)
+      .buttonStyle(.glass)
       .disabled(!model.canUndo)
       .keyboardShortcut("z")
       .accessibilityLabel("Undo")
       Spacer()
       Button("Save Copy") { model.save() }
-        .buttonStyle(.prominentGlass)
+        .buttonStyle(.glassProminent)
         .disabled(model.recipe.isIdentity)
         .keyboardShortcut("s")
         .accessibilityIdentifier("saveEdit")
@@ -108,20 +108,22 @@ struct EditorView: View {
         slider("Brightness", value: binding(\.brightness), range: EditRecipe.brightnessRange)
         slider("Contrast", value: binding(\.contrast), range: EditRecipe.contrastRange)
         slider("Saturation", value: binding(\.saturation), range: EditRecipe.saturationRange)
-        Button("Reset") { model.resetAdjustments() }.buttonStyle(.subtleGlass)
+        Button("Reset") { model.resetAdjustments() }.buttonStyle(.glass)
       case .crop:
         Text("Drag over the image to choose the area to keep.").font(.callout).foregroundStyle(
           DesignTokens.Palette.secondaryText)
+        if !model.batch.isEmpty {
+          Toggle(
+            "Use this crop, as the same share of each image, for all \(model.batch.count + 1) images",
+            isOn: $model.applyCropToAll
+          )
+          .font(.callout)
+        }
         if model.recipe.crop != nil {
-          Button("Clear Crop") { model.commit { $0.crop = nil } }.buttonStyle(.subtleGlass)
+          Button("Clear Crop") { model.commit { $0.crop = nil } }.buttonStyle(.glass)
         }
       case .annotate:
-        Text("Draw on the image.").font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
-        ColorPicker("Colour", selection: $model.strokeColor, supportsOpacity: false)
-        slider("Line width", value: $model.strokeWidth, range: 0.003...0.04)
-        if !model.recipe.strokes.isEmpty {
-          Button("Clear Drawing") { model.commit { $0.strokes = [] } }.buttonStyle(.subtleGlass)
-        }
+        annotateInspector
       case .redact:
         Text("Drag over anything you want hidden.").font(.callout).foregroundStyle(
           DesignTokens.Palette.secondaryText)
@@ -130,12 +132,17 @@ struct EditorView: View {
           selection: Binding(
             get: { model.recipe.redactStyle }, set: { s in model.commit { $0.redactStyle = s } })
         ) {
-          Text("Black bar").tag(RedactStyle.blackout)
+          Text("Solid").tag(RedactStyle.blackout)
           Text("Pixelate").tag(RedactStyle.pixelate)
+          Text("Blur").tag(RedactStyle.blur)
         }
         .pickerStyle(.segmented)
+        if model.recipe.redactStyle != .blackout {
+          Text("Blur and pixelate soften details. Use Solid for sensitive information.")
+            .font(.caption).foregroundStyle(DesignTokens.Palette.warningText)
+        }
         if !model.recipe.redactions.isEmpty {
-          Button("Clear Redactions") { model.commit { $0.redactions = [] } }.buttonStyle(.subtleGlass)
+          Button("Clear Redactions") { model.commit { $0.redactions = [] } }.buttonStyle(.glass)
         }
       }
       Spacer(minLength: 0)
@@ -145,6 +152,70 @@ struct EditorView: View {
     }
     .frame(maxHeight: .infinity, alignment: .top)
     .glassCard()
+  }
+
+  private var annotateInspector: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
+        ForEach(AnnotateKind.allCases) { kind in
+          Button {
+            model.annotateKind = kind
+          } label: {
+            VStack(spacing: 2) {
+              Image(systemName: kind.systemImage).font(.body)
+              Text(kind.title).font(.caption2)
+            }
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .foregroundStyle(model.annotateKind == kind ? DesignTokens.Palette.onAccent : .primary)
+            .background(
+              model.annotateKind == kind
+                ? AnyShapeStyle(DesignTokens.Palette.accentFill) : AnyShapeStyle(.clear),
+              in: RoundedRectangle(cornerRadius: DesignTokens.Radius.chip, style: .continuous)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.chip, style: .continuous))
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel(kind.title)
+          .accessibilityAddTraits(model.annotateKind == kind ? .isSelected : [])
+        }
+      }
+      Text(model.annotateKind.hint).font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+      if model.annotateKind != .magnifier && model.annotateKind != .sticker {
+        ColorPicker("Colour", selection: $model.strokeColor, supportsOpacity: false)
+      }
+      switch model.annotateKind {
+      case .draw, .arrow:
+        slider("Line width", value: $model.strokeWidth, range: 0.003...0.04)
+      case .rectangle, .ellipse:
+        Toggle("Filled", isOn: $model.shapeFilled)
+        if !model.shapeFilled { slider("Line width", value: $model.strokeWidth, range: 0.003...0.04) }
+      case .text:
+        TextField("Text", text: $model.textDraft, axis: .vertical).lineLimit(1...4)
+        slider("Size", value: $model.textSize, range: 0.02...0.2)
+      case .callout:
+        Text("Next number: \(model.nextCalloutNumber)").font(.callout).monospacedDigit()
+      case .magnifier:
+        slider("Zoom", value: $model.magnifierZoom, range: 1.5...6)
+      case .sticker:
+        Button(model.stickerPath == nil ? "Choose Image…" : "Change Image…") { model.chooseSticker() }
+          .buttonStyle(.glass)
+        if let path = model.stickerPath {
+          Text(URL(fileURLWithPath: path).lastPathComponent).font(.caption).lineLimit(1).truncationMode(
+            .middle)
+        }
+      case .highlight:
+        EmptyView()
+      }
+      if !model.recipe.strokes.isEmpty || !model.recipe.marks.isEmpty {
+        Button("Clear Annotations") {
+          model.commit {
+            $0.strokes = []
+            $0.marks = []
+          }
+        }
+        .buttonStyle(.glass)
+      }
+    }
   }
 
   private func slider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>) -> some View {
@@ -194,6 +265,35 @@ struct EditorView: View {
   private func overlays(size: CGSize) -> some View {
     if let crop = model.dragRect.flatMap({ model.tool == .crop ? $0 : nil }) ?? model.recipe.crop {
       CropShade(rect: crop, size: size).allowsHitTesting(false)
+    }
+    if model.tool == .annotate, let rect = model.dragRect {
+      let box = CGRect(
+        x: rect.x * size.width, y: rect.y * size.height, width: rect.width * size.width,
+        height: rect.height * size.height)
+      Group {
+        if model.annotateKind == .ellipse {
+          Ellipse().stroke(model.strokeColor, lineWidth: 2)
+        } else if model.annotateKind == .highlight {
+          Rectangle().fill(model.strokeColor.opacity(0.35))
+        } else {
+          Rectangle().stroke(model.strokeColor, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+        }
+      }
+      .frame(width: box.width, height: box.height)
+      .offset(x: box.minX, y: box.minY)
+      .allowsHitTesting(false)
+    }
+    if model.tool == .annotate, let (a, b) = model.dragLine {
+      Path { p in
+        p.move(to: CGPoint(x: a.x * size.width, y: a.y * size.height))
+        p.addLine(to: CGPoint(x: b.x * size.width, y: b.y * size.height))
+      }
+      .stroke(
+        model.strokeColor,
+        style: StrokeStyle(
+          lineWidth: 3, lineCap: .round, dash: model.annotateKind == .magnifier ? [5, 5] : [])
+      )
+      .allowsHitTesting(false)
     }
     if model.tool == .redact, let rect = model.dragRect {
       Rectangle()

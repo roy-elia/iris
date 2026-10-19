@@ -90,8 +90,11 @@ enum WheelCommand: Equatable {
   case convert(ImageFormat)
   case toPDF
   case compress
-  case stripMetadata
-  case removeBackground
+  case metadata
+  case background
+  case frame
+  case collage
+  case readQR
   case edit(EditorTool)
   case airDrop
   case float
@@ -124,11 +127,11 @@ extension WheelKind {
 
     switch self {
     case .convert:
-      let formats: [ImageFormat] = [.png, .jpeg, .heic, .avif, .tiff, .bmp, .webp]
+      let formats: [ImageFormat] = [.png, .jpeg, .heic, .avif, .tiff, .bmp, .webp, .gif]
       var items = formats.map { format in
         WheelItem(
           id: format.rawValue, title: format.displayName, systemImage: nil, command: .convert(format),
-          disabledReason: !format.isWritable ? "macOS can't write \(format.displayName)" : imagesOnly)
+          disabledReason: !format.isWritable ? "\(format.displayName) encoder missing" : imagesOnly)
       }
       let pdfReason: String? =
         known && !(allImages || (allPDFs && files.count > 1)) ? "Images, or 2+ PDFs" : nil
@@ -139,28 +142,38 @@ extension WheelKind {
     case .tools:
       let compressReason: String? =
         known && files.contains { $0.kind == .unsupported } ? "Images and PDFs only" : nil
+      let collageReason: String? = known && !(allImages && files.count >= 2) ? "Two or more images" : nil
       return [
         WheelItem(
           id: "compress", title: "Compress", systemImage: "arrow.down.right.and.arrow.up.left",
           command: .compress, disabledReason: compressReason),
         WheelItem(
-          id: "metadata", title: "Metadata", systemImage: "tag", command: .stripMetadata,
+          id: "metadata", title: "Metadata", systemImage: "tag", command: .metadata,
           disabledReason: imagesOnly),
-        WheelItem(
-          id: "edit", title: "Edit", systemImage: EditorTool.adjust.systemImage, command: .edit(.adjust),
-          disabledReason: oneImage),
         WheelItem(
           id: "annotate", title: "Annotate", systemImage: EditorTool.annotate.systemImage,
           command: .edit(.annotate), disabledReason: oneImage),
         WheelItem(
-          id: "removebg", title: "Remove BG", systemImage: "person.crop.rectangle",
-          command: .removeBackground,
-          disabledReason: imagesOnly),
+          id: "redact", title: "Redact", systemImage: EditorTool.redact.systemImage, command: .edit(.redact),
+          disabledReason: oneImage),
+        // Crop works on several images at once (the same crop for each).
         WheelItem(
           id: "crop", title: "Crop", systemImage: EditorTool.crop.systemImage, command: .edit(.crop),
-          disabledReason: oneImage),
+          disabledReason: imagesOnly),
         WheelItem(
-          id: "redact", title: "Redact", systemImage: EditorTool.redact.systemImage, command: .edit(.redact),
+          id: "background", title: "Add BG", systemImage: "person.crop.rectangle", command: .background,
+          disabledReason: imagesOnly),
+        WheelItem(
+          id: "frame", title: "Frame", systemImage: "photo.artframe", command: .frame,
+          disabledReason: imagesOnly),
+        WheelItem(
+          id: "collage", title: "Collage", systemImage: "square.grid.2x2", command: .collage,
+          disabledReason: collageReason),
+        WheelItem(
+          id: "qr", title: "QR Code", systemImage: "qrcode.viewfinder", command: .readQR,
+          disabledReason: imagesOnly),
+        WheelItem(
+          id: "edit", title: "Adjust", systemImage: EditorTool.adjust.systemImage, command: .edit(.adjust),
           disabledReason: oneImage),
       ]
     case .actions:

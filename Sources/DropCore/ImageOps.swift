@@ -14,7 +14,7 @@ public enum ImageOps {
       let image = CGImageSourceCreateImageAtIndex(imageSource, 0, nil)
     else { throw DropError.readFailed(source.lastPathComponent) }
 
-    guard format.isWritable else {
+    guard format.isImageIOWritable else {
       throw DropError.wrongInput("macOS can't write \(format.displayName) files.")
     }
     guard
@@ -114,7 +114,7 @@ public enum ImageOps {
 
   /// Encodes `image` as `format`. Throws for formats macOS cannot write.
   public static func write(_ image: CGImage, as format: ImageFormat, quality: Double, to url: URL) throws {
-    guard format.isWritable,
+    guard format.isImageIOWritable,
       let dest = CGImageDestinationCreateWithURL(url as CFURL, format.typeIdentifier as CFString, 1, nil)
     else { throw DropError.writeFailed(url.lastPathComponent) }
     var options: [CFString: Any] = [:]

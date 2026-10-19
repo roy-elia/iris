@@ -5,7 +5,7 @@ import Testing
 @testable import DropCore
 
 @Suite struct ImageOpsTests {
-  @Test(arguments: ImageFormat.writable)
+  @Test(arguments: ImageFormat.allCases.filter(\.isImageIOWritable))
   func convertsPNGToEachFormat(format: ImageFormat) throws {
     let dir = try TempDir()
     let src = try Fixtures.writeImage(to: dir.file("in.png"), type: "public.png")

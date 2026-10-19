@@ -1,13 +1,23 @@
 import Foundation
 
-/// Image formats the app can read. All but WebP can also be written.
+/// Image formats the app can read. SVG is read-only; WebP is written with the bundled
+/// `cwebp`; everything else goes through ImageIO.
 public enum ImageFormat: String, CaseIterable, Codable, Sendable {
-  case png, jpeg, heic, avif, tiff, bmp, webp
+  case png, jpeg, heic, avif, tiff, bmp, webp, gif, svg
 
-  /// Formats ImageIO can encode on macOS. WebP is read-only: macOS has no WebP encoder.
+  /// Formats the app can write right now.
   public static var writable: [ImageFormat] { allCases.filter(\.isWritable) }
 
-  public var isWritable: Bool { self != .webp }
+  public var isWritable: Bool {
+    switch self {
+    case .svg: false
+    case .webp: ToolLocator.isAvailable(.cwebp)
+    default: true
+    }
+  }
+
+  /// Written by ImageIO (as opposed to a bundled tool).
+  public var isImageIOWritable: Bool { self != .svg && self != .webp }
 
   public var fileExtension: String {
     switch self {
@@ -18,6 +28,8 @@ public enum ImageFormat: String, CaseIterable, Codable, Sendable {
     case .tiff: "tiff"
     case .bmp: "bmp"
     case .webp: "webp"
+    case .gif: "gif"
+    case .svg: "svg"
     }
   }
 
@@ -31,6 +43,8 @@ public enum ImageFormat: String, CaseIterable, Codable, Sendable {
     case .tiff: "public.tiff"
     case .bmp: "com.microsoft.bmp"
     case .webp: "org.webmproject.webp"
+    case .gif: "com.compuserve.gif"
+    case .svg: "public.svg-image"
     }
   }
 
@@ -43,14 +57,19 @@ public enum ImageFormat: String, CaseIterable, Codable, Sendable {
     case .tiff: "TIFF"
     case .bmp: "BMP"
     case .webp: "WebP"
+    case .gif: "GIF"
+    case .svg: "SVG"
     }
   }
 
   /// Whether the format takes a lossy quality setting.
-  public var usesQuality: Bool { self == .jpeg || self == .heic || self == .avif }
+  public var usesQuality: Bool { self == .jpeg || self == .heic || self == .avif || self == .webp }
 
   /// Whether the format can store transparency.
   public var supportsAlpha: Bool { self != .jpeg && self != .bmp }
+
+  /// Whether the format can hold several frames (an animation).
+  public var supportsAnimation: Bool { self == .gif || self == .webp || self == .png || self == .heic }
 
   public init?(fileExtension ext: String) {
     switch ext.lowercased() {
@@ -61,6 +80,8 @@ public enum ImageFormat: String, CaseIterable, Codable, Sendable {
     case "tif", "tiff": self = .tiff
     case "bmp": self = .bmp
     case "webp": self = .webp
+    case "gif": self = .gif
+    case "svg": self = .svg
     default: return nil
     }
   }
@@ -132,8 +153,16 @@ public enum FileOperation: Codable, Equatable, Sendable {
   case mergePDFs
   case imagesToPDF
   case compress(quality: Double)
+  /// Compress each image to at most this many bytes.
+  case compressToSize(bytes: Int64)
   case replaceBackground(BackgroundFill)
   case edit(EditRecipe)
+  /// The same edit (typically a crop) applied to every image.
+  case batchEdit(EditRecipe)
+  case editMetadata([MetadataEdit])
+  case frame(FrameRecipe)
+  case collage(CollageRecipe)
+  case readQRCodes
 
   public var summary: String {
     switch self {
@@ -142,17 +171,26 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .mergePDFs: "Merge PDFs"
     case .imagesToPDF: "Images to PDF"
     case .compress: "Compress"
+    case .compressToSize(let bytes):
+      "Compress to \(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))"
     case .replaceBackground(.transparent): "Remove background"
-    case .replaceBackground(.color): "Replace background"
+    case .replaceBackground: "Replace background"
     case .edit: "Edit image"
+    case .batchEdit: "Edit images"
+    case .editMetadata: "Edit metadata"
+    case .frame: "Frame image"
+    case .collage: "Create collage"
+    case .readQRCodes: "Read QR codes"
     }
   }
 }
 
 /// What goes behind the subject when the background is replaced.
-public enum BackgroundFill: Codable, Equatable, Sendable {
+public enum BackgroundFill: Codable, Equatable, Hashable, Sendable {
   case transparent
   case color(RGBA)
+  /// An image file, scaled to fill.
+  case image(path: String)
 }
 
 /// A colour with components in 0...1.
@@ -171,6 +209,7 @@ public struct RGBA: Codable, Equatable, Hashable, Sendable {
 
   public static let white = RGBA(red: 1, green: 1, blue: 1)
   public static let black = RGBA(red: 0, green: 0, blue: 0)
+  public static let clear = RGBA(red: 0, green: 0, blue: 0, alpha: 0)
 }
 
 /// Light/dark override. `system` follows macOS.
@@ -398,6 +437,7 @@ public enum DropError: Error, Equatable, LocalizedError, Sendable {
   case writeFailed(String)
   case notSmaller(String)
   case noSubject(String)
+  case targetTooSmall(String)
 
   public var errorDescription: String? {
     switch self {
@@ -408,6 +448,7 @@ public enum DropError: Error, Equatable, LocalizedError, Sendable {
     case .writeFailed(let name): "\(name) could not be written."
     case .notSmaller(let name): "\(name) is already as small as it gets."
     case .noSubject(let name): "No clear subject was found in \(name)."
+    case .targetTooSmall(let name): "\(name) can't get that small. Choose a larger target size."
     }
   }
 }

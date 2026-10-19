@@ -46,7 +46,7 @@ Formats found in the executable: `png jpg heic avif tiff bmp webp gif svg ai pdf
 
 | Group | Inputs → outputs (Tangerine) | Ours |
 |---|---|---|
-| Images | png, jpg, heic, avif, tiff, bmp, webp, gif, svg/ai (vector artwork) → png, jpg, heic, avif, tiff, bmp, **webp**, **gif**, pdf | 🟡 no WebP or GIF output, no SVG input, no animated GIF |
+| Images | png, jpg, heic, avif, tiff, bmp, webp, gif, svg/ai (vector artwork) → png, jpg, heic, avif, tiff, bmp, **webp**, **gif**, pdf | ✅ |
 | Video | mp4, mov, m4v, webm, mkv, avi → mp4, mov, webm, gif **(inferred)**, audio-only | ❌ |
 | Audio | mp3, wav, m4a, aac, flac, aiff, ogg, opus, wma → mp3, wav, m4a, aac, flac, aiff, ogg, opus; bit depth setting ("Choose an output bit depth") | ❌ |
 | Text documents | docx, pages, rtf, rtfd, txt, md, html, text clippings ↔ docx, pages ("Creates a native Pages document"), rtf, txt, md, html, pdf | ❌ |
@@ -56,22 +56,22 @@ Formats found in the executable: `png jpg heic avif tiff bmp webp gif svg ai pdf
 | Spreadsheets | numbers, xls, xlsx, ods, csv, tsv → pdf, csv ("Bundled spreadsheet converter") | ❌ |
 | Subtitles | srt ↔ vtt (`SubtitleConverter`, "No valid subtitle cues") | ❌ |
 | Archives | zip → extracted folder ("Extracting archive") | ❌ |
-| Per-format settings | "Conversion defaults are configured on the output format you choose"; Preserve metadata; Keep original dimensions; Maximum video height | 🟡 one quality slider |
+| Per-format settings | "Conversion defaults are configured on the output format you choose"; Preserve metadata; Keep original dimensions; Maximum video height | 🟡 images done (quality, metadata); video and audio options come with phases 2–3 |
 
 ### 1.3 Tools wheel
 
 | Area | Tool (Tangerine evidence) | Ours |
 |---|---|---|
-| Image | **Compress** with presets, modes and a target size ("Target file size", "Compression preset", "Smaller files with less quality loss.") | 🟡 quality only |
-| Image | **Metadata:** view, edit and remove fields, via ExifTool (`MetadataField`, "No readable metadata found.", "Metadata Removed") | 🟡 strip only |
-| Image | **Annotate:** arrows, freehand, highlighter, text boxes, numbered callouts, magnifier bubble, image stickers, colours and fonts, undo (`AnnotationMarks`, "Click to add numbered callouts", "click the detail to place a magnifier bubble", "Choose an image to place on the canvas") | 🟡 freehand only |
-| Image | **Redact:** solid or blur ("Blur softens details. Use Solid for sensitive information.") | 🟡 blackout and pixelate |
-| Image | **Crop:** pixel size, and apply the same crop to every image ("Use this crop… for every image") | 🟡 single image |
+| Image | **Compress** with presets, modes and a target size ("Target file size", "Compression preset", "Smaller files with less quality loss.") | ✅ |
+| Image | **Metadata:** view, edit and remove fields, via ExifTool (`MetadataField`, "No readable metadata found.", "Metadata Removed") | ✅ |
+| Image | **Annotate:** arrows, freehand, highlighter, text boxes, numbered callouts, magnifier bubble, image stickers, colours and fonts, undo (`AnnotationMarks`, "Click to add numbered callouts", "click the detail to place a magnifier bubble", "Choose an image to place on the canvas") | ✅ (move-after-placing not yet) |
+| Image | **Redact:** solid or blur ("Blur softens details. Use Solid for sensitive information.") | ✅ |
+| Image | **Crop:** pixel size, and apply the same crop to every image ("Use this crop… for every image") | ✅ |
 | Image | **Adjust** (`ImageAdjustmentEditor`) | ✅ |
-| Image | **Background:** remove, add colour or image, change ("Add BG", "Change image background", "Save with Background") | 🟡 remove only |
-| Image | **Frame or beautify:** background presets, radial gradients, canvas ratio, padding (`FrameImageEditor`, `FrameCanvasRatio`) | ❌ |
-| Image | **Collage:** grid, spacing and background, fill or fit ("Creating collage", "Fill cells (crop edges)", "Fit whole images") | ❌ |
-| Image | **Read QR codes** ("Reading QR codes", `QRCodeResultsPanel`) | ❌ |
+| Image | **Background:** remove, add colour or image, change ("Add BG", "Change image background", "Save with Background") | ✅ |
+| Image | **Frame or beautify:** background presets, radial gradients, canvas ratio, padding (`FrameImageEditor`, `FrameCanvasRatio`) | ✅ |
+| Image | **Collage:** grid, spacing and background, fill or fit ("Creating collage", "Fill cells (crop edges)", "Fit whole images") | ✅ |
+| Image | **Read QR codes** ("Reading QR codes", `QRCodeResultsPanel`) | ✅ |
 | Video | **Trim** (`VideoTrimEditor`) · **Split** into clips or join remaining (`VideoSplitEditor`) · **Join** ("Select at least two videos to join") | ❌ |
 | Video | **Speed** 0.25× and up (`VideoSpeedEditor`) · **Snapshots** of frames (`VideoSnapshotEditor`, "Saving snapshots") | ❌ |
 | Video | **Crop** ("Keep the crop inside the video frame") · **Redact** over time ranges (`VideoRedactionTimeline`, "Show for Entire Video") | ❌ |
@@ -242,7 +242,21 @@ public struct VideoRecipe: Codable, Sendable {
   - terminal app picker
   - per-format settings model (`AppSettings.formatSettings`, `quality(for:)`)
   - job progress and Stop in the status menu
-- **Not in Phase 0, deferred to phase 1:** the per-format settings *UI*. Its options only matter once WebP, GIF and media outputs exist.
+- **Phase 1:** done (2026-10-18):
+  - WebP output (cwebp) and GIF output, keeping every frame of animations
+  - SVG input
+  - per-format defaults UI (own quality, preserve metadata)
+  - target-size compression
+  - metadata editor (ExifTool)
+  - annotate marks: arrow, rectangle, ellipse, highlight, text, callout, magnifier, sticker
+  - blur redaction
+  - batch crop
+  - background: colour or image
+  - Frame, Collage, QR
+  - 23 new tests
+- **Open from Phase 1:**
+  - WebP output is still-only: animated GIF → WebP takes the first frame, because `img2webp` isn't bundled.
+  - Shapes and text can't be moved after placing; undo and redraw instead.
 
 Each phase ends with tests, lint, the snapshot sheets, a hand check against Tangerine, and a commit.
 

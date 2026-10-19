@@ -45,13 +45,18 @@ public enum BackgroundOps {
     return cg
   }
 
-  /// Draws `subject` (with transparency) over a solid colour, or leaves it transparent.
+  /// Draws `subject` (with transparency) over a colour or an image, or leaves it transparent.
   static func composite(subject: CGImage, over fill: BackgroundFill) throws -> CGImage {
     let ctx = try EditOps.context(width: subject.width, height: subject.height, like: subject)
     let rect = CGRect(x: 0, y: 0, width: subject.width, height: subject.height)
-    if case .color(let c) = fill {
+    switch fill {
+    case .transparent: break
+    case .color(let c):
       ctx.setFillColor(c.cgColor)
       ctx.fill(rect)
+    case .image(let path):
+      let photo = try ImageOps.loadOriented(ImageInput.readableURL(for: URL(fileURLWithPath: path)))
+      ctx.draw(photo, in: FrameOps.aspectFill(CGSize(width: photo.width, height: photo.height), in: rect))
     }
     ctx.draw(subject, in: rect)
     return try EditOps.make(ctx)

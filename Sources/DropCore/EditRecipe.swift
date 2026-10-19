@@ -63,11 +63,33 @@ public struct Stroke: Codable, Equatable, Hashable, Sendable {
 }
 
 public enum RedactStyle: String, Codable, CaseIterable, Sendable {
-  case blackout, pixelate
+  /// Solid black: the only style that's safe for sensitive information.
+  case blackout
+  case pixelate
+  /// Softens details; reversible enough that it shouldn't hide secrets.
+  case blur
+}
+
+/// An annotation drawn on top of the image. Positions are normalised (top-left origin);
+/// widths and sizes are fractions of the image's shorter side.
+public enum Mark: Codable, Equatable, Hashable, Sendable {
+  case arrow(from: NormPoint, to: NormPoint, color: RGBA, width: Double)
+  case rectangle(NormRect, color: RGBA, width: Double, filled: Bool)
+  case ellipse(NormRect, color: RGBA, width: Double, filled: Bool)
+  /// A translucent marker over a region.
+  case highlight(NormRect, color: RGBA)
+  /// Text whose top-left corner is at `at`, wrapped to `boxWidth` (normalised).
+  case text(String, at: NormPoint, color: RGBA, size: Double, boxWidth: Double)
+  /// A numbered disc.
+  case callout(number: Int, at: NormPoint, color: RGBA, radius: Double)
+  /// A round bubble at `at` showing the area around `source`, enlarged by `zoom`.
+  case magnifier(source: NormPoint, at: NormPoint, radius: Double, zoom: Double)
+  /// An image file placed in `rect`.
+  case sticker(path: String, rect: NormRect)
 }
 
 /// Everything the editor can change, applied in a fixed order:
-/// rotate, adjust colour, redact, annotate, crop. Rects and strokes are relative to the
+/// rotate, adjust colour, redact, annotate (strokes, then marks), crop. Rects and strokes are relative to the
 /// rotated image, which is what the editor shows.
 public struct EditRecipe: Codable, Equatable, Hashable, Sendable {
   public var quarterTurns: Int
@@ -77,6 +99,7 @@ public struct EditRecipe: Codable, Equatable, Hashable, Sendable {
   public var redactions: [NormRect]
   public var redactStyle: RedactStyle
   public var strokes: [Stroke]
+  public var marks: [Mark]
   public var crop: NormRect?
 
   public static let brightnessRange: ClosedRange<Double> = -0.5...0.5
@@ -86,7 +109,7 @@ public struct EditRecipe: Codable, Equatable, Hashable, Sendable {
   public init(
     quarterTurns: Int = 0, brightness: Double = 0, contrast: Double = 1, saturation: Double = 1,
     redactions: [NormRect] = [], redactStyle: RedactStyle = .blackout, strokes: [Stroke] = [],
-    crop: NormRect? = nil
+    marks: [Mark] = [], crop: NormRect? = nil
   ) {
     self.quarterTurns = quarterTurns
     self.brightness = brightness
@@ -95,6 +118,7 @@ public struct EditRecipe: Codable, Equatable, Hashable, Sendable {
     self.redactions = redactions
     self.redactStyle = redactStyle
     self.strokes = strokes
+    self.marks = marks
     self.crop = crop
   }
 
@@ -105,7 +129,7 @@ public struct EditRecipe: Codable, Equatable, Hashable, Sendable {
 
   /// True when applying the recipe would change nothing.
   public var isIdentity: Bool {
-    normalizedTurns == 0 && !hasColorAdjustments && redactions.isEmpty && strokes.isEmpty
+    normalizedTurns == 0 && !hasColorAdjustments && redactions.isEmpty && strokes.isEmpty && marks.isEmpty
       && (crop == nil || crop == .full)
   }
 }
