@@ -1,6 +1,7 @@
 #!/bin/zsh
 # Downloads, verifies and builds the command-line helpers the app bundles:
-#   ffmpeg + ffprobe 9.0.2  built from source, LGPL only, with LAME 3.100 (MP3) and VideoToolbox
+#   ffmpeg + ffprobe 9.0.2  built from source, LGPL only, with LAME 3.100 (MP3), libvpx 1.17.0
+#                           (VP8/VP9 for WebM) and VideoToolbox
 #   cwebp 1.6.0             Google's signed macOS arm64 release
 #   ExifTool 13.59          Phil Harvey's Perl distribution
 # Everything comes from the projects' official download locations and is checked against
@@ -26,6 +27,9 @@ LAME_VER=3.100
 LAME_SHA=ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e
 WEBP_VER=1.6.0
 WEBP_SHA=bc6bf84cc70f3f8574fba797d1e4a7dea4feebe9fa4be919f202413ea2b3b8f2
+VPX_TAG=v1.17.0
+# The tag's commit on chromium.googlesource.com, matched against github.com/webmproject.
+VPX_COMMIT=6df3ec34557879fff673706f4a1d9fbd0f3a6f0e
 EXIF_VER=13.59
 EXIF_SHA=668ea3acececb7235fbd0f4900e72d5f12c9b07e5c778fd36cb1e9b5828fd65a
 
@@ -68,6 +72,25 @@ if [[ ! -f $PREFIX/lib/libmp3lame.a ]]; then
     make -j$JOBS >/dev/null && make install >/dev/null)
 fi
 
+# libvpx: cloned at a pinned tag from the WebM project's official repository; the commit
+# must match exactly. Static library only, linked into ffmpeg.
+if [[ ! -f $PREFIX/lib/libvpx.a ]]; then
+  echo "Building libvpx $VPX_TAG"
+  if [[ ! -d $SRC/libvpx ]]; then
+    git clone -q --depth 1 --branch "$VPX_TAG" https://chromium.googlesource.com/webm/libvpx "$SRC/libvpx"
+  fi
+  got=$(git -C "$SRC/libvpx" rev-parse HEAD)
+  if [[ $got != $VPX_COMMIT ]]; then
+    echo "libvpx commit mismatch: expected $VPX_COMMIT, got $got" >&2
+    exit 1
+  fi
+  (cd "$SRC/libvpx" &&
+    ./configure --prefix="$PREFIX" --target=arm64-darwin25-gcc --enable-vp8 --enable-vp9 --enable-pic \
+      --disable-examples --disable-tools --disable-docs --disable-unit-tests --disable-shared --enable-static \
+      --extra-cflags="-mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET" >"$VENDOR/libvpx-configure.log" &&
+    make -j$JOBS >"$VENDOR/libvpx-make.log" 2>&1 && make install >/dev/null)
+fi
+
 # ffmpeg: LGPL build (no --enable-gpl, no --enable-nonfree), hardware codecs via VideoToolbox.
 # --disable-autodetect stops configure from picking up Homebrew libraries (X11, SDL, …),
 # which would make the binary fail on Macs without them; only macOS system libraries and
@@ -76,9 +99,9 @@ if [[ ! -x $OUT/bin/ffmpeg ]]; then
   echo "Building ffmpeg $FFMPEG_VER (takes a few minutes)"
   rm -rf "$SRC/ffmpeg-$FFMPEG_VER" && tar -xJf "$DL/ffmpeg-$FFMPEG_VER.tar.xz" -C "$SRC"
   (cd "$SRC/ffmpeg-$FFMPEG_VER" &&
-    ./configure --prefix="$PREFIX" --cc=clang --arch=arm64 \
+    PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig" ./configure --prefix="$PREFIX" --cc=clang --arch=arm64 \
       --disable-gpl --disable-nonfree --enable-version3 \
-      --disable-autodetect --enable-libmp3lame --enable-videotoolbox --enable-audiotoolbox \
+      --disable-autodetect --enable-libmp3lame --enable-libvpx --enable-videotoolbox --enable-audiotoolbox \
       --enable-zlib --enable-bzlib --enable-iconv --extra-libs=-liconv \
       --disable-ffplay --disable-doc --disable-debug --disable-shared --enable-static \
       --extra-cflags="-I$PREFIX/include -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET" \
@@ -110,7 +133,8 @@ if [[ ! -f $OUT/exiftool/exiftool ]]; then
 fi
 
 # Licences travel with the binaries.
-mkdir -p "$OUT/licenses/ffmpeg" "$OUT/licenses/lame" "$OUT/licenses/libwebp" "$OUT/licenses/exiftool"
+mkdir -p "$OUT/licenses/ffmpeg" "$OUT/licenses/lame" "$OUT/licenses/libvpx" "$OUT/licenses/libwebp" "$OUT/licenses/exiftool"
+cp "$SRC/libvpx/LICENSE" "$SRC/libvpx/PATENTS" "$OUT/licenses/libvpx/" 2>/dev/null || true
 cp "$SRC/ffmpeg-$FFMPEG_VER/COPYING.LGPLv3" "$SRC/ffmpeg-$FFMPEG_VER/COPYING.LGPLv2.1" "$SRC/ffmpeg-$FFMPEG_VER/LICENSE.md" \
   "$OUT/licenses/ffmpeg/" 2>/dev/null || true
 cp "$SRC/lame-$LAME_VER/COPYING" "$OUT/licenses/lame/" 2>/dev/null || true
@@ -122,8 +146,9 @@ https://exiftool.org
 TXT
 cat >"$OUT/licenses/SOURCES.txt" <<TXT
 ffmpeg $FFMPEG_VER  https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VER.tar.xz  sha256 $FFMPEG_SHA
-  built LGPL (no --enable-gpl / --enable-nonfree) with libmp3lame, VideoToolbox, AudioToolbox
+  built LGPL (no --enable-gpl / --enable-nonfree) with libmp3lame, libvpx, VideoToolbox, AudioToolbox
 LAME $LAME_VER      https://lame.sourceforge.io  sha256 $LAME_SHA
+libvpx $VPX_TAG     https://chromium.googlesource.com/webm/libvpx  commit $VPX_COMMIT
 libwebp $WEBP_VER   https://developers.google.com/speed/webp  sha256 $WEBP_SHA
 ExifTool $EXIF_VER  https://exiftool.org  sha256 $EXIF_SHA
 TXT

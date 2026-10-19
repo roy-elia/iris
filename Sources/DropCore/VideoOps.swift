@@ -108,7 +108,8 @@ public enum VideoOps {
     let audio: [String]
     switch output {
     case .avi: audio = ["-c:a", "libmp3lame", "-b:a", "192k"]
-    case .webm: audio = ["-c:a", "libopus", "-b:a", "128k"]
+    // ffmpeg's own Opus encoder (marked experimental, hence -strict).
+    case .webm: audio = ["-c:a", "opus", "-strict", "-2", "-b:a", "128k"]
     default: audio = ["-c:a", "aac", "-b:a", "\(audioBitrateKbps)k"]
     }
     let rate: [String] =

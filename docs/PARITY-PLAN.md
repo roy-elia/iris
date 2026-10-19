@@ -47,7 +47,7 @@ Formats found in the executable: `png jpg heic avif tiff bmp webp gif svg ai pdf
 | Group | Inputs → outputs (Tangerine) | Ours |
 |---|---|---|
 | Images | png, jpg, heic, avif, tiff, bmp, webp, gif, svg/ai (vector artwork) → png, jpg, heic, avif, tiff, bmp, **webp**, **gif**, pdf | ✅ |
-| Video | mp4, mov, m4v, webm, mkv, avi → mp4, mov, webm, gif **(inferred)**, audio-only | ✅ except WebM output (needs libvpx) |
+| Video | mp4, mov, m4v, webm, mkv, avi → mp4, mov, webm, gif **(inferred)**, audio-only | ✅ |
 | Audio | mp3, wav, m4a, aac, flac, aiff, ogg, opus, wma → mp3, wav, m4a, aac, flac, aiff, ogg, opus; bit depth setting ("Choose an output bit depth") | ❌ |
 | Text documents | docx, pages, rtf, rtfd, txt, md, html, text clippings ↔ docx, pages ("Creates a native Pages document"), rtf, txt, md, html, pdf | ❌ |
 | EPUB | epub ↔ pdf, docx and others; reflowable or fixed-layout ("fixed layout book of page images") | ❌ |
@@ -262,7 +262,7 @@ public struct VideoRecipe: Codable, Sendable {
   - Join window
   - 18 new tests on generated clips
 - **Open from Phase 2:**
-  - WebM *output* needs libvpx (your call: download and build it, BSD licence).
+  - WebM output: added after Phase 2 with libvpx 1.17.0 (VP9) and ffmpeg's Opus encoder.
   - Timeline handles for redaction ranges are buttons ("Set Start/End"), not draggable edges.
 - **Open from Phase 1:**
   - WebP output is still-only: animated GIF → WebP takes the first frame, because `img2webp` isn't bundled.

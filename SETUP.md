@@ -41,7 +41,7 @@ wording, code or bundled tools.
 A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the queued files don't fit it. Press the modifier any time during the drag, even with the pointer still. Switching modifiers switches the wheel. Letting go of the key closes the wheel unless you're over it, and Escape closes it. While dragging over the overlay wheel, the segment under the pointer lights up in the accent colour with a soft glow, the centre pill shows its name, and a soft tick plays (with a trackpad tap). A drop plays a pop, runs the command, and reports the result in a glass toast at the top of the screen.
 
 **Video** (when every dropped file is a video: MP4, MOV, M4V, WebM, MKV, AVI):
-- **Convert wheel:** MP4, MOV, M4V, MKV, AVI, GIF (palette-optimised, 15 fps), and MP3 or M4A audio. WebM output is disabled: it needs a VP9 encoder (see Known gaps).
+- **Convert wheel:** MP4, MOV, M4V, MKV, AVI, WebM (VP9 + Opus), GIF (palette-optimised, 15 fps), and MP3 or M4A audio.
 - **Tools wheel:** Compress (Light, Medium or Strong, or a target size), Trim, Split, Join, Speed, Frames, Crop, Redact.
 - **Video editor:**
   - the picture fills the window, with a glass timeline of thumbnails under it
@@ -146,6 +146,7 @@ No third-party Swift packages. Four command-line helpers are bundled as separate
 | Apple SDK frameworks | Apple SDK licence | App and core |
 | ffmpeg 9.0.2 + ffprobe, built from source **LGPL-only** (`--disable-gpl --disable-nonfree --disable-autodetect`), links only macOS system libraries | LGPL v3 | Audio and video (phases 2–3) |
 | LAME 3.100, static inside ffmpeg | LGPL v2 | MP3 encoding |
+| libvpx 1.17.0, static inside ffmpeg (tag cloned from chromium.googlesource.com/webm/libvpx; commit 6df3ec34… matched against the github.com/webmproject mirror) | BSD-3-Clause + patent grant | VP8/VP9 for WebM output |
 | cwebp 1.6.0 (Google's signed macOS arm64 build) | BSD-3-Clause + patent grant | WebP export (phase 1) |
 | ExifTool 13.59, run with macOS's `/usr/bin/perl` | Artistic or GPL (Perl terms) | Metadata view/edit (phase 1) |
 | swift-testing | Apache 2.0 with Runtime Library Exception | Tests |
@@ -198,7 +199,6 @@ Confirmed by you by hand (2026-10-18): a real drag with the redrawn wheel looks 
 
 ## Known gaps
 
-- **WebM output:** needs a VP9 encoder (libvpx, BSD licence), which the bundled LGPL ffmpeg doesn't include. WebM files work as inputs. Adding it means downloading and building libvpx; I'll do that only with your OK.
 
 - **WebP export:** macOS's ImageIO reads WebP but can't write it. WebP files work as inputs; the WebP segment is disabled with that reason. Export would need libwebp (BSD licence), which I'd add only with your OK.
 - **Dynamic Type:** SwiftUI text styles on macOS don't respond to `dynamicTypeSize`. The Largest Text snapshots look the same as normal. Views use text styles throughout, so they'll scale wherever the OS scales them, but macOS 26 offers no system-wide Dynamic Type to test.

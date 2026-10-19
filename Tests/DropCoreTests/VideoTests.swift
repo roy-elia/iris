@@ -100,7 +100,7 @@ private let hasFFmpeg = ToolLocator.isAvailable(.ffmpeg) && ToolLocator.isAvaila
     #expect(info.hasVideo && info.hasAudio)
   }
 
-  @Test(arguments: [VideoOutput.mov, .mkv, .avi, .m4v, .gif, .mp3, .m4a])
+  @Test(arguments: [VideoOutput.mov, .mkv, .avi, .m4v, .webm, .gif, .mp3, .m4a])
   func convertsToEachOutput(output: VideoOutput) async throws {
     let dir = try TempDir()
     let clip = try await VideoFixtures.make(dir.file("a.mp4"), seconds: 1)
