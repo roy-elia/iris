@@ -257,6 +257,8 @@ struct FloatTabView: View {
   let id: UUID
   @EnvironmentObject var manager: FloatManager
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  /// Collapsed and expanded share one glass identity, so opening morphs a single shape.
+  @Namespace private var glassNamespace
 
   var body: some View {
     Group {
@@ -286,7 +288,7 @@ struct FloatTabView: View {
       Text("\(stack.urls.count)")
         .font(.caption2.monospacedDigit().weight(.bold))
         .padding(.horizontal, 7).padding(.vertical, 1)
-        .background(Color.accentColor, in: Capsule())
+        .background(.tint, in: Capsule())
         .foregroundStyle(Color(nsColor: .alternateSelectedControlTextColor))
     }
     .padding(.vertical, 10)
@@ -294,6 +296,7 @@ struct FloatTabView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(FileDragSource(urls: stack.urls, menu: { manager.menu(for: nil, in: id) }))
     .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .glassEffectID("float", in: glassNamespace)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Float with \(stack.urls.count) file\(stack.urls.count == 1 ? "" : "s")")
     .accessibilityHint("Hover to open. Drag to carry all files.")
@@ -324,10 +327,9 @@ struct FloatTabView: View {
         Button {
           manager.close(id)
         } label: {
-          Image(systemName: "xmark").font(.caption.weight(.bold)).frame(width: 22, height: 22)
+          Image(systemName: "xmark").font(.caption.weight(.bold))
         }
-        .buttonStyle(.plain)
-        .glassEffect(.regular.interactive(), in: Circle())
+        .buttonStyle(.borderless)
         .help("Close Float (files stay where they are)")
         .accessibilityLabel("Close Float")
       }
@@ -340,6 +342,7 @@ struct FloatTabView: View {
     }
     .padding(10)
     .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+    .glassEffectID("float", in: glassNamespace)
     .padding(4)
   }
 
@@ -356,7 +359,8 @@ struct FloatTabView: View {
     .padding(.horizontal, 6)
     .frame(height: FloatManager.rowHeight - 4)
     .background(FileDragSource(urls: [url], menu: { manager.menu(for: url, in: id) }))
-    .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    // Rows sit on the Float's glass, so they use a system fill rather than more glass.
+    .background(.quinary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(url.lastPathComponent)
     .accessibilityHint("Double-click to open. Drag to carry this file.")
@@ -374,7 +378,6 @@ struct FloatTabView: View {
     }
     .frame(width: size, height: size)
     .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-    .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
   }
 }
 

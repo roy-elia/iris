@@ -354,7 +354,7 @@ import SwiftUI
       HStack(spacing: 10) {
         Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.accentColor)
         Text("Convert to JPEG: saved 2 files").font(.callout)
-        Button("Show") {}.buttonStyle(.glass)
+        Button("Show") {}.buttonStyle(.borderless).fontWeight(.semibold)
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 10)

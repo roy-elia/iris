@@ -256,8 +256,10 @@ private struct ToastView: View {
         .accessibilityHidden(true)
       Text(message).font(.callout).foregroundStyle(.primary).lineLimit(2)
       if !outputs.isEmpty {
+        // A text button: the toast itself is the glass, and glass shouldn't sit on glass.
         Button("Show") { AppModel.shared.reveal(outputs) }
-          .buttonStyle(.glass)
+          .buttonStyle(.borderless)
+          .fontWeight(.semibold)
           .accessibilityLabel("Show in Finder")
       }
     }

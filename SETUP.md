@@ -82,7 +82,7 @@ A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the
 
 **Shell:**
 - **Floats:** the Actions wheel's Float puts the files in a glass tab tucked against the right screen edge (Add to Float adds to the latest one). Hover to open it into a stack. Drag the tab or its header to carry every file, drag a row for one file, double-click to open, right-click for Open, Show in Finder, Copy Path, Remove from Float and Close Float. Drag the grip to move it; it snaps to the nearer edge. Drop files on a Float to add them. Floats are saved and come back after a relaunch; closing one never touches the files.
-- **Wheel themes:** Dark (default), Light and Accent Tint, under Settings.
+- **Wheel themes:** Regular (default), Clear and Tinted Liquid Glass, under Settings.
 - **Update check:** off by default. It needs a build made with `UPDATE_FEED_URL=https://…/releases/latest scripts/bundle.sh`; then Settings › "Check for updates daily" looks once a day, and a newer release adds "Update Available" to the menu. Builds without a feed never make the call.
 - **Onboarding** has a page showing what the wheels do for each kind of file.
 

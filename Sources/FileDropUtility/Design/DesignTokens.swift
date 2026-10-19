@@ -25,13 +25,9 @@ enum DesignTokens {
 
   // MARK: Colour
 
-  /// Text, icons and fills use system semantic colours (`.primary`, `.secondary`,
-  /// `Color.accentColor`, `.red`, `.orange`), which adapt to light, dark and Increase
-  /// Contrast. Only the wheel's highlight still has fixed colours, until it moves to glass.
-  enum Palette {
-    static let wheelHotTop = Color(red: 0.00, green: 0.34, blue: 0.56)
-    static let wheelHotBottom = Color(red: 0.02, green: 0.60, blue: 0.76)
-  }
+  // None: text, icons and fills use system semantic colours (`.primary`, `.secondary`,
+  // `.tint`, `.red`, `.orange`, hierarchical fills), which adapt to light, dark and
+  // Increase Contrast.
 
   // MARK: Motion
 

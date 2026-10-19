@@ -5,18 +5,19 @@ import Foundation
 
 /// How the drag wheels look.
 public enum WheelTheme: String, CaseIterable, Codable, Sendable {
-  /// Smoked glass with white labels (the default).
+  /// Regular Liquid Glass (the default). The raw values predate the glass names and are kept
+  /// so saved settings still load.
   case dark
-  /// Clear glass with a white wash and dark labels.
+  /// Clear Liquid Glass, which shows more of what's behind it.
   case light
-  /// Glass tinted with the accent colour.
+  /// Liquid Glass tinted with the accent colour.
   case tinted
 
   public var title: String {
     switch self {
-    case .dark: "Dark"
-    case .light: "Light"
-    case .tinted: "Accent Tint"
+    case .dark: "Regular"
+    case .light: "Clear"
+    case .tinted: "Tinted"
     }
   }
 }
