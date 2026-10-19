@@ -104,6 +104,8 @@ public enum ToolRunner {
           group.notify(queue: .global()) { continuation.resume(throwing: error) }
           return
         }
+        // A cancel that arrived before the launch found no process to stop, so stop it now.
+        if collector.wasCancelled { process.terminate() }
         group.notify(queue: .global()) {
           let output = collector.output()
           // ffmpeg traps SIGTERM and exits normally, so check whether we asked it to stop.
