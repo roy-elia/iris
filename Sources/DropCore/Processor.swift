@@ -455,7 +455,8 @@ public struct Processor: Sendable {
             let dir = try SystemProcess.scratchDirectory()
             scratch = dir
             pages = dir.appendingPathComponent("slides.pdf")
-            try await IWorkOps.exportPDF(file.url, app: office.app, destination: pages)
+            try await IWorkOps.exportPDF(
+              file.url, app: office.app, powerPoint: office.powerPointExports, destination: pages)
           }
           let word = scratch == nil ? "page" : "slide"
           let outs = try PDFPageOps.images(pages, format: format) { index in

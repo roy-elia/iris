@@ -849,11 +849,18 @@ public enum IWorkOps {
   static let quickLookTimeout: TimeInterval = 60
 
   /// A presentation, spreadsheet or iWork document as PDF: exported by its app when it's
-  /// installed, otherwise the document's saved preview or a Quick Look rendering.
-  public static func exportPDF(_ source: URL, app: IWorkApp?, destination: URL) async throws {
+  /// installed (PowerPoint for .ppt and .pptx when Keynote isn't), otherwise the document's
+  /// saved preview or a Quick Look rendering.
+  public static func exportPDF(
+    _ source: URL, app: IWorkApp?, powerPoint: Bool = false, destination: URL
+  ) async throws {
     if let app, app.isInstalled {
       let args = exportScript(app).flatMap { ["-e", $0] } + [source.path, destination.path]
       try await SystemProcess.run("/usr/bin/osascript", args)
+      return
+    }
+    if powerPoint && PowerPoint.isInstalled {
+      try await PowerPoint.exportPDF(source, destination: destination)
       return
     }
     if let preview = try? previewPDF(of: source), preview.write(to: destination) { return }
@@ -908,7 +915,8 @@ public enum DocumentOps {
       try await SpreadsheetOps.renderPDF(file.url, format: .ods, to: destination)
     case (.office(let format), .pdf) where !format.isTable:
       do {
-        try await IWorkOps.exportPDF(file.url, app: format.app, destination: destination)
+        try await IWorkOps.exportPDF(
+          file.url, app: format.app, powerPoint: format.powerPointExports, destination: destination)
       } catch  where format == .xlsx || format == .ods {
         // No Numbers and no Quick Look rendering: lay the sheets out as tables.
         try await SpreadsheetOps.renderPDF(file.url, format: format, to: destination)

@@ -58,6 +58,9 @@ public enum OfficeFormat: String, CaseIterable, Codable, Sendable {
   /// Tables the app reads itself (and can convert to any text output).
   public var isTable: Bool { self == .csv || self == .tsv }
 
+  /// Whether PowerPoint can export this format (used when Keynote isn't installed).
+  public var powerPointExports: Bool { self == .ppt || self == .pptx }
+
   /// Keynote and PowerPoint decks, which can also be saved as one image per slide.
   public var isPresentation: Bool { self == .key || self == .ppt || self == .pptx }
 
@@ -68,6 +71,54 @@ public enum OfficeFormat: String, CaseIterable, Codable, Sendable {
     case .numbers, .xls, .xlsx, .ods: .numbers
     case .csv, .tsv: nil
     }
+  }
+}
+
+/// Microsoft PowerPoint, used for .ppt and .pptx when Keynote isn't installed.
+public enum PowerPoint {
+  public static let bundleID = "com.microsoft.Powerpoint"
+
+  public static var isInstalled: Bool {
+    NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
+  }
+
+  /// A folder inside PowerPoint's sandbox container, where it can read and write
+  /// without asking for file access.
+  static func workFolder() throws -> URL {
+    let folder = FileManager.default.homeDirectoryForCurrentUser
+      .appendingPathComponent("Library/Containers/\(bundleID)/Data/tmp/FileDropUtility-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    return folder
+  }
+
+  /// AppleScript that opens argv[1] in PowerPoint and saves it to argv[2] as PDF.
+  static func exportScript() -> [String] {
+    [
+      "on run argv",
+      "tell application id \"\(bundleID)\"",
+      "open (POSIX file (item 1 of argv))",
+      "save active presentation in (POSIX file (item 2 of argv)) as save as PDF",
+      "close active presentation saving no",
+      "end tell",
+      "end run",
+    ]
+  }
+
+  /// Exports a deck to PDF. The deck is copied into PowerPoint's container first and
+  /// the PDF moved out after, so the sandboxed app never needs a file-access prompt.
+  static func exportPDF(_ source: URL, destination: URL) async throws {
+    let folder = try workFolder()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let deck = folder.appendingPathComponent("deck.\(source.pathExtension.lowercased())")
+    let pdf = folder.appendingPathComponent("deck.pdf")
+    try FileManager.default.copyItem(at: source, to: deck)
+    let args = exportScript().flatMap { ["-e", $0] } + [deck.path, pdf.path]
+    try await SystemProcess.run("/usr/bin/osascript", args, timeout: 300)
+    guard FileManager.default.fileExists(atPath: pdf.path) else {
+      throw DropError.wrongInput("PowerPoint couldn't export \(source.lastPathComponent).")
+    }
+    try? FileManager.default.removeItem(at: destination)
+    try FileManager.default.moveItem(at: pdf, to: destination)
   }
 }
 

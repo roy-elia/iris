@@ -52,8 +52,8 @@ Formats found in the executable: `png jpg heic avif tiff bmp webp gif svg ai pdf
 | Text documents | docx, pages, rtf, rtfd, txt, md, html, text clippings ↔ docx, pages ("Creates a native Pages document"), rtf, txt, md, html, pdf | ✅ |
 | EPUB | epub ↔ pdf, docx and others; reflowable or fixed-layout ("fixed layout book of page images") | ✅ |
 | PDF out | pdf → images, text, docx ("This PDF has no selectable text…") | ✅ (plus OCR) |
-| Presentations | key, ppt, pptx → pdf, images ("Bundled PowerPoint converter") | ✅ PDF, and PNG or JPEG per slide. Keynote does the export when installed, else the deck's saved preview or Quick Look (first slide only) |
-| Spreadsheets | numbers, xls, xlsx, ods, csv, tsv → pdf, csv ("Bundled spreadsheet converter") | ✅ PDF (Numbers scripting, else Quick Look); CSV per sheet, read directly from xlsx and ods, via Numbers for numbers and xls; csv/tsv fully |
+| Presentations | key, ppt, pptx → pdf, images ("Bundled PowerPoint converter") | ✅ PDF, and PNG or JPEG per slide. Keynote does the export when installed, then PowerPoint for ppt/pptx, else the deck's saved preview or Quick Look (first slide only) |
+| Spreadsheets | numbers, xls, xlsx, ods, csv, tsv → pdf, csv ("Bundled spreadsheet converter") | ✅ PDF (Numbers scripting, else Quick Look, else tables laid out from xlsx/ods); CSV per sheet, read directly from xlsx and ods, via Numbers for numbers and xls; csv/tsv fully |
 | Subtitles | srt ↔ vtt (`SubtitleConverter`, "No valid subtitle cues") | ✅ |
 | Archives | zip → extracted folder ("Extracting archive") | ✅ |
 | Per-format settings | "Conversion defaults are configured on the output format you choose"; Preserve metadata; Keep original dimensions; Maximum video height | ✅ images (quality, metadata, keep animation), video (keep original dimensions, maximum height, bitrate) and audio (bitrate, bit depth) |
@@ -290,6 +290,10 @@ public struct VideoRecipe: Codable, Sendable {
   - Keynote and PowerPoint slides to PNG or JPEG
   - Excel, OpenDocument and Numbers sheets to CSV
   - 11 new unit tests, and a self-test check for Share on the wheel
+- **Follow-ups** (2026-10-19):
+  - PowerPoint exports ppt/pptx when Keynote is missing (live test: `FDU_TEST_POWERPOINT=1 scripts/test.sh --filter PowerPoint`)
+  - self-test samples for xlsx, ods and Keynote
+  - Quick Look fallback stops after 60 s
 - **Open from Phase 2:**
   - WebM output: added after Phase 2 with libvpx 1.17.0 (VP9) and ffmpeg's Opus encoder.
   - Timeline handles for redaction ranges are buttons ("Set Start/End"), not draggable edges.
