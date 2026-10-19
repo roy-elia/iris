@@ -86,6 +86,41 @@ import SwiftUI
     }
   }
 
+  extension PreviewData {
+    /// An audio editor with a made-up, speech-like waveform and sample edits.
+    @MainActor
+    static func audioEditor(_ tool: AudioTool) -> AudioEditorModel {
+      let count = AudioEditorModel.peakCount
+      let peaks: [Float] = (0..<count).map { i in
+        let t = Double(i) / Double(count)
+        if t < 0.06 || t > 0.93 { return 0.01 }
+        let phrase = 0.55 + 0.45 * sin(t * 37)
+        let syllable = abs(sin(t * 260)) * 0.7 + 0.3
+        return Float(min(max(phrase * syllable * (0.75 + 0.25 * sin(t * 9)), 0.04), 1))
+      }
+      let model = AudioEditorModel(
+        previewURL: URL(fileURLWithPath: "/tmp/Interview.m4a"),
+        info: MediaInfo(duration: 42, hasAudio: true, audioChannels: 2, sampleRate: 44100), peaks: peaks,
+        tool: tool)
+      model.seek(to: 15.5)
+      switch tool {
+      case .trim:
+        model.trimStart = 1.8
+        model.trimEnd = 39
+        model.trimSilence = true
+      case .bleep:
+        model.bleeps = [BleepRange(start: 12.2, end: 13.1), BleepRange(start: 27.4, end: 28.6)]
+        model.selectedBleep = 1
+      case .volume:
+        model.normalize = .podcast
+      case .channels:
+        model.channels = .stereo
+        model.balance = -0.3
+      }
+      return model
+    }
+  }
+
   /// Each screen, by name, for previews and snapshots.
   @MainActor
   enum Screens {
@@ -115,6 +150,12 @@ import SwiftUI
       ("Video-Trim", CGSize(width: 1000, height: 640)),
       ("Video-Split", CGSize(width: 1000, height: 640)),
       ("Video-Redact", CGSize(width: 1000, height: 640)),
+      ("Wheel-AudioConvert", CGSize(width: 420, height: 420)),
+      ("Wheel-AudioTools", CGSize(width: 420, height: 420)),
+      ("Audio-Trim", CGSize(width: 960, height: 440)),
+      ("Audio-Bleep", CGSize(width: 960, height: 440)),
+      ("Audio-Channels", CGSize(width: 960, height: 440)),
+      ("Tool-Visualizer", CGSize(width: 424, height: 340)),
     ]
 
     @ViewBuilder
@@ -156,6 +197,21 @@ import SwiftUI
       case "Video-Trim": VideoEditorView(model: PreviewData.videoEditor(.trim)).environmentObject(model)
       case "Video-Split": VideoEditorView(model: PreviewData.videoEditor(.split)).environmentObject(model)
       case "Video-Redact": VideoEditorView(model: PreviewData.videoEditor(.redact)).environmentObject(model)
+      case "Wheel-AudioConvert":
+        RadialWheel(
+          kind: .convert, items: WheelKind.convert.audioItems(count: 1), centerText: "4.2 MB", mode: .click
+        ) { _, _ in }
+        .padding(DesignTokens.Spacing.inset)
+      case "Wheel-AudioTools":
+        RadialWheel(
+          kind: .tools, items: WheelKind.tools.audioItems(count: 1), centerText: "0:42", mode: .click
+        ) { _, _ in }
+        .padding(DesignTokens.Spacing.inset)
+      case "Audio-Trim": AudioEditorView(model: PreviewData.audioEditor(.trim)).environmentObject(model)
+      case "Audio-Bleep": AudioEditorView(model: PreviewData.audioEditor(.bleep)).environmentObject(model)
+      case "Audio-Channels":
+        AudioEditorView(model: PreviewData.audioEditor(.channels)).environmentObject(model)
+      case "Tool-Visualizer": VisualizerView(urls: [URL(fileURLWithPath: "/tmp/Episode 12.mp3")])
       case "Tool-QR": QRResultsView(codes: ["https://example.com/menu", "WIFI:S:Studio;T:WPA;P:example;;"])
       default:
         ToastPreview()

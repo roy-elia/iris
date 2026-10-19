@@ -48,6 +48,8 @@ public struct Processor: Sendable {
     if files.isEmpty { return "Drop some files first." }
     let allImages = !files.contains(where: { !$0.kind.isImage })
     let allVideos = !files.contains(where: { !$0.kind.isVideo })
+    let allAudio = !files.contains(where: { !$0.kind.isAudio })
+    let allSound = !files.contains(where: { !$0.kind.isAudio && !$0.kind.isVideo })
     switch operation {
     case .convert(let format, _):
       if !format.isWritable { return "\(format.displayName) can't be written on this Mac." }
@@ -61,7 +63,7 @@ public struct Processor: Sendable {
     case .edit:
       if files.count != 1 || !files[0].kind.isImage { return "Edit works on one image at a time." }
     case .compress:
-      if files.contains(where: { $0.kind == .unsupported || $0.kind.isVideo }) {
+      if files.contains(where: { $0.kind == .unsupported || $0.kind.isVideo || $0.kind.isAudio }) {
         return "Compress works on images and PDFs."
       }
     case .convertVideo(let output):
@@ -78,6 +80,16 @@ public struct Processor: Sendable {
       }
       if case .videoSnapshots(let times) = operation, times.isEmpty {
         return "Select at least one frame within the video."
+      }
+    case .convertAudio:
+      if !allSound { return "\(operation.summary) works on audio and video files." }
+    case .editAudio(let recipe):
+      if !allAudio { return audioOnly(operation) }
+      if recipe.isIdentity { return "There are no audio changes to save." }
+    case .audioVisualizer(let recipe):
+      if !allAudio { return audioOnly(operation) }
+      if let path = recipe.backgroundImage, !FileManager.default.fileExists(atPath: path) {
+        return "Choose a background image."
       }
     case .joinVideos:
       if !allVideos { return videosOnly(operation) }
@@ -101,6 +113,11 @@ public struct Processor: Sendable {
   private static func videosOnly(_ operation: FileOperation) -> String {
     let names = VideoFormat.allCases.map(\.displayName).joined(separator: ", ")
     return "\(operation.summary) works on videos only (\(names))."
+  }
+
+  private static func audioOnly(_ operation: FileOperation) -> String {
+    let names = AudioFormat.allCases.map(\.displayName).joined(separator: ", ")
+    return "\(operation.summary) works on audio files only (\(names))."
   }
 
   private static func imagesOnly(_ operation: FileOperation) -> String {
@@ -297,6 +314,43 @@ public struct Processor: Sendable {
       } catch {
         for out in outs { try? FileManager.default.removeItem(at: out) }
         result.failures.append(.init(file: file.name, message: Self.message(for: error)))
+      }
+
+    case .convertAudio(let output):
+      let options = settings.format(output.rawValue)
+      for (i, file) in files.enumerated() {
+        let out = target(file, suffix: "", ext: output.fileExtension)
+        await record(&result, file: file, output: out) {
+          try await AudioOps.convert(
+            file.url, to: output, bitDepth: options.audioBitDepth ?? 16,
+            bitrateKbps: options.audioBitrateKbps,
+            destination: out
+          ) { p in progress?((Double(i) + p) / Double(files.count)) }
+        }
+      }
+
+    case .editAudio(let recipe):
+      for (i, file) in files.enumerated() {
+        let output = AudioOps.output(for: file.url)
+        let options = settings.format(output.rawValue)
+        let out = target(file, suffix: "edited", ext: output.fileExtension)
+        await record(&result, file: file, output: out) {
+          try await AudioOps.convert(
+            file.url, to: output, bitDepth: options.audioBitDepth ?? 16,
+            bitrateKbps: options.audioBitrateKbps,
+            recipe: recipe, destination: out
+          ) { p in progress?((Double(i) + p) / Double(files.count)) }
+        }
+      }
+
+    case .audioVisualizer(let recipe):
+      for (i, file) in files.enumerated() {
+        let out = target(file, suffix: "visualizer", ext: "mp4")
+        await record(&result, file: file, output: out) {
+          try await AudioOps.visualize(file.url, recipe: recipe, destination: out) { p in
+            progress?((Double(i) + p) / Double(files.count))
+          }
+        }
       }
 
     case .mergePDFs:

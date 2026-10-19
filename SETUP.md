@@ -50,6 +50,18 @@ A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the
 - **Join window:** set the order. Videos of different sizes are fitted to the first one's frame, and silent clips get a silent track.
 - Encoding uses Apple's hardware H.264 encoder through the bundled ffmpeg; progress shows in the status menu, and Stop Current Task cancels.
 
+**Audio** (when every dropped file is audio: MP3, WAV, M4A, AAC, FLAC, AIFF, OGG, Opus, WMA, CAF):
+- **Convert wheel:** MP3, M4A, AAC, WAV, AIFF, FLAC, OGG (Vorbis), Opus. Videos can be converted to audio too. Bit depth (WAV 16/24/32, AIFF and FLAC 16/24) and bitrate are set per format under Settings › Audio defaults.
+- **Tools wheel:** Trim, Bleep, Volume, Channels (the audio editor), and Visualizer.
+- **Audio editor:**
+  - a large glass waveform with the playhead and live playback where AVFoundation can play the file
+  - Trim: drag the ends, or set them at the playhead; "Trim silent ends" with a threshold slider (−80 to −20 dB)
+  - Bleep: add ranges and drag their ends, or bleep the whole file (a 1 kHz tone replaces the sound)
+  - Volume: normalize loudness (EBU R128) to −14, −16 or −23 LUFS
+  - Channels: keep, mono or stereo, with a left/right balance
+  - every tool's settings go into one saved copy ("name edited.ext")
+- **Visualizer window:** wave, bars or spectrum, 16:9, 1:1 or 9:16, a wave colour, and a solid colour or image behind it. Saves "name visualizer.mp4".
+
 **Tool windows** (floating glass panels opened from the Tools wheel):
 - **Compress:** Smallest, Balanced or Best quality presets, or a target size in KB/MB. Each file is compressed to the target or below, separately. Dimensions shrink only when even the lowest quality is too big.
 - **Metadata:** edit Title, Description, Artist, Copyright, Keywords and Date taken; remove location; browse every field; or strip all. Uses the bundled ExifTool.
@@ -164,7 +176,7 @@ There are no API keys or network calls at runtime, so there is no `.env`.
 ```bash
 cd /Users/royelia/file-drop-utility
 scripts/fetch-tools.sh          # once: download, verify and build the helpers into Vendor/ (~5 min)
-scripts/test.sh                 # 139 tests (tool tests skip if Vendor/out is missing)
+scripts/test.sh                 # 158 tests (tool tests skip if Vendor/out is missing)
 scripts/lint.sh                 # swift-format --strict
 swift build
 scripts/bundle.sh               # dist/File Drop Utility.app (ad-hoc signed), helpers included
@@ -199,6 +211,7 @@ Confirmed by you by hand (2026-10-18): a real drag with the redrawn wheel looks 
 
 ## Known gaps
 
+- **Audio:** OGG, Opus and WMA can't play in the editor (AVFoundation doesn't read them); the waveform and every edit still work. Ogg Vorbis and Opus use ffmpeg's own encoders, which are adequate rather than best-in-class (libvorbis and libopus aren't bundled). Normalize is single-pass loudnorm, accurate to about ±1 LU on typical material.
 
 - **WebP export:** macOS's ImageIO reads WebP but can't write it. WebP files work as inputs; the WebP segment is disabled with that reason. Export would need libwebp (BSD licence), which I'd add only with your OK.
 - **Dynamic Type:** SwiftUI text styles on macOS don't respond to `dynamicTypeSize`. The Largest Text snapshots look the same as normal. Views use text styles throughout, so they'll scale wherever the OS scales them, but macOS 26 offers no system-wide Dynamic Type to test.

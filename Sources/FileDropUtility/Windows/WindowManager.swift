@@ -47,6 +47,7 @@ final class WindowManager {
   }
 
   private var videoEditors: [URL: NSWindow] = [:]
+  private var audioEditors: [URL: NSWindow] = [:]
 
   func openVideoEditor(for url: URL, tool: VideoTool) {
     if let window = videoEditors[url] {
@@ -61,6 +62,22 @@ final class WindowManager {
     window.minSize = NSSize(width: 820, height: 520)
     track(window) { [weak self] in self?.videoEditors[url] = nil }
     videoEditors[url] = window
+    show(window)
+  }
+
+  func openAudioEditor(for url: URL, tool: AudioTool) {
+    if let window = audioEditors[url] {
+      window.makeKeyAndOrderFront(nil)
+      NSApp.activate()
+      return
+    }
+    let view = AudioEditorView(model: AudioEditorModel(url: url, tool: tool)).environmentObject(
+      AppModel.shared)
+    let window = makeWindow(
+      content: view, size: NSSize(width: 960, height: 460), title: "Edit \(url.lastPathComponent)")
+    window.minSize = NSSize(width: 780, height: 380)
+    track(window) { [weak self] in self?.audioEditors[url] = nil }
+    audioEditors[url] = window
     show(window)
   }
 

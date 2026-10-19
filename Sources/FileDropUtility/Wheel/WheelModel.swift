@@ -99,6 +99,9 @@ enum WheelCommand: Equatable {
   case convertVideo(VideoOutput)
   case videoEditor(VideoTool)
   case joinVideos
+  case convertAudio(AudioOutput)
+  case audioEditor(AudioTool)
+  case visualizer
   case airDrop
   case float
   case copy
@@ -152,6 +155,31 @@ extension WheelKind {
     }
   }
 
+  /// Segments when every dropped file is audio.
+  func audioItems(count: Int) -> [WheelItem] {
+    let oneFile: String? = count == 1 ? nil : "One file at a time"
+    switch self {
+    case .convert:
+      let outputs: [AudioOutput] = [.mp3, .m4a, .aac, .wav, .aiff, .flac, .ogg, .opus]
+      return outputs.map { output in
+        WheelItem(
+          id: "a-\(output.rawValue)", title: output.displayName, systemImage: nil,
+          command: .convertAudio(output))
+      }
+    case .tools:
+      return AudioTool.allCases.map { tool in
+        WheelItem(
+          id: "a-\(tool.rawValue)", title: tool.title, systemImage: tool.systemImage,
+          command: .audioEditor(tool),
+          disabledReason: oneFile)
+      } + [
+        WheelItem(id: "a-visualizer", title: "Visualizer", systemImage: "waveform", command: .visualizer)
+      ]
+    case .actions:
+      return items(for: [])
+    }
+  }
+
   /// Segments for this wheel, enabled or not depending on what's being dropped.
   /// `files` may be empty while dragging, when the kinds aren't known yet.
   func items(for files: [DroppedFile]) -> [WheelItem] {
@@ -161,6 +189,7 @@ extension WheelKind {
     let imagesOnly: String? = known && !allImages ? "Images only" : nil
     let allVideos = known && files.allSatisfy(\.kind.isVideo)
     if allVideos { return videoItems(count: files.count) }
+    if known && files.allSatisfy(\.kind.isAudio) { return audioItems(count: files.count) }
     let oneImage: String? = known && !(files.count == 1 && allImages) ? "One image at a time" : nil
 
     switch self {

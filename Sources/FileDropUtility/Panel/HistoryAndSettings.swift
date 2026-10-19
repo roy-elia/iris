@@ -55,6 +55,7 @@ struct HistoryTab: View {
 struct SettingsTab: View {
   @EnvironmentObject private var model: AppModel
   @State private var formatForDefaults: ImageFormat = .jpeg
+  @State private var audioForDefaults: AudioOutput = .mp3
 
   var body: some View {
     VStack(alignment: .leading, spacing: DesignTokens.Spacing.stack) {
@@ -172,7 +173,39 @@ struct SettingsTab: View {
       if formatForDefaults == .gif {
         Toggle("Keep animation (original dimensions)", isOn: formatBinding(\.keepOriginalDimensions))
       }
+      Divider()
+      Picker("Audio defaults", selection: $audioForDefaults) {
+        ForEach(AudioOutput.allCases, id: \.self) { Text($0.displayName).tag($0) }
+      }
+      .pickerStyle(.menu)
+      .accessibilityIdentifier("audioDefaults")
+      if audioForDefaults.usesBitDepth {
+        Picker("Bit depth", selection: audioSetting(\.audioBitDepth, fallback: 16)) {
+          ForEach(
+            audioForDefaults == .aiff || audioForDefaults == .flac ? [16, 24] : AudioOutput.bitDepths,
+            id: \.self
+          ) {
+            Text("\($0)-bit").tag($0)
+          }
+        }
+        .pickerStyle(.segmented)
+      } else {
+        Picker("Bitrate", selection: audioSetting(\.audioBitrateKbps, fallback: 192)) {
+          ForEach([96, 128, 192, 256, 320], id: \.self) { Text("\($0) kbps").tag($0) }
+        }
+        .pickerStyle(.menu)
+      }
     }
+  }
+
+  private func audioSetting(_ keyPath: WritableKeyPath<FormatSettings, Int?>, fallback: Int) -> Binding<Int> {
+    Binding(
+      get: { model.settings.format(audioForDefaults.rawValue)[keyPath: keyPath] ?? fallback },
+      set: { value in
+        var f = model.settings.format(audioForDefaults.rawValue)
+        f[keyPath: keyPath] = value
+        model.settings.formatSettings[audioForDefaults.rawValue] = f
+      })
   }
 
   private func formatBinding(_ keyPath: WritableKeyPath<FormatSettings, Bool>) -> Binding<Bool> {

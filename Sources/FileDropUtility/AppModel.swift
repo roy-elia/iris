@@ -127,6 +127,15 @@ final class AppModel: ObservableObject {
       WindowManager.shared.openVideoEditor(for: video.url, tool: tool)
     case .joinVideos:
       WindowManager.shared.openTool("join", title: "Join Videos") { JoinView(urls: fileURLs) }
+    case .convertAudio(let output):
+      run(.convertAudio(output), on: targets, origin: origin)
+    case .audioEditor(let tool):
+      guard let audio = targets.first(where: \.kind.isAudio) else { return }
+      WindowManager.shared.openAudioEditor(for: audio.url, tool: tool)
+    case .visualizer:
+      let audio = targets.filter(\.kind.isAudio).map(\.url)
+      guard !audio.isEmpty else { return }
+      WindowManager.shared.openTool("visualizer", title: "Visualizer") { VisualizerView(urls: audio) }
     case .edit(let tool):
       let images = targets.filter(\.kind.isImage).map(\.url)
       guard let first = images.first else { return }

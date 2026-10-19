@@ -48,7 +48,7 @@ Formats found in the executable: `png jpg heic avif tiff bmp webp gif svg ai pdf
 |---|---|---|
 | Images | png, jpg, heic, avif, tiff, bmp, webp, gif, svg/ai (vector artwork) → png, jpg, heic, avif, tiff, bmp, **webp**, **gif**, pdf | ✅ |
 | Video | mp4, mov, m4v, webm, mkv, avi → mp4, mov, webm, gif **(inferred)**, audio-only | ✅ |
-| Audio | mp3, wav, m4a, aac, flac, aiff, ogg, opus, wma → mp3, wav, m4a, aac, flac, aiff, ogg, opus; bit depth setting ("Choose an output bit depth") | ❌ |
+| Audio | mp3, wav, m4a, aac, flac, aiff, ogg, opus, wma → mp3, wav, m4a, aac, flac, aiff, ogg, opus; bit depth setting ("Choose an output bit depth") | ✅ |
 | Text documents | docx, pages, rtf, rtfd, txt, md, html, text clippings ↔ docx, pages ("Creates a native Pages document"), rtf, txt, md, html, pdf | ❌ |
 | EPUB | epub ↔ pdf, docx and others; reflowable or fixed-layout ("fixed layout book of page images") | ❌ |
 | PDF out | pdf → images, text, docx ("This PDF has no selectable text…") | 🟡 merge and images-to-PDF only |
@@ -76,10 +76,10 @@ Formats found in the executable: `png jpg heic avif tiff bmp webp gif svg ai pdf
 | Video | **Speed** 0.25× and up (`VideoSpeedEditor`) · **Snapshots** of frames (`VideoSnapshotEditor`, "Saving snapshots") | ✅ |
 | Video | **Crop** ("Keep the crop inside the video frame") · **Redact** over time ranges (`VideoRedactionTimeline`, "Show for Entire Video") | ✅ |
 | Video | **Compress** with strength or target size ("The target leaves too little space for video.") | ✅ |
-| Audio | **Trim** with waveform, auto-trim silent ends, silence threshold (`AudioTrimEditor`, "Detecting silence") | ❌ |
-| Audio | **Bleep** ranges or the whole file (`AudioBleepTimeline`, "Save Bleeped Copy") | ❌ |
-| Audio | **Normalize volume** · **Channels:** mono or stereo with L/R balance (`AudioChannelsEditor`, "Left volume") | ❌ |
-| Audio | **Visualizer:** waveform video over a still image, with styles (`AudioVisualizerEditor`, "Create Visualization") | ❌ |
+| Audio | **Trim** with waveform, auto-trim silent ends, silence threshold (`AudioTrimEditor`, "Detecting silence") | ✅ |
+| Audio | **Bleep** ranges or the whole file (`AudioBleepTimeline`, "Save Bleeped Copy") | ✅ |
+| Audio | **Normalize volume** · **Channels:** mono or stereo with L/R balance (`AudioChannelsEditor`, "Left volume") | ✅ |
+| Audio | **Visualizer:** waveform video over a still image, with styles (`AudioVisualizerEditor`, "Create Visualization") | ✅ |
 | PDF | **Organize:** reorder, rotate and delete pages (`PDFOrganizerEditor`, "Save Organized PDF") · **Merge** · **Compress** ("macOS PDF compression filter") · equal page widths | 🟡 merge, compress |
 
 ### 1.4 Actions wheel
@@ -261,6 +261,13 @@ public struct VideoRecipe: Codable, Sendable {
   - video editor with a thumbnail timeline
   - Join window
   - 18 new tests on generated clips
+- **Phase 3:** done (2026-10-18):
+  - audio convert to MP3, M4A, AAC, WAV, AIFF, FLAC, OGG, Opus, from those plus WMA and CAF (and video soundtracks)
+  - bit depth and bitrate per format
+  - audio editor: waveform trim, silent-end trim with threshold, bleep ranges or whole file, EBU R128 normalize, mono/stereo with L/R balance
+  - Visualizer: wave, bars or spectrum over a colour or image, three aspect ratios
+  - all ffmpeg (silencedetect, loudnorm, pan, sine + amix, showwaves/showfreqs/showspectrum), rather than AVAudioFile as planned in 2.3, so every input format works the same way
+  - 19 new tests on generated tones
 - **Open from Phase 2:**
   - WebM output: added after Phase 2 with libvpx 1.17.0 (VP9) and ffmpeg's Opus encoder.
   - Timeline handles for redaction ranges are buttons ("Set Start/End"), not draggable edges.

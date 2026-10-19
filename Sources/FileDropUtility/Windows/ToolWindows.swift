@@ -658,3 +658,88 @@ struct JoinView: View {
     .frame(width: 420)
   }
 }
+
+// MARK: Visualizer
+
+struct VisualizerView: View {
+  enum Backdrop: String, CaseIterable {
+    case color = "Colour"
+    case image = "Image"
+  }
+  let urls: [URL]
+  @State private var style: VisualizerStyle = .wave
+  @State private var size: VisualizerSize = .landscape
+  @State private var waveColor: Color = .white
+  @State private var backdrop: Backdrop = .color
+  @State private var backgroundColor = Color(red: 0.05, green: 0.12, blue: 0.16)
+  @State private var imagePath: String?
+
+  private var recipe: VisualizerRecipe {
+    VisualizerRecipe(
+      style: style, size: size, color: waveColor.rgba, backgroundImage: backdrop == .image ? imagePath : nil,
+      backgroundColor: backgroundColor.rgba)
+  }
+
+  var body: some View {
+    ToolPanel(
+      title: "Visualizer", urls: urls, primaryTitle: urls.count == 1 ? "Make Video" : "Make Videos",
+      primaryDisabled: backdrop == .image && imagePath == nil
+    ) {
+      runTool(.audioVisualizer(recipe), on: urls)
+    } content: {
+      Text("Makes an MP4 of the sound moving over a still background.")
+        .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+        .fixedSize(horizontal: false, vertical: true)
+      Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
+        GridRow {
+          Text("Style")
+          Picker("Style", selection: $style) {
+            ForEach(VisualizerStyle.allCases, id: \.self) { Text($0.title).tag($0) }
+          }
+          .pickerStyle(.segmented).labelsHidden()
+        }
+        GridRow {
+          Text("Shape")
+          Picker("Shape", selection: $size) {
+            ForEach(VisualizerSize.allCases, id: \.self) { Text($0.title).tag($0) }
+          }
+          .pickerStyle(.segmented).labelsHidden()
+        }
+        GridRow {
+          Text("Wave")
+          ColorPicker("Wave colour", selection: $waveColor, supportsOpacity: false).labelsHidden()
+            .disabled(style == .spectrum)
+            .help(style == .spectrum ? "The spectrum uses its own colours." : "")
+        }
+        GridRow {
+          Text("Behind")
+          Picker("Background", selection: $backdrop) {
+            ForEach(Backdrop.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+          }
+          .pickerStyle(.segmented).labelsHidden()
+        }
+      }
+      switch backdrop {
+      case .color:
+        ColorPicker("Background colour", selection: $backgroundColor, supportsOpacity: false)
+      case .image:
+        HStack {
+          Button(imagePath == nil ? "Choose Image…" : "Change Image…") { chooseImage() }.buttonStyle(.glass)
+          if let imagePath {
+            Text(URL(fileURLWithPath: imagePath).lastPathComponent).font(.callout).lineLimit(1)
+              .truncationMode(.middle)
+          }
+        }
+      }
+    }
+    .frame(width: 400)
+  }
+
+  private func chooseImage() {
+    let panel = NSOpenPanel()
+    panel.allowedContentTypes = [.image]
+    panel.message = "Choose an image to show behind the waveform."
+    NSApp.activate()
+    if panel.runModal() == .OK, let url = panel.url { imagePath = url.path }
+  }
+}

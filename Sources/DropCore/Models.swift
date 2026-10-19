@@ -92,6 +92,7 @@ public enum FileKind: Equatable, Sendable {
   case image(ImageFormat)
   case pdf
   case video(VideoFormat)
+  case audio(AudioFormat)
   case unsupported
 
   public init(url: URL) {
@@ -100,6 +101,8 @@ public enum FileKind: Equatable, Sendable {
       self = .image(format)
     } else if let format = VideoFormat(fileExtension: ext) {
       self = .video(format)
+    } else if let format = AudioFormat(fileExtension: ext) {
+      self = .audio(format)
     } else if ext.lowercased() == "pdf" {
       self = .pdf
     } else {
@@ -114,6 +117,11 @@ public enum FileKind: Equatable, Sendable {
 
   public var isVideo: Bool {
     if case .video = self { return true }
+    return false
+  }
+
+  public var isAudio: Bool {
+    if case .audio = self { return true }
     return false
   }
 }
@@ -178,11 +186,17 @@ public enum FileOperation: Codable, Equatable, Sendable {
   case joinVideos
   /// Save the frames at these times (seconds).
   case videoSnapshots([Double])
+  /// Convert audio files (or videos' audio tracks).
+  case convertAudio(AudioOutput)
+  case editAudio(AudioRecipe)
+  case audioVisualizer(VisualizerRecipe)
 
   /// Whether the operation is long-running media work.
   public var isMedia: Bool {
     switch self {
-    case .convertVideo, .compressVideo, .editVideo, .splitVideo, .joinVideos, .videoSnapshots: true
+    case .convertVideo, .compressVideo, .editVideo, .splitVideo, .joinVideos, .videoSnapshots, .convertAudio,
+      .editAudio, .audioVisualizer:
+      true
     default: false
     }
   }
@@ -211,6 +225,9 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .splitVideo(let plan): plan.joinKept ? "Cut video" : "Split video"
     case .joinVideos: "Join videos"
     case .videoSnapshots(let times): times.count == 1 ? "Save frame" : "Save frames"
+    case .convertAudio(let output): "Convert to \(output.displayName)"
+    case .editAudio: "Edit audio"
+    case .audioVisualizer: "Make visualizer video"
     }
   }
 }
