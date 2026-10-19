@@ -393,6 +393,23 @@ enum DocFixtures {
     }
   }
 
+  @Test(.enabled(if: !IWorkApp.keynote.isInstalled)) func savesPresentationSlidesAsImages() async throws {
+    let dir = try TempDir()
+    let deck = dir.file("Deck.key")
+    try FileManager.default.createDirectory(
+      at: deck.appendingPathComponent("QuickLook"), withIntermediateDirectories: true)
+    _ = try DocFixtures.pdf(deck.appendingPathComponent("QuickLook/Preview.pdf"), pages: 3)
+    let files = try load(deck)
+    #expect(Processor.validate(.pdfToImages(.png), files: files) == nil)
+    let result = await Processor(settings: AppSettings()).run(.pdfToImages(.png), on: files)
+    #expect(result.failures.isEmpty, "\(result.failures)")
+    #expect(
+      result.outputs.map(\.lastPathComponent) == ["Deck slide 1.png", "Deck slide 2.png", "Deck slide 3.png"])
+    #expect(result.outputs.allSatisfy { (try? ImageOps.loadOriented($0)) != nil })
+    let sheet = try DocFixtures.text(dir.file("t.csv"), "a,b\n")
+    #expect(Processor.validate(.pdfToImages(.png), files: try load(sheet))?.contains("presentations") == true)
+  }
+
   @Test func csvToPDF() async throws {
     let dir = try TempDir()
     let csv = try DocFixtures.text(dir.file("scores.csv"), "Name,Score\nAda,9\nLin,8\n")

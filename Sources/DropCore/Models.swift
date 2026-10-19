@@ -226,6 +226,23 @@ public enum FileKind: Equatable, Sendable {
   }
 
   /// Text documents, PDFs and tables or presentations: anything `convertDocument` takes.
+  /// PDFs and presentations: files that `pdfToImages` saves page by page.
+  public var hasPages: Bool {
+    switch self {
+    case .pdf: true
+    case .office(let format): format.isPresentation
+    default: false
+    }
+  }
+
+  /// Workbooks whose sheets `sheetsToCSV` reads (Numbers and .xls need Numbers).
+  public var isSpreadsheet: Bool {
+    switch self {
+    case .office(let format): [.xlsx, .xls, .ods, .numbers].contains(format)
+    default: false
+    }
+  }
+
   public var isDocumentLike: Bool {
     switch self {
     case .document, .office, .pdf: true
@@ -343,6 +360,8 @@ public enum FileOperation: Codable, Equatable, Sendable {
   case convertSubtitles(SubtitleFormat)
   /// JSON, CSV, XML, plist and vCard conversions.
   case convertData(DataFormat)
+  /// Each sheet of an Excel, OpenDocument or Numbers workbook as a CSV file.
+  case sheetsToCSV
   case extractArchive
   /// Compress all the files into one zip.
   case zipFiles
@@ -354,7 +373,7 @@ public enum FileOperation: Codable, Equatable, Sendable {
       .extractSubtitles,
       .convertAudio,
       .editAudio, .audioVisualizer, .convertDocument, .pdfToImages, .pdfToTIFF,
-      .pdfToCBZ, .extractArchive, .zipFiles:
+      .pdfToCBZ, .sheetsToCSV, .extractArchive, .zipFiles:
       true
     default: false
     }
@@ -398,6 +417,7 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .organizePDF: "Organize PDF"
     case .convertSubtitles(let format): "Convert to \(format.displayName)"
     case .convertData(let format): "Convert to \(format.displayName)"
+    case .sheetsToCSV: "Save sheets as CSV"
     case .extractArchive: "Extract archive"
     case .zipFiles: "Zip"
     }
@@ -507,18 +527,31 @@ public struct FormatSettings: Codable, Equatable, Sendable {
   public var preserveMetadata: Bool
   /// Keep pixel dimensions (needed to keep an animation).
   public var keepOriginalDimensions: Bool
+  /// The tallest frame a video conversion writes, when `keepOriginalDimensions` is off.
   public var maxVideoHeight: Int?
+  /// Video bitrate for H.264/HEVC outputs; nil keeps constant quality.
+  public var videoBitrateKbps: Int?
   public var audioBitrateKbps: Int?
   public var audioBitDepth: Int?
 
+  /// Heights offered for `maxVideoHeight`.
+  public static let videoHeights = [2160, 1440, 1080, 720, 480, 360]
+  /// Bitrates offered for `videoBitrateKbps`.
+  public static let videoBitrates = [2_000, 4_000, 8_000, 12_000, 20_000]
+
+  /// The height limit a video conversion should apply.
+  public var videoHeightLimit: Int? { keepOriginalDimensions ? nil : maxVideoHeight }
+
   public init(
     quality: Double? = nil, preserveMetadata: Bool = true, keepOriginalDimensions: Bool = true,
-    maxVideoHeight: Int? = nil, audioBitrateKbps: Int? = nil, audioBitDepth: Int? = nil
+    maxVideoHeight: Int? = nil, videoBitrateKbps: Int? = nil, audioBitrateKbps: Int? = nil,
+    audioBitDepth: Int? = nil
   ) {
     self.quality = quality.map(AppSettings.clampQuality)
     self.preserveMetadata = preserveMetadata
     self.keepOriginalDimensions = keepOriginalDimensions
     self.maxVideoHeight = maxVideoHeight
+    self.videoBitrateKbps = videoBitrateKbps
     self.audioBitrateKbps = audioBitrateKbps
     self.audioBitDepth = audioBitDepth
   }
@@ -532,6 +565,7 @@ public struct FormatSettings: Codable, Equatable, Sendable {
     keepOriginalDimensions =
       (try? c.decode(Bool.self, forKey: .keepOriginalDimensions)) ?? d.keepOriginalDimensions
     maxVideoHeight = (try? c.decodeIfPresent(Int.self, forKey: .maxVideoHeight)).flatMap { $0 }
+    videoBitrateKbps = (try? c.decodeIfPresent(Int.self, forKey: .videoBitrateKbps)).flatMap { $0 }
     audioBitrateKbps = (try? c.decodeIfPresent(Int.self, forKey: .audioBitrateKbps)).flatMap { $0 }
     audioBitDepth = (try? c.decodeIfPresent(Int.self, forKey: .audioBitDepth)).flatMap { $0 }
   }

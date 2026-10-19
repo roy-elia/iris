@@ -292,7 +292,8 @@ public enum VideoOps {
 
   /// Converts (and optionally edits) a video.
   public static func convert(
-    _ source: URL, to output: VideoOutput, recipe: VideoRecipe = VideoRecipe(), destination: URL,
+    _ source: URL, to output: VideoOutput, recipe: VideoRecipe = VideoRecipe(),
+    options: FormatSettings = FormatSettings(), destination: URL,
     progress: (@Sendable (Double) -> Void)? = nil
   ) async throws {
     guard output.isAvailable else {
@@ -307,9 +308,12 @@ public enum VideoOps {
     }
     try validate(recipe, info: info, name: source.lastPathComponent)
     var recipe = recipe
-    if let limit = output.maxHeight { recipe.maxHeight = min(recipe.maxHeight ?? limit, limit) }
+    let limits = [output.maxHeight, output.usesVideoDefaults ? options.videoHeightLimit : nil]
+    for case let limit? in limits { recipe.maxHeight = min(recipe.maxHeight ?? limit, limit) }
+    let kbps = output.usesBitrate ? options.videoBitrateKbps.map { min(max($0, 200), 100_000) } : nil
     let args = renderArgs(
-      source: source, info: info, recipe: recipe, output: output, destination: destination)
+      source: source, info: info, recipe: recipe, output: output, videoKbps: kbps,
+      destination: destination)
     try await render(
       args, expectedDuration: recipe.outputDuration(source: info.duration), destination: destination,
       progress: progress)

@@ -227,6 +227,7 @@
       case .extractArchive: return await check(.extractArchive)
       case .extractSubtitles: return await check(.extractSubtitles)
       case .convertData(let f): return await check(.convertData(f))
+      case .sheetsToCSV: return await check(.sheetsToCSV)
       case .zip: return await check(.zipFiles)
 
       case .compress:
@@ -322,6 +323,13 @@
       case .airDrop:
         return NSSharingService(named: .sendViaAirDrop) != nil
           ? ("skip", "AirDrop service available; sending needs a person") : ("FAIL", "no AirDrop service")
+      case .share:
+        var shared: [URL] = []
+        SharePresenter.presentOverride = { shared = $0 }
+        defer { SharePresenter.presentOverride = nil }
+        AppModel.shared.perform(command, urls: urls, origin: .overlay)
+        return shared.map(\.standardizedFileURL) == urls.map(\.standardizedFileURL)
+          ? ("PASS", "share picker asked for \(shared.count) file(s)") : ("FAIL", "picker got \(shared)")
       case .move:
         return ("skip", "opens a folder picker (FileActions.move is unit-tested)")
       case .terminal:

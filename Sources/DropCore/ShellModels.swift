@@ -188,3 +188,36 @@ public enum UpdateChecker {
     return try parse(data, current: current)
   }
 }
+
+/// A terminal app "Open Terminal" can use.
+public struct TerminalApp: Equatable, Sendable {
+  public let name: String
+  public let bundleID: String
+
+  public init(name: String, bundleID: String) {
+    self.name = name
+    self.bundleID = bundleID
+  }
+
+  /// Terminals the picker knows, Terminal first. Each opens a folder handed to it by
+  /// `NSWorkspace.open(_:withApplicationAt:configuration:)` in a new window or tab there.
+  public static let known: [TerminalApp] = [
+    TerminalApp(name: "Terminal", bundleID: AppSettings.defaultTerminal),
+    TerminalApp(name: "iTerm2", bundleID: "com.googlecode.iterm2"),
+    TerminalApp(name: "Warp", bundleID: "dev.warp.Warp-Stable"),
+    TerminalApp(name: "Ghostty", bundleID: "com.mitchellh.ghostty"),
+    TerminalApp(name: "kitty", bundleID: "net.kovidgoyal.kitty"),
+    TerminalApp(name: "Alacritty", bundleID: "org.alacritty"),
+    TerminalApp(name: "WezTerm", bundleID: "com.github.wez.wezterm"),
+  ]
+
+  /// The known terminals that are installed. Terminal is always listed.
+  public static func installed(isInstalled: (String) -> Bool) -> [TerminalApp] {
+    known.filter { $0.bundleID == AppSettings.defaultTerminal || isInstalled($0.bundleID) }
+  }
+
+  /// The app to open: the chosen one when it's installed, else Terminal.
+  public static func resolve(_ chosen: String, isInstalled: (String) -> Bool) -> String {
+    isInstalled(chosen) ? chosen : AppSettings.defaultTerminal
+  }
+}

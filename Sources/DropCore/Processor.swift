@@ -104,7 +104,9 @@ public struct Processor: Sendable {
         return problem
       }
     case .pdfToImages(let format):
-      if files.contains(where: { $0.kind != .pdf }) { return "\(operation.summary) works on PDFs only." }
+      if !files.allSatisfy(\.kind.hasPages) {
+        return "\(operation.summary) works on PDFs and presentations only."
+      }
       if !format.isWritable { return "\(format.displayName) can't be written on this Mac." }
     case .pdfToTIFF, .pdfToCBZ, .splitPDF:
       if files.contains(where: { $0.kind != .pdf }) { return "\(operation.summary) works on PDFs only." }
@@ -118,6 +120,15 @@ public struct Processor: Sendable {
     case .convertData(let output):
       if let file = files.first(where: { !($0.kind.dataFormat?.outputs.contains(output) ?? false) }) {
         return "\(file.name) can't be converted to \(output.displayName)."
+      }
+    case .sheetsToCSV:
+      if !files.allSatisfy(\.kind.isSpreadsheet) {
+        return "\(operation.summary) works on Excel, OpenDocument and Numbers spreadsheets."
+      }
+      if let file = files.first(where: {
+        if case .office(let format) = $0.kind { SpreadsheetOps.problem(format) != nil } else { true }
+      }) {
+        return "Saving the sheets of \(file.name) as CSV needs Numbers."
       }
     case .extractArchive:
       if files.contains(where: { $0.kind != .archive }) {
@@ -311,10 +322,11 @@ public struct Processor: Sendable {
       }
 
     case .convertVideo(let output):
+      let options = settings.format(output.rawValue)
       for (i, file) in files.enumerated() {
         let out = target(file, suffix: output.nameSuffix, ext: output.fileExtension)
         await record(&result, file: file, output: out) {
-          try await VideoOps.convert(file.url, to: output, destination: out) { p in
+          try await VideoOps.convert(file.url, to: output, options: options, destination: out) { p in
             progress?((Double(i) + p) / Double(files.count))
           }
         }
@@ -435,8 +447,19 @@ public struct Processor: Sendable {
     case .pdfToImages(let format):
       for file in files {
         do {
-          let outs = try PDFPageOps.images(file.url, format: format) { index in
-            target(file, suffix: "page \(index + 1)", ext: format.fileExtension)
+          // A presentation is exported to PDF first, then saved slide by slide.
+          var pages = file.url
+          var scratch: URL?
+          defer { scratch.map { try? FileManager.default.removeItem(at: $0) } }
+          if case .office(let office) = file.kind, office.isPresentation {
+            let dir = try SystemProcess.scratchDirectory()
+            scratch = dir
+            pages = dir.appendingPathComponent("slides.pdf")
+            try await IWorkOps.exportPDF(file.url, app: office.app, destination: pages)
+          }
+          let word = scratch == nil ? "page" : "slide"
+          let outs = try PDFPageOps.images(pages, format: format) { index in
+            target(file, suffix: "\(word) \(index + 1)", ext: format.fileExtension)
           }
           result.outputs += outs
         } catch {
@@ -490,6 +513,19 @@ public struct Processor: Sendable {
         await record(&result, file: file, output: out) {
           try DataOps.convert(file.url, to: output, destination: out)
         }
+      }
+
+    case .sheetsToCSV:
+      for (i, file) in files.enumerated() {
+        guard case .office(let format) = file.kind else { continue }
+        do {
+          result.outputs += try await SpreadsheetOps.exportCSV(file.url, format: format) { sheet in
+            target(file, suffix: sheet ?? "", ext: "csv")
+          }
+        } catch {
+          result.failures.append(.init(file: file.name, message: Self.message(for: error)))
+        }
+        progress?(Double(i + 1) / Double(files.count))
       }
 
     case .extractArchive:

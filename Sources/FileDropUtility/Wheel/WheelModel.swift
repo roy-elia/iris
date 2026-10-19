@@ -113,8 +113,10 @@ enum WheelCommand: Equatable {
   case organizePDF
   case convertSubtitles(SubtitleFormat)
   case convertData(DataFormat)
+  case sheetsToCSV
   case extractArchive
   case airDrop
+  case share
   case float
   case addToFloat
   case copy
@@ -217,6 +219,25 @@ extension WheelKind {
           WheelItem(id: "d-tiff", title: "TIFF", systemImage: nil, command: .pdfToTIFF),
           WheelItem(id: "d-cbz", title: "CBZ", systemImage: nil, command: .pdfToCBZ),
         ] + [DocumentOutput.docx, .rtf, .txt, .md, .html, .epub, .epubFixed].map(convert)
+      }
+      if files.allSatisfy(\.kind.hasPages) {
+        // Presentations: PDF, or one image per slide.
+        return [convert(.pdf)]
+          + [ImageFormat.png, .jpeg].map {
+            WheelItem(
+              id: "d-\($0.rawValue)", title: $0.displayName, systemImage: nil, command: .pdfToImages($0))
+          }
+      }
+      if files.allSatisfy(\.kind.isSpreadsheet) {
+        let problem = files.lazy.compactMap { file -> String? in
+          guard case .office(let format) = file.kind else { return nil }
+          return SpreadsheetOps.problem(format)
+        }.first
+        return [
+          convert(.pdf),
+          WheelItem(
+            id: "d-csv", title: "CSV", systemImage: nil, command: .sheetsToCSV, disabledReason: problem),
+        ]
       }
       // CSV tables also convert to JSON and vCard.
       return [DocumentOutput.pdf, .docx, .rtf, .txt, .md, .html, .epub, .pages].map(convert)
@@ -341,6 +362,7 @@ extension WheelKind {
       return [
         WheelItem(
           id: "airdrop", title: "AirDrop", systemImage: "dot.radiowaves.left.and.right", command: .airDrop),
+        WheelItem(id: "share", title: "Share", systemImage: "square.and.arrow.up", command: .share),
         WheelItem(id: "float", title: "Float", systemImage: "paperclip", command: .float),
         WheelItem(
           id: "float-add", title: "Add to Float", systemImage: "paperclip.badge.ellipsis",

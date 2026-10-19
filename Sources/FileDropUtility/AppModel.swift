@@ -209,6 +209,8 @@ final class AppModel: ObservableObject {
       run(.convertSubtitles(format), on: targets, origin: origin)
     case .convertData(let format):
       run(.convertData(format), on: targets, origin: origin)
+    case .sheetsToCSV:
+      run(.sheetsToCSV, on: targets, origin: origin)
     case .extractArchive:
       run(.extractArchive, on: targets, origin: origin)
     case .visualizer:
@@ -221,6 +223,8 @@ final class AppModel: ObservableObject {
       WindowManager.shared.openEditor(for: first, tool: tool, batch: tool == .crop ? images : [])
     case .airDrop:
       NSSharingService(named: .sendViaAirDrop)?.perform(withItems: fileURLs)
+    case .share:
+      SharePresenter.share(fileURLs)
     case .float:
       FloatManager.shared.create(with: fileURLs)
     case .addToFloat:
@@ -296,24 +300,9 @@ final class AppModel: ObservableObject {
     }
   }
 
-  struct TerminalApp {
-    let name: String
-    let bundleID: String
-  }
-
   /// Terminal apps installed on this Mac, Terminal first.
   var installedTerminals: [TerminalApp] {
-    let known: [(String, String)] = [
-      ("Terminal", "com.apple.Terminal"), ("iTerm2", "com.googlecode.iterm2"),
-      ("Warp", "dev.warp.Warp-Stable"),
-      ("Ghostty", "com.mitchellh.ghostty"), ("kitty", "net.kovidgoyal.kitty"), ("Alacritty", "org.alacritty"),
-      ("WezTerm", "com.github.wez.wezterm"),
-    ]
-    return known.filter {
-      NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0.1) != nil
-        || $0.1 == AppSettings.defaultTerminal
-    }
-    .map { TerminalApp(name: $0.0, bundleID: $0.1) }
+    TerminalApp.installed { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil }
   }
 
   /// Stops the running job, if any.
@@ -359,9 +348,10 @@ final class AppModel: ObservableObject {
 
   private func openTerminal(at urls: [URL]) {
     guard let folder = FileActions.commonFolder(of: urls),
-      let terminal =
-        NSWorkspace.shared.urlForApplication(withBundleIdentifier: settings.terminalBundleID)
-        ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: AppSettings.defaultTerminal)
+      let terminal = NSWorkspace.shared.urlForApplication(
+        withBundleIdentifier: TerminalApp.resolve(settings.terminalBundleID) {
+          NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil
+        })
     else { return }
     NSWorkspace.shared.open(
       [folder], withApplicationAt: terminal, configuration: NSWorkspace.OpenConfiguration())

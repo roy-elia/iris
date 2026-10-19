@@ -57,6 +57,7 @@ struct SettingsTab: View {
   @EnvironmentObject private var model: AppModel
   @State private var formatForDefaults: ImageFormat = .jpeg
   @State private var audioForDefaults: AudioOutput = .mp3
+  @State private var videoForDefaults: VideoOutput = .mp4
 
   var body: some View {
     Form {
@@ -186,6 +187,25 @@ struct SettingsTab: View {
       if formatForDefaults == .gif {
         Toggle("Keep animation (original dimensions)", isOn: formatBinding(\.keepOriginalDimensions))
       }
+      Picker("Video defaults", selection: $videoForDefaults) {
+        ForEach(VideoOutput.allCases.filter(\.usesVideoDefaults), id: \.self) { Text($0.displayName).tag($0) }
+      }
+      .pickerStyle(.menu)
+      .accessibilityIdentifier("videoDefaults")
+      Toggle("Keep original dimensions", isOn: videoKeepDimensions)
+      if !model.settings.format(videoForDefaults.rawValue).keepOriginalDimensions {
+        Picker("Maximum video height", selection: videoSetting(\.maxVideoHeight, fallback: 1080)) {
+          ForEach(FormatSettings.videoHeights, id: \.self) { Text("\($0)p").tag($0) }
+        }
+        .pickerStyle(.menu)
+      }
+      if videoForDefaults.usesBitrate {
+        Picker("Video bitrate", selection: videoBitrate) {
+          Text("Automatic").tag(0)
+          ForEach(FormatSettings.videoBitrates, id: \.self) { Text("\($0 / 1000) Mbps").tag($0) }
+        }
+        .pickerStyle(.menu)
+      }
       Picker("Audio defaults", selection: $audioForDefaults) {
         ForEach(AudioOutput.allCases, id: \.self) { Text($0.displayName).tag($0) }
       }
@@ -214,6 +234,39 @@ struct SettingsTab: View {
         var f = model.settings.format(audioForDefaults.rawValue)
         f[keyPath: keyPath] = value
         model.settings.formatSettings[audioForDefaults.rawValue] = f
+      })
+  }
+
+  private func videoSetting(_ keyPath: WritableKeyPath<FormatSettings, Int?>, fallback: Int) -> Binding<Int> {
+    Binding(
+      get: { model.settings.format(videoForDefaults.rawValue)[keyPath: keyPath] ?? fallback },
+      set: { value in
+        var f = model.settings.format(videoForDefaults.rawValue)
+        f[keyPath: keyPath] = value
+        model.settings.formatSettings[videoForDefaults.rawValue] = f
+      })
+  }
+
+  /// Turning "keep original dimensions" off starts from 1080p.
+  private var videoKeepDimensions: Binding<Bool> {
+    Binding(
+      get: { model.settings.format(videoForDefaults.rawValue).keepOriginalDimensions },
+      set: { keep in
+        var f = model.settings.format(videoForDefaults.rawValue)
+        f.keepOriginalDimensions = keep
+        if !keep && f.maxVideoHeight == nil { f.maxVideoHeight = 1080 }
+        model.settings.formatSettings[videoForDefaults.rawValue] = f
+      })
+  }
+
+  /// 0 stands for "Automatic" (constant quality).
+  private var videoBitrate: Binding<Int> {
+    Binding(
+      get: { model.settings.format(videoForDefaults.rawValue).videoBitrateKbps ?? 0 },
+      set: { value in
+        var f = model.settings.format(videoForDefaults.rawValue)
+        f.videoBitrateKbps = value == 0 ? nil : value
+        model.settings.formatSettings[videoForDefaults.rawValue] = f
       })
   }
 
