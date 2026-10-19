@@ -189,6 +189,7 @@
       case .splitPDF: return await window("Split", then: .splitPDF(.ranges("1, 2-")))
       case .convertSubtitles(let f): return await check(.convertSubtitles(f))
       case .extractArchive: return await check(.extractArchive)
+      case .zip: return await check(.zipFiles)
 
       case .compress:
         if first.kind.isVideo { return await window("Compress", then: .compressVideo(.strength(.medium))) }
@@ -439,6 +440,23 @@
       p.currentDirectoryURL = zipSource
       try p.run()
       p.waitUntilExit()
+      // Other archives, made by the bsdtar that unpacks them.
+      func bsdtar(_ args: [String]) throws {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
+        p.arguments = args
+        p.currentDirectoryURL = zipSource
+        try p.run()
+        p.waitUntilExit()
+      }
+      let sevenZip = file("photos.7z")
+      try bsdtar(["-c", "--format", "7zip", "-f", sevenZip.path, "photos"])
+      let tarball = file("photos.tar.gz")
+      try bsdtar(["-czf", tarball.path, "photos"])
+      let iso = file("disc.iso")
+      try bsdtar(["-c", "--format", "iso9660", "-f", iso.path, "photos"])
+      let gz = file("notes.md.gz")
+      try bsdtar(["-c", "--format", "raw", "-z", "-f", gz.path, "-C", dir.path, "notes.md"])
       let clip = file("snippet.textClipping")
       try PropertyListSerialization.data(
         fromPropertyList: ["UTI-Data": ["public.utf8-plain-text": "Clipped words"]], format: .binary,
@@ -456,6 +474,7 @@
         ("docx", [docx]), ("rtf", [rtf]), ("md", [md]), ("html", [html]), ("csv", [csv]),
         ("clipping", [clip]),
         ("srt", [srt]), ("vtt", [vtt]), ("zip", [zip]),
+        ("7z", [sevenZip]), ("tar.gz", [tarball]), ("iso", [iso]), ("gz", [gz]),
       ]
       return f
     }

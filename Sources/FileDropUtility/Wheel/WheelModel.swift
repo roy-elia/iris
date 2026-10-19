@@ -117,6 +117,7 @@ enum WheelCommand: Equatable {
   case addToFloat
   case copy
   case copyPath
+  case zip
   case move
   case terminal
 }
@@ -330,6 +331,7 @@ extension WheelKind {
         WheelItem(id: "copy", title: "Copy", systemImage: "doc.on.doc", command: .copy),
         WheelItem(id: "move", title: "Move", systemImage: "folder", command: .move),
         WheelItem(id: "copypath", title: "Copy Path", systemImage: "doc.text", command: .copyPath),
+        WheelItem(id: "zip", title: "Zip", systemImage: "doc.zipper", command: .zip),
         WheelItem(id: "terminal", title: "Terminal", systemImage: "terminal", command: .terminal),
       ]
     }

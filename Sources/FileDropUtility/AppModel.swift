@@ -126,6 +126,13 @@ final class AppModel: ObservableObject {
 
   /// Runs a wheel command on `urls` (from a drop) or, when empty, on the queued files.
   func perform(_ command: WheelCommand, urls: [URL], origin: Origin) {
+    if command == .zip {
+      // Zip takes anything, folders and file types the app doesn't otherwise handle included.
+      let items = urls.isEmpty ? files.map(\.url) : urls
+      let targets = items.map { DroppedFile(url: $0, kind: FileKind(url: $0), byteSize: 0) }
+      if !targets.isEmpty { run(.zipFiles, on: targets, origin: origin) }
+      return
+    }
     let targets: [DroppedFile]
     if urls.isEmpty {
       targets = files
@@ -224,6 +231,8 @@ final class AppModel: ObservableObject {
       move(fileURLs, origin: origin)
     case .terminal:
       openTerminal(at: fileURLs)
+    case .zip:
+      break  // Handled above, before the files are loaded.
     }
   }
 

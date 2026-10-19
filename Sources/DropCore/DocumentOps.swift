@@ -418,9 +418,127 @@ enum XMLScan {
 // MARK: - Archives
 
 public enum ArchiveOps {
+  /// Archive extensions unpacked with `bsdtar` (zip and CBZ go through ditto).
+  public static let bsdtarExtensions: Set<String> = [
+    "7z", "tar", "tgz", "tbz", "tbz2", "txz", "gz", "bz2", "xz", "iso",
+  ]
+  /// Extensions handled as zip.
+  public static let zipExtensions: Set<String> = ["zip", "cbz"]
+  /// Single compressed files (not tarballs), decompressed with `gzip -d`, which reads gzip,
+  /// bzip2 and xz.
+  static let streamExtensions: Set<String> = ["gz", "bz2", "xz"]
+
+  /// Whether `url` is an archive the app can unpack.
+  public static func isArchive(_ url: URL) -> Bool {
+    let ext = url.pathExtension.lowercased()
+    return zipExtensions.contains(ext) || bsdtarExtensions.contains(ext)
+  }
+
+  /// The name an archive unpacks to: "photos.tar.gz" → "photos", "notes.txt.gz" → "notes.txt".
+  public static func outputName(for url: URL) -> String {
+    var name = url.deletingPathExtension()
+    if name.pathExtension.lowercased() == "tar" { name = name.deletingPathExtension() }
+    return name.lastPathComponent
+  }
+
+  /// Whether `url` is one compressed file rather than an archive of files.
+  public static func isSingleStream(_ url: URL) async -> Bool {
+    let ext = url.pathExtension.lowercased()
+    guard streamExtensions.contains(ext),
+      url.deletingPathExtension().pathExtension.lowercased() != "tar"
+    else { return false }
+    // "backup.gz" may still hold a tar: only a stream bsdtar can't list is a single file.
+    return (try? await SystemProcess.run("/usr/bin/bsdtar", ["-tf", url.path])) == nil
+  }
+
+  /// Unpacks any supported archive into `directory`, after checking its entries (no
+  /// absolute paths or "..", at most 20,000 files and 2 GB). A single compressed file is
+  /// decompressed to `directory` itself, which is then a file path.
+  public static func extract(_ archive: URL, into directory: URL) async throws {
+    if zipExtensions.contains(archive.pathExtension.lowercased()) {
+      try await extractZip(archive, into: directory)
+    } else if await isSingleStream(archive) {
+      try await decompress(archive, to: directory)
+    } else {
+      try await extractWithBsdtar(archive, into: directory)
+    }
+  }
+
+  /// Lists entries with bsdtar, checks them, then extracts. bsdtar itself also refuses
+  /// absolute paths, ".." and writing through symlinks unless told otherwise.
+  static func extractWithBsdtar(_ archive: URL, into directory: URL) async throws {
+    let name = archive.lastPathComponent
+    guard let listing = try? await SystemProcess.run("/usr/bin/bsdtar", ["-tvf", archive.path]) else {
+      throw DropError.wrongInput("\(name) isn't an archive this Mac can open.")
+    }
+    let entries = String(decoding: listing.stdout, as: UTF8.self).split(separator: "\n").map(String.init)
+    if entries.count > EPUBOps.maxEntries {
+      throw DropError.wrongInput("\(name) has too many files to unpack.")
+    }
+    // Names come from a plain listing: in the verbose one, names with spaces are ambiguous.
+    let names = try await SystemProcess.run("/usr/bin/bsdtar", ["-tf", archive.path])
+    for entry in String(decoding: names.stdout, as: UTF8.self).split(separator: "\n")
+    where !isSafe(String(entry)) {
+      throw DropError.wrongInput("\(name) contains a file that would unpack outside its folder.")
+    }
+    if entries.compactMap(listedSize).reduce(0, +) > EPUBOps.maxUncompressedBytes {
+      throw DropError.wrongInput("\(name) would unpack to more than 2 GB.")
+    }
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    try await SystemProcess.run(
+      "/usr/bin/bsdtar",
+      ["-xf", archive.path, "-C", directory.path, "--no-same-owner", "--no-same-permissions"])
+  }
+
+  /// The size column of a `bsdtar -tv` line ("-rw-r--r--  0 user group  1234 Oct 19 01:23 name").
+  static func listedSize(_ line: String) -> Int64? {
+    let fields = line.split(separator: " ", maxSplits: 5, omittingEmptySubsequences: true)
+    guard fields.count > 4 else { return nil }
+    return Int64(fields[4])
+  }
+
+  /// Decompresses a gzip, bzip2 or xz file with `gzip -dc`, stopping at 2 GB.
+  static func decompress(_ archive: URL, to destination: URL) async throws {
+    let name = archive.lastPathComponent
+    guard FileManager.default.createFile(atPath: destination.path, contents: nil),
+      let out = try? FileHandle(forWritingTo: destination)
+    else { throw DropError.writeFailed(destination.lastPathComponent) }
+    defer { try? out.close() }
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/gzip")
+    process.arguments = ["-dc", archive.path]
+    let pipe = Pipe()
+    process.standardOutput = pipe
+    process.standardError = FileHandle.nullDevice
+    process.standardInput = FileHandle.nullDevice
+    try process.run()
+    var written: Int64 = 0
+    var tooBig = false
+    let reader = pipe.fileHandleForReading
+    while let chunk = try reader.read(upToCount: 1 << 20), !chunk.isEmpty {
+      written += Int64(chunk.count)
+      if written > EPUBOps.maxUncompressedBytes {
+        tooBig = true
+        process.terminate()
+        break
+      }
+      try out.write(contentsOf: chunk)
+      if Task.isCancelled {
+        process.terminate()
+        process.waitUntilExit()
+        throw CancellationError()
+      }
+    }
+    process.waitUntilExit()
+    if tooBig { throw DropError.wrongInput("\(name) would unpack to more than 2 GB.") }
+    guard process.terminationStatus == 0 else {
+      throw DropError.wrongInput("\(name) isn't a compressed file this Mac can open.")
+    }
+  }
+
   /// Checks a zip's entries (no absolute paths or "..", sane counts and sizes), then unpacks
   /// it into `directory` with ditto.
-  public static func extract(_ zip: URL, into directory: URL) async throws {
+  static func extractZip(_ zip: URL, into directory: URL) async throws {
     let name = zip.lastPathComponent
     let listing = try? await SystemProcess.run("/usr/bin/zipinfo", ["-1", zip.path])
     guard let listing else { throw DropError.wrongInput("\(name) isn't a zip archive.") }
@@ -446,6 +564,15 @@ public enum ArchiveOps {
   /// contents go at the archive's root. Several items are cloned (no extra disk space on APFS)
   /// into a staging folder first, since ditto takes one source.
   public static func zip(_ items: [URL], contentsOnly: Bool = false, destination: URL) async throws {
+    do {
+      try await zipWithDitto(items, contentsOnly: contentsOnly, destination: destination)
+    } catch {
+      try? FileManager.default.removeItem(at: destination)
+      throw error
+    }
+  }
+
+  private static func zipWithDitto(_ items: [URL], contentsOnly: Bool, destination: URL) async throws {
     guard let first = items.first else { throw DropError.wrongInput("Choose files to compress.") }
     let flags = ["-c", "-k", "--norsrc", "--noextattr", "--noqtn"]
     if items.count == 1 {

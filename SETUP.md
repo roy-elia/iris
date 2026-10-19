@@ -36,7 +36,7 @@ wording, code or bundled tools.
 |---|---|---|
 | Convert | ⇧ Shift (configurable) | PNG, PDF, JPEG, HEIC, AVIF, TIFF, BMP, WebP (bundled cwebp), GIF (animations keep every frame), ICO (16–256 px), ICNS (16–1024 px), JPEG 2000, TGA, OpenEXR. Inputs also include SVG, camera RAW (CR2, CR3, NEF, ARW, DNG, RAF, ORF and the other RAWs ImageIO reads), PSD, PPM/PGM/PBM and Radiance HDR. |
 | Tools | ⌘ Command (configurable) | Compress (presets or a target size), Metadata (view, edit, remove location, strip), Annotate, Redact, Crop (one or many images), Add BG (remove, colour or image), Frame, Collage, QR Code, Resize (longest side in px, or %), Grayscale, Adjust |
-| Actions | ⌃ Control | AirDrop, Float, Copy, Move, Copy Path, Terminal |
+| Actions | ⌃ Control | AirDrop, Float, Copy, Move, Copy Path, Zip (any files or folders into one archive), Terminal |
 
 A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the queued files don't fit it. Press the modifier any time during the drag, even with the pointer still. Switching modifiers switches the wheel. Letting go of the key closes the wheel unless you're over it, and Escape closes it. While dragging over the overlay wheel, the segment under the pointer lights up in the accent colour with a soft glow, the centre pill shows its name, and a soft tick plays (with a trackpad tap). A drop plays a pop, runs the command, and reports the result in a glass toast at the top of the screen.
 
@@ -73,7 +73,7 @@ A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the
 - Pages without selectable text are read with Vision OCR.
 - **Tools wheel:** Organize, Split (one PDF per page, or page ranges such as "1-3, 7, 9-"), Compress, Merge. The organizer is a thumbnail grid: drag or use the arrows to reorder, turn pages, delete them (⌫), and optionally scale every page to the same width.
 
-**Subtitles:** SRT ↔ VTT. **Archives:** zip → a folder next to it (checked for unsafe paths, more than 20,000 files, or more than 2 GB unpacked).
+**Subtitles:** SRT ↔ VTT. **Archives:** zip, CBZ, 7z, tar, tar.gz/tgz, tar.bz2, tar.xz and ISO → a folder next to it; a single .gz, .bz2 or .xz file → the file inside. Every archive is checked first for unsafe paths, more than 20,000 files, or more than 2 GB unpacked (zip with ditto, the rest with macOS's bsdtar).
 
 **Shell:**
 - **Floats:** the Actions wheel's Float puts the files in a glass tab tucked against the right screen edge (Add to Float adds to the latest one). Hover to open it into a stack. Drag the tab or its header to carry every file, drag a row for one file, double-click to open, right-click for Open, Show in Finder, Copy Path, Remove from Float and Close Float. Drag the grip to move it; it snaps to the nearer edge. Drop files on a Float to add them. Floats are saved and come back after a relaunch; closing one never touches the files.

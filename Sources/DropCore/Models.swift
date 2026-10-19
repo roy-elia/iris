@@ -197,7 +197,7 @@ public enum FileKind: Equatable, Sendable {
       self = .office(format)
     } else if let format = SubtitleFormat(rawValue: ext.lowercased()) {
       self = .subtitle(format)
-    } else if ext.lowercased() == "zip" {
+    } else if ArchiveOps.isArchive(url) {
       self = .archive
     } else if ext.lowercased() == "pdf" {
       self = .pdf
@@ -327,13 +327,15 @@ public enum FileOperation: Codable, Equatable, Sendable {
   case organizePDF(PDFPagePlan)
   case convertSubtitles(SubtitleFormat)
   case extractArchive
+  /// Compress all the files into one zip.
+  case zipFiles
 
   /// Whether the operation is long-running media work.
   public var isMedia: Bool {
     switch self {
     case .convertVideo, .compressVideo, .editVideo, .splitVideo, .joinVideos, .videoSnapshots, .convertAudio,
       .editAudio, .audioVisualizer, .convertDocument, .pdfToImages, .pdfToTIFF,
-      .pdfToCBZ, .extractArchive:
+      .pdfToCBZ, .extractArchive, .zipFiles:
       true
     default: false
     }
@@ -376,6 +378,7 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .organizePDF: "Organize PDF"
     case .convertSubtitles(let format): "Convert to \(format.displayName)"
     case .extractArchive: "Extract archive"
+    case .zipFiles: "Zip"
     }
   }
 }

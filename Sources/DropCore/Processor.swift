@@ -113,7 +113,11 @@ public struct Processor: Sendable {
         return "\(operation.summary) works on SRT and VTT subtitles."
       }
     case .extractArchive:
-      if files.contains(where: { $0.kind != .archive }) { return "Extract works on zip archives." }
+      if files.contains(where: { $0.kind != .archive }) {
+        return "Extract works on zip, 7z, tar, gz, bz2, xz and ISO archives."
+      }
+    case .zipFiles:
+      break
     case .joinVideos:
       if !allVideos { return videosOnly(operation) }
       if files.count < 2 { return "Select at least two videos to join." }
@@ -464,10 +468,18 @@ public struct Processor: Sendable {
 
     case .extractArchive:
       for file in files {
-        let folder = claim(outputDirectory(for: file.url).appendingPathComponent(base(file)))
+        let folder = claim(
+          outputDirectory(for: file.url).appendingPathComponent(ArchiveOps.outputName(for: file.url)))
         await record(&result, file: file, output: folder) {
           try await DocumentOps.extract(file.url, into: folder)
         }
+      }
+
+    case .zipFiles:
+      let name = files.count == 1 ? files[0].name : "Archive"
+      let out = claim(outputDirectory(for: files[0].url).appendingPathComponent("\(name).zip"))
+      await record(&result, file: nil, output: out) {
+        try await ArchiveOps.zip(files.map(\.url), destination: out)
       }
 
     case .mergePDFs:
