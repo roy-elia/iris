@@ -79,5 +79,99 @@
       out += le32(0) + extra + pixels
       try Data(out).write(to: url)
     }
+
+    /// Zips XML parts into a workbook (the layout .xlsx and .ods files use).
+    static func zipParts(_ parts: [String: String], to url: URL) async throws {
+      let dir = try SystemProcess.scratchDirectory()
+      defer { try? FileManager.default.removeItem(at: dir) }
+      for (path, text) in parts {
+        let file = dir.appendingPathComponent(path)
+        try FileManager.default.createDirectory(
+          at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(text.utf8).write(to: file)
+      }
+      try? FileManager.default.removeItem(at: url)
+      try await SystemProcess.run("/usr/bin/zip", ["-qrX", url.path, "."], in: dir)
+    }
+
+    /// An Excel workbook with two sheets of inline-string and number cells.
+    public static func writeXLSX(to url: URL) async throws {
+      let ns = "http://schemas.openxmlformats.org"
+      let rel = "\(ns)/officeDocument/2006/relationships"
+      let main = "application/vnd.openxmlformats-officedocument.spreadsheetml"
+      func sheet(_ rows: [[String]]) -> String {
+        let body = rows.enumerated().map { r, cells in
+          let cs = cells.enumerated().map { c, v in
+            let ref = "\(Character(UnicodeScalar(65 + c)!))\(r + 1)"
+            return Double(v) != nil
+              ? "<c r=\"\(ref)\"><v>\(v)</v></c>" : "<c r=\"\(ref)\" t=\"inlineStr\"><is><t>\(v)</t></is></c>"
+          }.joined()
+          return "<row r=\"\(r + 1)\">\(cs)</row>"
+        }.joined()
+        return "<worksheet xmlns=\"\(ns)/spreadsheetml/2006/main\"><sheetData>\(body)</sheetData></worksheet>"
+      }
+      try await zipParts(
+        [
+          "[Content_Types].xml": """
+          <Types xmlns="\(ns)/package/2006/content-types">\
+          <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>\
+          <Default Extension="xml" ContentType="application/xml"/>\
+          <Override PartName="/xl/workbook.xml" ContentType="\(main).sheet.main+xml"/>\
+          <Override PartName="/xl/worksheets/sheet1.xml" ContentType="\(main).worksheet+xml"/>\
+          <Override PartName="/xl/worksheets/sheet2.xml" ContentType="\(main).worksheet+xml"/></Types>
+          """,
+          "_rels/.rels": """
+          <Relationships xmlns="\(ns)/package/2006/relationships">\
+          <Relationship Id="rId1" Type="\(rel)/officeDocument" Target="xl/workbook.xml"/></Relationships>
+          """,
+          "xl/_rels/workbook.xml.rels": """
+          <Relationships xmlns="\(ns)/package/2006/relationships">\
+          <Relationship Id="rId1" Type="\(rel)/worksheet" Target="worksheets/sheet1.xml"/>\
+          <Relationship Id="rId2" Type="\(rel)/worksheet" Target="worksheets/sheet2.xml"/></Relationships>
+          """,
+          "xl/workbook.xml": """
+          <workbook xmlns="\(ns)/spreadsheetml/2006/main" xmlns:r="\(rel)"><sheets>\
+          <sheet name="Budget" sheetId="1" r:id="rId1"/><sheet name="Staff" sheetId="2" r:id="rId2"/>\
+          </sheets></workbook>
+          """,
+          "xl/worksheets/sheet1.xml": sheet([["Item", "Cost"], ["Paper", "12.5"], ["Ink", "30"]]),
+          "xl/worksheets/sheet2.xml": sheet([["Name", "Role"], ["Ada", "Lead"]]),
+        ], to: url)
+    }
+
+    /// An OpenDocument spreadsheet with one sheet.
+    public static func writeODS(to url: URL) async throws {
+      let cell = { (v: String) in "<table:table-cell><text:p>\(v)</text:p></table:table-cell>" }
+      let rows = [["Day", "Steps"], ["Mon", "4200"], ["Tue", "6100"]].map {
+        "<table:table-row>\($0.map(cell).joined())</table:table-row>"
+      }.joined()
+      try await zipParts(
+        [
+          "mimetype": "application/vnd.oasis.opendocument.spreadsheet",
+          "META-INF/manifest.xml": """
+          <manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" \
+          manifest:version="1.2"><manifest:file-entry manifest:full-path="/" \
+          manifest:media-type="application/vnd.oasis.opendocument.spreadsheet"/>\
+          <manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/>\
+          </manifest:manifest>
+          """,
+          "content.xml": """
+          <office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" \
+          xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" \
+          xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"><office:body><office:spreadsheet>\
+          <table:table table:name="Walks">\(rows)</table:table></office:spreadsheet></office:body>\
+          </office:document-content>
+          """,
+        ], to: url)
+    }
+
+    /// A Keynote package holding only its saved preview, `pdf`. Without Keynote installed
+    /// the app converts it from that preview.
+    public static func writeKeynotePackage(to url: URL, preview pdf: URL) throws {
+      let folder = url.appendingPathComponent("QuickLook")
+      try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+      try? FileManager.default.removeItem(at: folder.appendingPathComponent("Preview.pdf"))
+      try FileManager.default.copyItem(at: pdf, to: folder.appendingPathComponent("Preview.pdf"))
+    }
   }
 #endif

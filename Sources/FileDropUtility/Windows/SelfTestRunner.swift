@@ -293,7 +293,8 @@
       case .copy:
         AppModel.shared.perform(command, urls: urls, origin: .overlay)
         let copied = NSPasteboard.general.readObjects(forClasses: [NSURL.self]) as? [URL] ?? []
-        return copied.map(\.standardizedFileURL) == urls.map(\.standardizedFileURL)
+        // Paths, not URLs: a package's URL loses its trailing slash on the pasteboard.
+        return copied.map(\.standardizedFileURL.path) == urls.map(\.standardizedFileURL.path)
           ? ("PASS", "\(copied.count) file(s) on the pasteboard") : ("FAIL", "pasteboard has \(copied)")
       case .copyPath:
         AppModel.shared.perform(command, urls: urls, origin: .overlay)
@@ -591,6 +592,12 @@
         options: 0
       ).write(to: clip)
 
+      let xlsx = file("budget.xlsx")
+      try await SampleFiles.writeXLSX(to: xlsx)
+      let ods = file("walks.ods")
+      try await SampleFiles.writeODS(to: ods)
+      let key = file("talk.key")
+      try SampleFiles.writeKeynotePackage(to: key, preview: pdf2)
       var f = Fixtures(extra: md)
       f.groups = [
         ("png", [scene]), ("jpg", [jpg]), ("heic", [heic]), ("svg", [svg]), ("qr", [qr]),
@@ -602,7 +609,7 @@
         ("pdf", [pdf]), ("pdfs×2", [pdf, pdf2]),
         ("docx", [docx]), ("rtf", [rtf]), ("md", [md]), ("html", [html]), ("csv", [csv]),
         ("contacts.csv", [contactsCSV]), ("json", [json]), ("xml", [xml]), ("plist", [plist]), ("vcf", [vcf]),
-        ("clipping", [clip]),
+        ("clipping", [clip]), ("xlsx", [xlsx]), ("ods", [ods]), ("key", [key]),
         ("srt", [srt]), ("vtt", [vtt]), ("ass", [ass]), ("smi", [smi]), ("lrc", [lrc]), ("zip", [zip]),
         ("7z", [sevenZip]), ("tar.gz", [tarball]), ("iso", [iso]), ("gz", [gz]),
       ]
