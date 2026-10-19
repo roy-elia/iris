@@ -234,6 +234,16 @@ public struct VideoRecipe: Codable, Sendable {
 
 ## 3. Phases
 
+**Status:**
+- **Phase 0:** done (2026-10-18):
+  - `JobEngine`, `ToolRunner` and the helpers built and bundled
+  - per-wheel modifier combinations (Settings pickers, exact match, swap on conflict)
+  - sound and haptics toggle
+  - terminal app picker
+  - per-format settings model (`AppSettings.formatSettings`, `quality(for:)`)
+  - job progress and Stop in the status menu
+- **Not in Phase 0, deferred to phase 1:** the per-format settings *UI*. Its options only matter once WebP, GIF and media outputs exist.
+
 Each phase ends with tests, lint, the snapshot sheets, a hand check against Tangerine, and a commit.
 
 | Phase | Scope | Size | Depends on |

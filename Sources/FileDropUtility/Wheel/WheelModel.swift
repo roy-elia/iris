@@ -22,21 +22,25 @@ enum WheelKind: String, CaseIterable, Identifiable {
     }
   }
 
-  var keySymbol: String {
+  /// The modifier combination that opens this wheel, from Settings.
+  func combo(in modifiers: WheelModifiers) -> ModifierCombo {
     switch self {
-    case .convert: "⇧"
-    case .tools: "⌘"
-    case .actions: "⌃"
+    case .convert: modifiers.convert
+    case .tools: modifiers.tools
+    case .actions: modifiers.actions
     }
   }
 
-  var keyName: String {
+  func setCombo(_ combo: ModifierCombo, in modifiers: inout WheelModifiers) {
     switch self {
-    case .convert: "shift"
-    case .tools: "command"
-    case .actions: "control"
+    case .convert: modifiers.convert = combo
+    case .tools: modifiers.tools = combo
+    case .actions: modifiers.actions = combo
     }
   }
+
+  @MainActor var keySymbol: String { combo(in: AppModel.shared.settings.wheelModifiers).symbols }
+  @MainActor var keyName: String { combo(in: AppModel.shared.settings.wheelModifiers).names }
 
   var systemImage: String {
     switch self {
@@ -46,13 +50,14 @@ enum WheelKind: String, CaseIterable, Identifiable {
     }
   }
 
-  /// Which wheel the currently held modifiers ask for, if any.
-  static func forModifiers(_ flags: NSEvent.ModifierFlags) -> WheelKind? {
-    let flags = flags.intersection(.deviceIndependentFlagsMask)
-    if flags.contains(.shift) { return .convert }
-    if flags.contains(.command) { return .tools }
-    if flags.contains(.control) { return .actions }
-    return nil
+  /// Which wheel the held modifiers ask for, if any. The combination must match
+  /// exactly, so ⇧⌘ doesn't open the ⇧ wheel.
+  static func forModifiers(_ flags: NSEvent.ModifierFlags, in modifiers: WheelModifiers) -> WheelKind? {
+    let combo = ModifierCombo(
+      shift: flags.contains(.shift), command: flags.contains(.command), control: flags.contains(.control),
+      option: flags.contains(.option))
+    guard !combo.isEmpty else { return nil }
+    return allCases.first { $0.combo(in: modifiers) == combo }
   }
 }
 

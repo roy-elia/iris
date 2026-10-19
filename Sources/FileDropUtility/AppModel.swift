@@ -11,6 +11,9 @@ final class AppModel: ObservableObject {
   @Published var files: [DroppedFile] = []
   @Published var rejected: [String] = []
   @Published var isRunning = false
+  /// Progress of the running job, 0…1, or nil when none is running.
+  @Published var progress: Double?
+  private var currentJob: JobHandle?
   @Published var lastResult: OperationResult?
   @Published var lastOperation: String?
   @Published var history: [HistoryEntry]
@@ -101,7 +104,7 @@ final class AppModel: ObservableObject {
 
     switch command {
     case .convert(let format):
-      run(.convert(format, quality: settings.quality), on: targets, origin: origin)
+      run(.convert(format, quality: settings.quality(for: format.rawValue)), on: targets, origin: origin)
     case .toPDF:
       let allPDFs = targets.allSatisfy { $0.kind == .pdf }
       run(allPDFs ? .mergePDFs : .imagesToPDF, on: targets, origin: origin)
@@ -136,14 +139,57 @@ final class AppModel: ObservableObject {
   /// Runs a file operation off the main thread and records it.
   func run(_ operation: FileOperation, on targets: [DroppedFile], origin: Origin) {
     guard !isRunning else { return }
-    let processor = Processor(settings: settings)
     isRunning = true
+    progress = 0
+    let handle = JobEngine.shared.submit(
+      ProcessorJob(operation: operation, files: targets, settings: settings))
+    currentJob = handle
+    handle.observe { [weak self] state in
+      guard case .running(let fraction) = state else { return }
+      Task { @MainActor in
+        if self?.currentJob === handle { self?.progress = fraction }
+      }
+    }
     Task {
-      let result = await Task.detached { processor.run(operation, on: targets) }.value
+      let result = await handle.result()
+      currentJob = nil
       isRunning = false
-      finish(result, operation: operation.summary, origin: origin, inputCount: targets.count)
+      progress = nil
+      switch handle.state {
+      case .finished(let result):
+        finish(result, operation: operation.summary, origin: origin, inputCount: targets.count)
+      case .failed(let message):
+        finish(
+          OperationResult(outputs: [], failures: [.init(file: "", message: message)]),
+          operation: operation.summary, origin: origin, inputCount: targets.count)
+      default:
+        _ = result
+      }
     }
   }
+
+  struct TerminalApp {
+    let name: String
+    let bundleID: String
+  }
+
+  /// Terminal apps installed on this Mac, Terminal first.
+  var installedTerminals: [TerminalApp] {
+    let known: [(String, String)] = [
+      ("Terminal", "com.apple.Terminal"), ("iTerm2", "com.googlecode.iterm2"),
+      ("Warp", "dev.warp.Warp-Stable"),
+      ("Ghostty", "com.mitchellh.ghostty"), ("kitty", "net.kovidgoyal.kitty"), ("Alacritty", "org.alacritty"),
+      ("WezTerm", "com.github.wez.wezterm"),
+    ]
+    return known.filter {
+      NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0.1) != nil
+        || $0.1 == AppSettings.defaultTerminal
+    }
+    .map { TerminalApp(name: $0.0, bundleID: $0.1) }
+  }
+
+  /// Stops the running job, if any.
+  func cancelCurrentJob() { currentJob?.cancel() }
 
   private func finish(_ result: OperationResult, operation: String, origin: Origin, inputCount: Int = 0) {
     lastResult = result
@@ -177,7 +223,9 @@ final class AppModel: ObservableObject {
 
   private func openTerminal(at urls: [URL]) {
     guard let folder = FileActions.commonFolder(of: urls),
-      let terminal = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal")
+      let terminal =
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: settings.terminalBundleID)
+        ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: AppSettings.defaultTerminal)
     else { return }
     NSWorkspace.shared.open(
       [folder], withApplicationAt: terminal, configuration: NSWorkspace.OpenConfiguration())

@@ -100,8 +100,38 @@ struct SettingsTab: View {
       .glassCard()
 
       VStack(alignment: .leading, spacing: 8) {
-        Toggle("Wheels while dragging (⇧ ⌘ ⌃)", isOn: $model.settings.wheelTriggerEnabled)
+        Toggle("Wheels while dragging", isOn: $model.settings.wheelTriggerEnabled)
           .accessibilityIdentifier("wheelTrigger")
+        Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 6) {
+          ForEach(WheelKind.allCases) { kind in
+            GridRow {
+              Text(kind.title)
+              Picker(kind.title, selection: modifierBinding(for: kind)) {
+                ForEach(ModifierCombo.choices, id: \.self) { combo in
+                  Text("\(combo.symbols)  \(combo.names)").tag(combo)
+                }
+              }
+              .pickerStyle(.menu)
+              .labelsHidden()
+              .fixedSize()
+              .accessibilityIdentifier("modifier-\(kind.rawValue)")
+            }
+          }
+        }
+        .disabled(!model.settings.wheelTriggerEnabled)
+        Toggle("Sound and haptic feedback", isOn: $model.settings.soundAndHaptics)
+          .accessibilityIdentifier("soundAndHaptics")
+      }
+      .glassCard()
+
+      VStack(alignment: .leading, spacing: 8) {
+        Picker("Terminal app", selection: $model.settings.terminalBundleID) {
+          ForEach(model.installedTerminals, id: \.bundleID) { app in
+            Text(app.name).tag(app.bundleID)
+          }
+        }
+        .pickerStyle(.menu)
+        .accessibilityIdentifier("terminalApp")
         Toggle(
           "Launch at login",
           isOn: Binding(get: { model.settings.launchAtLogin }, set: { model.setLaunchAtLogin($0) })
@@ -113,6 +143,21 @@ struct SettingsTab: View {
       }
       .glassCard()
     }
+  }
+
+  /// Picking a combination another wheel uses swaps the two, so no two wheels share one.
+  private func modifierBinding(for kind: WheelKind) -> Binding<ModifierCombo> {
+    Binding(
+      get: { kind.combo(in: model.settings.wheelModifiers) },
+      set: { combo in
+        var modifiers = model.settings.wheelModifiers
+        let previous = kind.combo(in: modifiers)
+        for other in WheelKind.allCases where other != kind && other.combo(in: modifiers) == combo {
+          other.setCombo(previous, in: &modifiers)
+        }
+        kind.setCombo(combo, in: &modifiers)
+        model.settings.wheelModifiers = modifiers
+      })
   }
 
   private var locationLabel: String {

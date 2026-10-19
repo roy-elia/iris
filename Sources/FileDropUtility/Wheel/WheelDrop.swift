@@ -8,14 +8,18 @@ enum WheelFeedback {
   private static let hoverSounds = SoundPool(name: "Tink", volume: 0.45, voices: 4)
   private static let dropSounds = SoundPool(name: "Pop", volume: 0.7, voices: 2)
 
+  private static var enabled: Bool { AppModel.shared.settings.soundAndHaptics }
+
   /// A light tick when the pointer moves onto a new segment.
   static func hover() {
+    guard enabled else { return }
     hoverSounds.play()
     NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
   }
 
   /// A pop when files are dropped on a segment.
   static func drop() {
+    guard enabled else { return }
     dropSounds.play()
     NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
   }

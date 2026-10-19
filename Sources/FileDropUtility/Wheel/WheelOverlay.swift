@@ -86,7 +86,7 @@ final class DragWatcher {
       buttonDown: buttonDown,
       pasteboardChangeCount: changeCount,
       mayHoldFiles: types.isEmpty || types.contains(.fileURL),
-      kind: WheelKind.forModifiers(flags),
+      kind: WheelKind.forModifiers(flags, in: AppModel.shared.settings.wheelModifiers),
       escapeDown: CGEventSource.keyState(.combinedSessionState, key: 53),
       dragInsideWheel: overlay.isDragInside)
 

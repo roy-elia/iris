@@ -23,13 +23,26 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>0.1.0</string>
   <key>CFBundleVersion</key><string>1</string>
-  <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>LSMinimumSystemVersion</key><string>26.0</string>
   <key>LSUIElement</key><true/>
   <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
   <key>NSHighResolutionCapable</key><true/>
 </dict>
 </plist>
 PLIST
+
+# Bundled helpers (see scripts/fetch-tools.sh): Mach-O tools in Contents/Helpers, the
+# ExifTool Perl distribution and all licences in Contents/Resources.
+TOOLS="Vendor/out"
+if [[ -x "$TOOLS/bin/ffmpeg" && -x "$TOOLS/bin/cwebp" && -f "$TOOLS/exiftool/exiftool" ]]; then
+  mkdir -p "$APP/Contents/Helpers" "$APP/Contents/Resources"
+  cp "$TOOLS/bin/ffmpeg" "$TOOLS/bin/ffprobe" "$TOOLS/bin/cwebp" "$APP/Contents/Helpers/"
+  cp -R "$TOOLS/exiftool" "$APP/Contents/Resources/exiftool"
+  cp -R "$TOOLS/licenses" "$APP/Contents/Resources/Licenses"
+  for tool in "$APP"/Contents/Helpers/*; do codesign --force --sign - "$tool"; done
+else
+  echo "warning: bundled tools missing; run scripts/fetch-tools.sh (media, WebP and metadata tools will be unavailable)" >&2
+fi
 
 codesign --force --sign - "$APP"
 echo "Built $APP"

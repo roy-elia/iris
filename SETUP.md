@@ -114,25 +114,34 @@ Increase Contrast can't be switched on per window, so the snapshots use macOS's 
 
 ## Dependencies and licences
 
-No third-party packages.
+No third-party Swift packages. Four command-line helpers are bundled as separate executables, fetched and built by `scripts/fetch-tools.sh`. That script uses pinned versions from the official sites and checks each SHA-256. The ffmpeg and WebP archives were also GPG-verified when first downloaded (2026-10-18).
 
 | Dependency | Licence | Use |
 |---|---|---|
 | Apple SDK frameworks | Apple SDK licence | App and core |
+| ffmpeg 9.0.2 + ffprobe, built from source **LGPL-only** (`--disable-gpl --disable-nonfree --disable-autodetect`), links only macOS system libraries | LGPL v3 | Audio and video (phases 2–3) |
+| LAME 3.100, static inside ffmpeg | LGPL v2 | MP3 encoding |
+| cwebp 1.6.0 (Google's signed macOS arm64 build) | BSD-3-Clause + patent grant | WebP export (phase 1) |
+| ExifTool 13.59, run with macOS's `/usr/bin/perl` | Artistic or GPL (Perl terms) | Metadata view/edit (phase 1) |
 | swift-testing | Apache 2.0 with Runtime Library Exception | Tests |
 | swift-format | Apache 2.0 | Lint |
 | SF Symbols | Apple SF Symbols licence | Icons |
 
-There are no API keys or network calls, so there is no `.env`.
+Licences and source URLs ship in the app at `Contents/Resources/Licenses` (`SOURCES.txt` lists versions and hashes). The LGPL lets you swap in your own ffmpeg build: replace `Contents/Helpers/ffmpeg`.
+
+Verification note: the WebP release key (fingerprint 6B0E 6B70 976D E303 EDF2 F601 F9C3 D6BD B823 2B5D) came from keyserver.ubuntu.com, because Google's download page doesn't publish it. The signature matched it.
+
+There are no API keys or network calls at runtime, so there is no `.env`.
 
 ## Run, test, build
 
 ```bash
 cd /Users/royelia/file-drop-utility
-scripts/test.sh                 # 71 tests
+scripts/fetch-tools.sh          # once: download, verify and build the helpers into Vendor/ (~5 min)
+scripts/test.sh                 # 98 tests (tool tests skip if Vendor/out is missing)
 scripts/lint.sh                 # swift-format --strict
 swift build
-scripts/bundle.sh               # dist/File Drop Utility.app (ad-hoc signed)
+scripts/bundle.sh               # dist/File Drop Utility.app (ad-hoc signed), helpers included
 open "dist/File Drop Utility.app"
 .build/debug/FileDropUtility --snapshot /tmp/fdu-snaps          # all screens × 5 appearances
 .build/debug/FileDropUtility --snapshot /tmp/fdu-snaps --only Editor

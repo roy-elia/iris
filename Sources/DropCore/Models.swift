@@ -185,6 +185,100 @@ public enum OutputLocation: Codable, Equatable, Sendable {
 }
 
 /// User preferences, persisted between launches.
+/// A modifier-key combination, stored independently of AppKit.
+public struct ModifierCombo: Codable, Hashable, Sendable {
+  public var shift: Bool
+  public var command: Bool
+  public var control: Bool
+  public var option: Bool
+
+  public init(shift: Bool = false, command: Bool = false, control: Bool = false, option: Bool = false) {
+    self.shift = shift
+    self.command = command
+    self.control = control
+    self.option = option
+  }
+
+  public var isEmpty: Bool { !(shift || command || control || option) }
+
+  /// Key symbols in Apple's standard order: ⌃ ⌥ ⇧ ⌘.
+  public var symbols: String {
+    (control ? "⌃" : "") + (option ? "⌥" : "") + (shift ? "⇧" : "") + (command ? "⌘" : "")
+  }
+
+  /// Spoken or written names, in the same order.
+  public var names: String {
+    [control ? "control" : nil, option ? "option" : nil, shift ? "shift" : nil, command ? "command" : nil]
+      .compactMap { $0 }.joined(separator: " + ")
+  }
+
+  /// The choices offered in Settings: each single key, then the common pairs.
+  public static let choices: [ModifierCombo] = [
+    .init(shift: true), .init(command: true), .init(control: true), .init(option: true),
+    .init(shift: true, command: true), .init(control: true, option: true),
+    .init(shift: true, control: true), .init(command: true, option: true),
+  ]
+}
+
+/// Which modifier combination opens each wheel while dragging.
+public struct WheelModifiers: Codable, Equatable, Sendable {
+  public var convert: ModifierCombo
+  public var tools: ModifierCombo
+  public var actions: ModifierCombo
+
+  public init(
+    convert: ModifierCombo = .init(shift: true), tools: ModifierCombo = .init(command: true),
+    actions: ModifierCombo = .init(control: true)
+  ) {
+    self.convert = convert
+    self.tools = tools
+    self.actions = actions
+  }
+
+  /// Two wheels sharing a combination, or an empty combination, can't work.
+  public var isValid: Bool {
+    let all = [convert, tools, actions]
+    return Set(all).count == all.count && !all.contains(where: \.isEmpty)
+  }
+}
+
+/// Defaults for one output format, set where you choose that format.
+public struct FormatSettings: Codable, Equatable, Sendable {
+  /// Overrides the global quality for lossy formats.
+  public var quality: Double?
+  public var preserveMetadata: Bool
+  /// Keep pixel dimensions (needed to keep an animation).
+  public var keepOriginalDimensions: Bool
+  public var maxVideoHeight: Int?
+  public var audioBitrateKbps: Int?
+  public var audioBitDepth: Int?
+
+  public init(
+    quality: Double? = nil, preserveMetadata: Bool = true, keepOriginalDimensions: Bool = true,
+    maxVideoHeight: Int? = nil, audioBitrateKbps: Int? = nil, audioBitDepth: Int? = nil
+  ) {
+    self.quality = quality.map(AppSettings.clampQuality)
+    self.preserveMetadata = preserveMetadata
+    self.keepOriginalDimensions = keepOriginalDimensions
+    self.maxVideoHeight = maxVideoHeight
+    self.audioBitrateKbps = audioBitrateKbps
+    self.audioBitDepth = audioBitDepth
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let d = FormatSettings()
+    let c = try decoder.container(keyedBy: CodingKeys.self)
+    quality = (try? c.decodeIfPresent(Double.self, forKey: .quality)).flatMap { $0 }.map(
+      AppSettings.clampQuality)
+    preserveMetadata = (try? c.decode(Bool.self, forKey: .preserveMetadata)) ?? d.preserveMetadata
+    keepOriginalDimensions =
+      (try? c.decode(Bool.self, forKey: .keepOriginalDimensions)) ?? d.keepOriginalDimensions
+    maxVideoHeight = (try? c.decodeIfPresent(Int.self, forKey: .maxVideoHeight)).flatMap { $0 }
+    audioBitrateKbps = (try? c.decodeIfPresent(Int.self, forKey: .audioBitrateKbps)).flatMap { $0 }
+    audioBitDepth = (try? c.decodeIfPresent(Int.self, forKey: .audioBitDepth)).flatMap { $0 }
+  }
+}
+
 public struct AppSettings: Codable, Equatable, Sendable {
   public static let qualityRange: ClosedRange<Double> = 0.1...1.0
 
@@ -198,6 +292,24 @@ public struct AppSettings: Codable, Equatable, Sendable {
   public var wheelTriggerEnabled: Bool
   public var appearance: AppearancePreference
   public var hasCompletedOnboarding: Bool
+  public var wheelModifiers: WheelModifiers
+  /// The wheel's hover tick, drop pop and trackpad haptics.
+  public var soundAndHaptics: Bool
+  /// The app "Open Terminal" uses.
+  public var terminalBundleID: String
+  /// Per-output-format defaults, keyed by format identifier ("jpeg", "mp4", "mp3", …).
+  public var formatSettings: [String: FormatSettings]
+
+  public static let defaultTerminal = "com.apple.Terminal"
+
+  /// The quality to use for `formatID`: its own setting, else the global one.
+  public func quality(for formatID: String) -> Double {
+    formatSettings[formatID]?.quality ?? quality
+  }
+
+  public func format(_ formatID: String) -> FormatSettings {
+    formatSettings[formatID] ?? FormatSettings()
+  }
 
   public init(
     defaultFormat: ImageFormat = .png,
@@ -206,7 +318,11 @@ public struct AppSettings: Codable, Equatable, Sendable {
     launchAtLogin: Bool = false,
     wheelTriggerEnabled: Bool = true,
     appearance: AppearancePreference = .system,
-    hasCompletedOnboarding: Bool = false
+    hasCompletedOnboarding: Bool = false,
+    wheelModifiers: WheelModifiers = WheelModifiers(),
+    soundAndHaptics: Bool = true,
+    terminalBundleID: String = AppSettings.defaultTerminal,
+    formatSettings: [String: FormatSettings] = [:]
   ) {
     self.defaultFormat = defaultFormat.isWritable ? defaultFormat : .png
     self.quality = Self.clampQuality(quality)
@@ -215,6 +331,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
     self.wheelTriggerEnabled = wheelTriggerEnabled
     self.appearance = appearance
     self.hasCompletedOnboarding = hasCompletedOnboarding
+    self.wheelModifiers = wheelModifiers.isValid ? wheelModifiers : WheelModifiers()
+    self.soundAndHaptics = soundAndHaptics
+    self.terminalBundleID = terminalBundleID.isEmpty ? Self.defaultTerminal : terminalBundleID
+    self.formatSettings = formatSettings
   }
 
   public static func clampQuality(_ value: Double) -> Double {
@@ -236,6 +356,12 @@ public struct AppSettings: Codable, Equatable, Sendable {
     appearance = (try? c.decode(AppearancePreference.self, forKey: .appearance)) ?? defaults.appearance
     hasCompletedOnboarding =
       (try? c.decode(Bool.self, forKey: .hasCompletedOnboarding)) ?? defaults.hasCompletedOnboarding
+    let modifiers = (try? c.decode(WheelModifiers.self, forKey: .wheelModifiers)) ?? defaults.wheelModifiers
+    wheelModifiers = modifiers.isValid ? modifiers : defaults.wheelModifiers
+    soundAndHaptics = (try? c.decode(Bool.self, forKey: .soundAndHaptics)) ?? defaults.soundAndHaptics
+    let terminal = (try? c.decode(String.self, forKey: .terminalBundleID)) ?? defaults.terminalBundleID
+    terminalBundleID = terminal.isEmpty ? defaults.terminalBundleID : terminal
+    formatSettings = (try? c.decode([String: FormatSettings].self, forKey: .formatSettings)) ?? [:]
   }
 }
 

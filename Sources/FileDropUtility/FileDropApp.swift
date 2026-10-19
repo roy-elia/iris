@@ -24,13 +24,14 @@ struct StatusMenu: View {
     // Disabled items render as the menu's grey status lines.
     Button {
     } label: {
-      Label(
-        model.isRunning ? "File Drop Utility is working…" : "File Drop Utility is ready",
-        systemImage: model.isRunning ? "hourglass" : "checkmark.circle")
+      Label(statusText, systemImage: model.isRunning ? "hourglass" : "checkmark.circle")
     }
     .disabled(true)
-    Button("⇧: Convert · ⌘: Tools · ^: Actions") {}
+    Button(hints) {}
       .disabled(true)
+    if model.isRunning {
+      Button("Stop Current Task") { model.cancelCurrentJob() }
+    }
     Divider()
     Button("Settings…") { WindowManager.shared.openMain() }
       .keyboardShortcut(",")
@@ -42,6 +43,18 @@ struct StatusMenu: View {
     Divider()
     Button("Quit File Drop Utility") { NSApp.terminate(nil) }
       .keyboardShortcut("q")
+  }
+
+  private var statusText: String {
+    guard model.isRunning else { return "File Drop Utility is ready" }
+    guard let progress = model.progress, progress > 0 else { return "File Drop Utility is working…" }
+    return "File Drop Utility is working · \(Int(progress * 100))%"
+  }
+
+  /// "⇧: Convert · ⌘: Tools · ⌃: Actions", from the wheel settings.
+  private var hints: String {
+    WheelKind.allCases.map { "\($0.combo(in: model.settings.wheelModifiers).symbols): \($0.title)" }
+      .joined(separator: " · ")
   }
 }
 

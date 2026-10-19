@@ -59,7 +59,7 @@ import SwiftUI
     static let all: [(name: String, size: CGSize)] = [
       ("Panel-Files", CGSize(width: 424, height: 700)),
       ("Panel-History", CGSize(width: 424, height: 520)),
-      ("Panel-Settings", CGSize(width: 424, height: 600)),
+      ("Panel-Settings", CGSize(width: 424, height: 720)),
       ("Wheel-Convert", CGSize(width: 420, height: 420)),
       ("Wheel-Tools", CGSize(width: 420, height: 420)),
       ("Wheel-Actions", CGSize(width: 420, height: 420)),
