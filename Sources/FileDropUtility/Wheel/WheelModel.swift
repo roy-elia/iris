@@ -115,6 +115,7 @@ enum WheelCommand: Equatable {
   case convertData(DataFormat)
   case extractArchive
   case airDrop
+  case share
   case float
   case addToFloat
   case copy
@@ -341,6 +342,7 @@ extension WheelKind {
       return [
         WheelItem(
           id: "airdrop", title: "AirDrop", systemImage: "dot.radiowaves.left.and.right", command: .airDrop),
+        WheelItem(id: "share", title: "Share", systemImage: "square.and.arrow.up", command: .share),
         WheelItem(id: "float", title: "Float", systemImage: "paperclip", command: .float),
         WheelItem(
           id: "float-add", title: "Add to Float", systemImage: "paperclip.badge.ellipsis",

@@ -219,6 +219,8 @@ final class AppModel: ObservableObject {
       WindowManager.shared.openEditor(for: first, tool: tool, batch: tool == .crop ? images : [])
     case .airDrop:
       NSSharingService(named: .sendViaAirDrop)?.perform(withItems: fileURLs)
+    case .share:
+      SharePresenter.share(fileURLs)
     case .float:
       FloatManager.shared.create(with: fileURLs)
     case .addToFloat:

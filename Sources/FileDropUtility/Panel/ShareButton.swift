@@ -36,3 +36,51 @@ struct ShareButton: NSViewRepresentable {
     }
   }
 }
+
+/// Shows the system sharing picker for files dropped on the wheel. The wheel has closed
+/// by then, so the picker hangs off a small invisible panel under the pointer.
+@MainActor
+enum SharePresenter {
+  /// Replaces presentation (the self-test checks routing without opening a picker).
+  static var presentOverride: (([URL]) -> Void)?
+
+  private static var anchor: NSPanel?
+  private static let delegate = Delegate()
+
+  static func share(_ urls: [URL]) {
+    guard !urls.isEmpty else { return }
+    if let presentOverride { return presentOverride(urls) }
+    close()
+    let size = NSSize(width: 2, height: 2)
+    let point = NSEvent.mouseLocation
+    let panel = NSPanel(
+      contentRect: NSRect(origin: NSPoint(x: point.x - 1, y: point.y - 1), size: size),
+      styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+    panel.isOpaque = false
+    panel.backgroundColor = .clear
+    panel.hasShadow = false
+    panel.animationBehavior = AppWindowAnimation.behavior
+    panel.level = .popUpMenu
+    panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+    let view = NSView(frame: NSRect(origin: .zero, size: size))
+    panel.contentView = view
+    panel.orderFrontRegardless()
+    anchor = panel
+    NSApp.activate()
+    let picker = NSSharingServicePicker(items: urls)
+    picker.delegate = delegate
+    picker.show(relativeTo: view.bounds, of: view, preferredEdge: .minY)
+  }
+
+  static func close() {
+    anchor?.orderOut(nil)
+    anchor = nil
+  }
+
+  final class Delegate: NSObject, NSSharingServicePickerDelegate {
+    /// Called with the chosen service, or nil when the picker is dismissed.
+    func sharingServicePicker(_ picker: NSSharingServicePicker, didChoose service: NSSharingService?) {
+      MainActor.assumeIsolated { SharePresenter.close() }
+    }
+  }
+}
