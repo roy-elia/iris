@@ -429,6 +429,25 @@
         .write(to: srt, atomically: true, encoding: .utf8)
       let vtt = file("talk.vtt")
       try "WEBVTT\n\n00:00.500 --> 00:02.000\nWelcome\n".write(to: vtt, atomically: true, encoding: .utf8)
+      let ass = file("anime.ass")
+      try SubtitleOps.write(
+        [
+          SubtitleCue(start: 1, end: 2.5, text: "Hello <i>there</i>"),
+          SubtitleCue(start: 3, end: 4, text: "Bye"),
+        ],
+        as: .ass
+      ).write(to: ass, atomically: true, encoding: .utf8)
+      // A Korean SAMI file in CP949, the legacy encoding most of them use.
+      let smi = file("drama.smi")
+      let cp949 = String.Encoding(
+        rawValue: CFStringConvertEncodingToNSStringEncoding(
+          CFStringEncoding(CFStringEncodings.dosKorean.rawValue)))
+      try
+        "<SAMI><BODY>\n<SYNC Start=1000><P Class=KRCC>안녕하세요<br>반갑습니다\n<SYNC Start=2500><P Class=KRCC>&nbsp;\n</BODY></SAMI>\n"
+        .data(using: cp949)!.write(to: smi)
+      let lrc = file("song.lrc")
+      try "[ti:Song]\n[00:01.00]First line\n[00:03.50]Second line\n".write(
+        to: lrc, atomically: true, encoding: .utf8)
       let zipSource = file("zip-src")
       try FileManager.default.createDirectory(
         at: zipSource.appendingPathComponent("photos"), withIntermediateDirectories: true)
@@ -473,7 +492,7 @@
         ("pdf", [pdf]), ("pdfs×2", [pdf, pdf2]),
         ("docx", [docx]), ("rtf", [rtf]), ("md", [md]), ("html", [html]), ("csv", [csv]),
         ("clipping", [clip]),
-        ("srt", [srt]), ("vtt", [vtt]), ("zip", [zip]),
+        ("srt", [srt]), ("vtt", [vtt]), ("ass", [ass]), ("smi", [smi]), ("lrc", [lrc]), ("zip", [zip]),
         ("7z", [sevenZip]), ("tar.gz", [tarball]), ("iso", [iso]), ("gz", [gz]),
       ]
       return f

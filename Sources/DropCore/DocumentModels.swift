@@ -88,9 +88,16 @@ public enum IWorkApp: String, Sendable {
 }
 
 public enum SubtitleFormat: String, CaseIterable, Codable, Sendable {
-  case srt, vtt
+  case srt, vtt, ass, ssa, smi, lrc
 
-  public var displayName: String { rawValue.uppercased() }
+  public var displayName: String { self == .smi ? "SAMI" : rawValue.uppercased() }
+
+  public var fileExtension: String { rawValue }
+
+  public init?(fileExtension ext: String) {
+    let ext = ext.lowercased()
+    self.init(rawValue: ext == "sami" ? "smi" : ext)
+  }
 }
 
 /// What text documents, PDFs and tables convert to.

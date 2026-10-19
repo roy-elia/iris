@@ -717,6 +717,12 @@ public struct SubtitleCue: Equatable, Sendable {
   public var start: Double
   public var end: Double
   public var text: String
+
+  public init(start: Double, end: Double, text: String) {
+    self.start = start
+    self.end = end
+    self.text = text
+  }
 }
 
 public enum SubtitleOps {
@@ -765,6 +771,10 @@ public enum SubtitleOps {
       return "WEBVTT\n\n"
         + cues.map { c in "\(stamp(c.start, separator: ".")) --> \(stamp(c.end, separator: "."))\n\(c.text)" }
         .joined(separator: "\n\n") + "\n"
+    case .ass: return writeASS(cues)
+    case .ssa: return writeSSA(cues)
+    case .smi: return writeSAMI(cues)
+    case .lrc: return writeLRC(cues)
     }
   }
 
@@ -777,7 +787,7 @@ public enum SubtitleOps {
   }
 
   public static func convert(_ source: URL, to format: SubtitleFormat, destination: URL) throws {
-    let cues = parse(try RichText.readPlainText(source))
+    let cues = try read(source)
     guard !cues.isEmpty else {
       throw DropError.wrongInput("No valid subtitle cues were found in \(source.lastPathComponent).")
     }

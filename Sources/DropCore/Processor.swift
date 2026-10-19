@@ -110,7 +110,7 @@ public struct Processor: Sendable {
       if plan.pages.isEmpty { return "Keep at least one page." }
     case .convertSubtitles:
       if !files.allSatisfy(\.kind.isSubtitle) {
-        return "\(operation.summary) works on SRT and VTT subtitles."
+        return "\(operation.summary) works on SRT, VTT, ASS, SSA, SAMI and LRC subtitles."
       }
     case .extractArchive:
       if files.contains(where: { $0.kind != .archive }) {
@@ -460,7 +460,7 @@ public struct Processor: Sendable {
 
     case .convertSubtitles(let format):
       for file in files {
-        let out = target(file, suffix: "", ext: format.rawValue)
+        let out = target(file, suffix: "", ext: format.fileExtension)
         await record(&result, file: file, output: out) {
           try SubtitleOps.convert(file.url, to: format, destination: out)
         }

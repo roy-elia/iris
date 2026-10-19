@@ -195,7 +195,7 @@ public enum FileKind: Equatable, Sendable {
       self = .document(format)
     } else if let format = OfficeFormat(fileExtension: ext) {
       self = .office(format)
-    } else if let format = SubtitleFormat(rawValue: ext.lowercased()) {
+    } else if let format = SubtitleFormat(fileExtension: ext) {
       self = .subtitle(format)
     } else if ArchiveOps.isArchive(url) {
       self = .archive
