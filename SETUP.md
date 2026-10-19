@@ -228,6 +228,16 @@ Without Xcode, the snapshot harness renders the same screens in real windows. Gl
 
 Confirmed by you by hand (2026-10-18): a real drag with the redrawn wheel looks and feels like the reference. Synthesised events can't drive a drag session on this Mac, so that hand test is the end-to-end check.
 
+## Feature self-test
+
+`.build/debug/FileDropUtility --selftest <folder>` (debug builds) makes sample files of every kind (images, QR, SVG, video, audio, PDFs including a scanned page, Word, RTF, Markdown, HTML, CSV, a text clipping, subtitles, a zip) and runs every wheel segment for each: operations through the Processor with their outputs checked, window segments by opening the window and running what it saves, and actions by their effect (clipboard, Floats). The clipboard is restored afterwards. `FDU_SELFTEST_ONLY=png/Metadata` narrows it. The last run is in `docs/FEATURE-TEST.md`: 282 passed, 0 failed, 7 correct refusals (for example "No QR codes found" on a photo); AirDrop, Move and Terminal are skipped because they open system UI.
+
+Bugs it found, now fixed:
+- Opening the Metadata window crashed the app. Tool windows and the main window sized themselves live to their content, and a height change after opening sent AppKit into an endless constraints loop. Windows now size from a measured ideal size.
+- Metadata was offered for SVG files, which ExifTool can't write.
+- The Files tab still said "Drop images or PDFs here".
+- The Settings tab now scrolls instead of running off small screens.
+
 ## Known gaps
 
 - **Floats:** dragging out of a Float, hover-to-open and edge snapping need a real pointer, so they're checked by snapshots and unit tests (placement, snapping, persistence), not end to end. The update check has no feed configured, so only its parsing and version logic are tested.

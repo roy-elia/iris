@@ -92,6 +92,18 @@ enum Thumbnailer {
   }
 }
 
+/// A still "loading" line for tool windows, which size themselves to their content.
+struct LoadingLabel: View {
+  let text: String
+  init(_ text: String) { self.text = text }
+
+  var body: some View {
+    Label("\(text)…", systemImage: "hourglass")
+      .font(.callout)
+      .foregroundStyle(DesignTokens.Palette.secondaryText)
+  }
+}
+
 /// A rendered preview in a rounded frame, with a spinner until it's ready.
 private struct PreviewImage: View {
   let image: CGImage?
@@ -102,7 +114,7 @@ private struct PreviewImage: View {
       if let image {
         Image(decorative: image, scale: 1).resizable().interpolation(.high).scaledToFit()
       } else {
-        ProgressView()
+        LoadingLabel("Rendering preview")
       }
     }
     .frame(maxWidth: .infinity)
@@ -273,7 +285,7 @@ struct MetadataView: View {
       runTool(.editMetadata(edits), on: urls)
     } content: {
       if loading {
-        ProgressView("Loading file details").frame(maxWidth: .infinity)
+        LoadingLabel("Loading file details").frame(maxWidth: .infinity)
       } else {
         Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 8) {
           ForEach(EditableField.all) { field in

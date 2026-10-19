@@ -119,6 +119,9 @@ public struct Processor: Sendable {
       if bytes < TargetSizeOps.minimumTarget { return "Enter a target size of at least 1 KB." }
     case .editMetadata(let edits):
       if !allImages { return imagesOnly(operation) }
+      if files.contains(where: { $0.kind == .image(.svg) }) {
+        return "SVG files have no photo metadata to edit."
+      }
       if edits.isEmpty { return "There are no metadata changes to save." }
     case .collage:
       if !allImages { return imagesOnly(operation) }

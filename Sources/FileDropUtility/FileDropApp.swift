@@ -74,6 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       NSApp.setActivationPolicy(.accessory)
       #if DEBUG
         if SnapshotRunner.runIfRequested() { return }
+        if SelfTestRunner.runIfRequested() { return }
       #endif
       AppModel.shared.applyAppearance()
       DragWatcher.shared.start()

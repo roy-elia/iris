@@ -273,7 +273,8 @@ extension WheelKind {
           command: .compress, disabledReason: compressReason),
         WheelItem(
           id: "metadata", title: "Metadata", systemImage: "tag", command: .metadata,
-          disabledReason: imagesOnly),
+          disabledReason: imagesOnly
+            ?? (files.contains { $0.kind == .image(.svg) } ? "Not for SVG files" : nil)),
         WheelItem(
           id: "annotate", title: "Annotate", systemImage: EditorTool.annotate.systemImage,
           command: .edit(.annotate), disabledReason: oneImage),

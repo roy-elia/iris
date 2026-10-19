@@ -21,6 +21,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
 struct PanelView: View {
   @EnvironmentObject private var model: AppModel
   @State private var tab: PanelTab = .files
+  @State private var settingsHeight: CGFloat = 600
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
@@ -32,7 +33,20 @@ struct PanelView: View {
         switch tab {
         case .files: FilesTab()
         case .history: HistoryTab()
-        case .settings: SettingsTab()
+        case .settings:
+          // Settings is the tallest tab; scroll it rather than run off a small screen.
+          ScrollView {
+            SettingsTab()
+              .onGeometryChange(for: CGFloat.self) {
+                $0.size.height
+              } action: {
+                settingsHeight = $0
+              }
+          }
+          .scrollBounceBehavior(.basedOnSize)
+          // Only clip (which trims the cards' glass edges) when there's something to scroll.
+          .scrollClipDisabled(settingsHeight <= Self.settingsMaxHeight)
+          .frame(height: min(settingsHeight, Self.settingsMaxHeight))
         }
       }
       .id(tab)
@@ -40,6 +54,11 @@ struct PanelView: View {
     }
     .padding(DesignTokens.Spacing.inset)
     .frame(width: 400)
+  }
+
+  /// The screen's usable height, less the header, tab bar and window chrome.
+  static var settingsMaxHeight: CGFloat {
+    max((NSScreen.main?.visibleFrame.height ?? 800) - 260, 320)
   }
 }
 

@@ -44,7 +44,7 @@ struct FilesTab: View {
         .font(.system(size: 26, weight: .medium))
         .foregroundStyle(isTargeted ? DesignTokens.Palette.accentText : .secondary)
         .accessibilityHidden(true)
-      Text("Drop images or PDFs here").font(.callout)
+      Text("Drop files here").font(.callout)
       Button("Choose Files…") { model.chooseFiles() }
         .buttonStyle(.subtleGlass)
         .accessibilityIdentifier("chooseFiles")

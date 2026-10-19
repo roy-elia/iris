@@ -18,10 +18,17 @@ final class WindowManager {
       NSApp.activate()
       return
     }
+    var holder: NSWindow?
     let view = PanelView().environmentObject(AppModel.shared)
+      .fixedSize()
+      .onGeometryChange(for: CGSize.self) {
+        $0.size
+      } action: { size in
+        DispatchQueue.main.async { holder?.fitContent(size) }
+      }
     let window = makeWindow(
-      content: view, size: NSSize(width: 400, height: 520), title: "File Drop Utility", transparent: true,
-      fitsContent: true)
+      content: view, size: NSSize(width: 424, height: 560), title: "File Drop Utility", transparent: true)
+    holder = window
     window.styleMask.remove(.resizable)
     window.isMovableByWindowBackground = true
     track(window) { [weak self] in self?.main = nil }
@@ -117,12 +124,21 @@ final class WindowManager {
   func openTool<Content: View>(_ id: String, title: String, @ViewBuilder content: () -> Content) {
     tools[id]?.close()
     var window: NSWindow?
+    // The content reports its ideal size and the window adopts it on the next turn of the
+    // run loop. (Letting the hosting controller drive the window size live, with
+    // `.preferredContentSize`, loops forever when the content's height changes after it
+    // opens, and AppKit ends the loop with an exception.)
     let view = content()
       .environment(\.dismissToolWindow, { window?.close() })
       .environmentObject(AppModel.shared)
+      .fixedSize()
+      .onGeometryChange(for: CGSize.self) {
+        $0.size
+      } action: { size in
+        DispatchQueue.main.async { window?.fitContent(size) }
+      }
     let made = makeWindow(
-      content: view, size: NSSize(width: 460, height: 420), title: title, transparent: true, fitsContent: true
-    )
+      content: view, size: NSSize(width: 460, height: 420), title: title, transparent: true)
     made.styleMask.remove(.resizable)
     made.isMovableByWindowBackground = true
     window = made
@@ -136,7 +152,7 @@ final class WindowManager {
   /// A window whose content floats over the desktop. With `transparent`, only the SwiftUI
   /// glass panels are drawn, so the window has no opaque background of its own.
   private func makeWindow<Content: View>(
-    content: Content, size: NSSize, title: String, transparent: Bool = false, fitsContent: Bool = false
+    content: Content, size: NSSize, title: String, transparent: Bool = false
   ) -> NSWindow {
     let window = NSWindow(
       contentRect: NSRect(origin: .zero, size: size),
@@ -147,8 +163,7 @@ final class WindowManager {
     window.titleVisibility = .hidden
     window.isReleasedWhenClosed = false
     let hosting = NSHostingController(rootView: AnyView(content))
-    // With `fitsContent`, the window grows and shrinks with the SwiftUI content.
-    hosting.sizingOptions = fitsContent ? [.preferredContentSize] : []
+    hosting.sizingOptions = []
     window.contentViewController = hosting
     window.setContentSize(size)
     if transparent {
@@ -174,5 +189,18 @@ final class WindowManager {
       MainActor.assumeIsolated { onClose() }
     }
     observers.append(token)
+  }
+}
+
+extension NSWindow {
+  /// Resizes to `size`, keeping the top edge where it is. Ignores sub-point changes.
+  func fitContent(_ size: CGSize) {
+    let current = contentRect(forFrameRect: frame).size
+    guard size.width > 1, size.height > 1,
+      abs(current.width - size.width) > 0.5 || abs(current.height - size.height) > 0.5
+    else { return }
+    var rect = frameRect(forContentRect: CGRect(origin: .zero, size: size))
+    rect.origin = CGPoint(x: frame.minX, y: frame.maxY - rect.height)
+    setFrame(rect, display: true, animate: false)
   }
 }
