@@ -160,14 +160,13 @@ Without Xcode, the snapshot harness renders the same screens in real windows. Gl
 - The native menu shows all eight items with the right enabled states and shortcuts (read back through Accessibility and captured in `docs/previews/Menu.png`).
 - A synthesised drag from a test window, then ⇧ pressed with the pointer still, opens the Convert wheel under the pointer; releasing ⇧ closes it. (It failed before: macOS 26 hides the drag pasteboard's types from other apps, so the watcher never recognised the drag. Fixed.)
 
-Not confirmed: **a drop onto an overlay segment**. Synthesised mouse events can't drive a drag session on this Mac: even a plain AppKit test window registered for files got no drag events, and the session never ended. The drop target is ordinary AppKit (`registerForDraggedTypes`, `draggingUpdated`, `performDragOperation`), and its segment maths is covered by unit tests, but a real drag by hand is the remaining check. See manual steps.
+Confirmed by you by hand (2026-10-18): a real drag with the redrawn wheel looks and feels like the reference. Synthesised events can't drive a drag session on this Mac, so that hand test is the end-to-end check.
 
 ## Known gaps
 
 - **WebP export:** macOS's ImageIO reads WebP but can't write it. WebP files work as inputs; the WebP segment is disabled with that reason. Export would need libwebp (BSD licence), which I'd add only with your OK.
 - **Dynamic Type:** SwiftUI text styles on macOS don't respond to `dynamicTypeSize`. The Largest Text snapshots look the same as normal. Views use text styles throughout, so they'll scale wherever the OS scales them, but macOS 26 offers no system-wide Dynamic Type to test.
 - **Increase Contrast and Reduce Motion:** checked by simulation (high-contrast appearances, the contrast override, and a code audit of all animations), not by toggling the system settings.
-- **Overlay drop:** see "Not confirmed" above.
 - **Launch at login:** not exercised, because it registers a real login item.
 - **Signing:** ad-hoc signed, not notarized.
 - **UI tests:** none automated; XCUITest needs Xcode.

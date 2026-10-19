@@ -132,14 +132,14 @@ The reference's orange wasn't copied: the lit colour stays your blue-teal. It's 
 - **Snapshots:** every preview recaptured (65 captures, 14 sheets).
 - **Menu:** item names, enabled states and shortcuts read back through Accessibility from the running app.
 - **Wheel opening:** a synthesised Shift-drag from a test window opens the wheel under the pointer.
-- **Not verified:** a drop onto a segment. Synthesised events can't drive a drag session on this Mac; a plain AppKit test target got nothing either. One real drag by hand is needed (SETUP.md, Manual steps 1).
+- **Hand test:** you confirmed a real drag looks and feels like the reference. Synthesised events can't drive a drag session on this Mac.
 
 ## Requirement summary
 
 | Requirement | How it's met |
 |---|---|
 | Remove all outlines from bubble elements | Stroke token and every stroke overlay deleted. The glass rim and shadows define edges, and the lit segment glows instead. |
-| Functional drag-and-drop with sound | Polling trigger modelled on Tangerine's approach: it opens on a key press without movement, switches wheels, closes on key release or Escape, and stays open while over the wheel. AppKit drop target with segment hit-testing. Pooled tick and pop sounds, plus haptics. A real drop by hand is still pending. |
+| Functional drag-and-drop with sound | Polling trigger modelled on Tangerine's approach: it opens on a key press without movement, switches wheels, closes on key release or Escape, and stays open while over the wheel. AppKit drop target with segment hit-testing. Pooled tick and pop sounds, plus haptics. Confirmed by your hand test. |
 | Hover illumination for the selected task | The petal under the pointer fills with an accent gradient, glows, swells past the rim and leans toward the pointer; the centre pill names it. |
 | Top-bar dropdown matching the screenshot | Native `.menu`-style menu with the same structure, order, separators and shortcuts. Licensing items left out. |
 | Genuine Apple Liquid Glass | `glassEffect` on every surface, tinted glass for the lit state, free-floating segments, no strokes. Opaque only under Reduce Transparency. |
