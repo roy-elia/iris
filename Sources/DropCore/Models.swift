@@ -436,6 +436,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
   public var terminalBundleID: String
   /// Per-output-format defaults, keyed by format identifier ("jpeg", "mp4", "mp3", …).
   public var formatSettings: [String: FormatSettings]
+  public var wheelTheme: WheelTheme
+  /// Look for a newer release once a day (off until the user turns it on).
+  public var checkForUpdates: Bool
 
   public static let defaultTerminal = "com.apple.Terminal"
 
@@ -459,7 +462,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
     wheelModifiers: WheelModifiers = WheelModifiers(),
     soundAndHaptics: Bool = true,
     terminalBundleID: String = AppSettings.defaultTerminal,
-    formatSettings: [String: FormatSettings] = [:]
+    formatSettings: [String: FormatSettings] = [:],
+    wheelTheme: WheelTheme = .dark,
+    checkForUpdates: Bool = false
   ) {
     self.defaultFormat = defaultFormat.isWritable ? defaultFormat : .png
     self.quality = Self.clampQuality(quality)
@@ -472,6 +477,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     self.soundAndHaptics = soundAndHaptics
     self.terminalBundleID = terminalBundleID.isEmpty ? Self.defaultTerminal : terminalBundleID
     self.formatSettings = formatSettings
+    self.wheelTheme = wheelTheme
+    self.checkForUpdates = checkForUpdates
   }
 
   public static func clampQuality(_ value: Double) -> Double {
@@ -499,6 +506,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     let terminal = (try? c.decode(String.self, forKey: .terminalBundleID)) ?? defaults.terminalBundleID
     terminalBundleID = terminal.isEmpty ? defaults.terminalBundleID : terminal
     formatSettings = (try? c.decode([String: FormatSettings].self, forKey: .formatSettings)) ?? [:]
+    wheelTheme = (try? c.decode(WheelTheme.self, forKey: .wheelTheme)) ?? defaults.wheelTheme
+    checkForUpdates = (try? c.decode(Bool.self, forKey: .checkForUpdates)) ?? defaults.checkForUpdates
   }
 }
 

@@ -18,6 +18,7 @@ struct FileDropApp: App {
 /// The menu-bar dropdown: a native macOS menu with the app's status, the modifier
 /// hints, and the few commands that matter.
 struct StatusMenu: View {
+  @ObservedObject private var floats = FloatManager.shared
   @EnvironmentObject private var model: AppModel
 
   var body: some View {
@@ -31,6 +32,14 @@ struct StatusMenu: View {
       .disabled(true)
     if model.isRunning {
       Button("Stop Current Task") { model.cancelCurrentJob() }
+    }
+    if let update = model.availableUpdate {
+      Divider()
+      Button("Update Available: Version \(update.version)…") { NSWorkspace.shared.open(update.pageURL) }
+    }
+    if floats.stacks.count > 0 {
+      Divider()
+      Button(floats.stacks.count == 1 ? "Close Float" : "Close All Floats") { floats.closeAll() }
     }
     Divider()
     Button("Settings…") { WindowManager.shared.openMain() }
@@ -68,6 +77,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       #endif
       AppModel.shared.applyAppearance()
       DragWatcher.shared.start()
+      FloatManager.shared.restore()
+      AppModel.shared.scheduleUpdateChecks()
       if !AppModel.shared.settings.hasCompletedOnboarding {
         WindowManager.shared.openOnboarding()
       }

@@ -79,6 +79,85 @@ struct PetalShape: Shape {
 ///
 /// In `.click` mode the wheel tracks the pointer itself. In `.drop` mode an AppKit drop
 /// target tracks the drag and passes the lit segment and pointer in.
+/// Colours for one wheel theme.
+struct WheelPalette {
+  var disc: Color
+  var discTint: Color
+  var reducedDisc: Color
+  var petalTop: Color
+  var petalBottom: Color
+  var label: Color
+  var disabledLabel: Color
+  var hotColors: [Color]
+  var hotLabel: Color
+  var hotGlow: Color
+  var well: Color
+  var wellShadow: Color
+  var pill: Color
+  var pillText: Color
+
+  init(_ theme: WheelTheme) {
+    let hot = [DesignTokens.Palette.wheelHotTop, DesignTokens.Palette.wheelHotBottom]
+    switch theme {
+    case .dark:
+      self.init(
+        disc: .black.opacity(0.5), discTint: .black.opacity(0.45), reducedDisc: Color(white: 0.11),
+        petalTop: .white.opacity(0.11), petalBottom: .white.opacity(0.06), label: .white,
+        disabledLabel: .white.opacity(0.4), hotColors: hot, hotLabel: .white, hotGlow: hot[1],
+        well: .black.opacity(0.42), wellShadow: .black.opacity(0.7), pill: .white.opacity(0.09),
+        pillText: .white)
+    case .light:
+      self.init(
+        disc: .white.opacity(0.45), discTint: .white.opacity(0.5), reducedDisc: Color(white: 0.93),
+        petalTop: .white.opacity(0.7), petalBottom: .white.opacity(0.45), label: .black.opacity(0.82),
+        disabledLabel: .black.opacity(0.3), hotColors: hot, hotLabel: .white, hotGlow: hot[1],
+        well: .white.opacity(0.6), wellShadow: .black.opacity(0.22), pill: .black.opacity(0.06),
+        pillText: .black.opacity(0.85))
+    case .tinted:
+      self.init(
+        disc: hot[1].opacity(0.55), discTint: hot[0].opacity(0.5), reducedDisc: hot[1],
+        petalTop: .white.opacity(0.16), petalBottom: .white.opacity(0.08), label: .white,
+        disabledLabel: .white.opacity(0.45), hotColors: [.white, .white.opacity(0.84)], hotLabel: hot[1],
+        hotGlow: .white, well: .black.opacity(0.28), wellShadow: .black.opacity(0.55),
+        pill: .white.opacity(0.14),
+        pillText: .white)
+    }
+  }
+
+  init(
+    disc: Color, discTint: Color, reducedDisc: Color, petalTop: Color, petalBottom: Color, label: Color,
+    disabledLabel: Color, hotColors: [Color], hotLabel: Color, hotGlow: Color, well: Color, wellShadow: Color,
+    pill: Color, pillText: Color
+  ) {
+    self.disc = disc
+    self.discTint = discTint
+    self.reducedDisc = reducedDisc
+    self.petalTop = petalTop
+    self.petalBottom = petalBottom
+    self.label = label
+    self.disabledLabel = disabledLabel
+    self.hotColors = hotColors
+    self.hotLabel = hotLabel
+    self.hotGlow = hotGlow
+    self.well = well
+    self.wellShadow = wellShadow
+    self.pill = pill
+    self.pillText = pillText
+  }
+}
+
+private struct WheelThemeKey: EnvironmentKey {
+  static let defaultValue: WheelTheme? = nil
+}
+
+extension EnvironmentValues {
+  /// Overrides the wheel theme from Settings (previews and the theme picker use this).
+  var wheelTheme: WheelTheme? {
+    get { self[WheelThemeKey.self] }
+    set { self[WheelThemeKey.self] = newValue }
+  }
+}
+
 struct RadialWheel: View {
   enum Mode { case click, drop }
 
@@ -99,6 +178,9 @@ struct RadialWheel: View {
   @State private var labelsShown = true
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.wheelTheme) private var themeOverride
+
+  private var palette: WheelPalette { WheelPalette(themeOverride ?? AppModel.shared.settings.wheelTheme) }
 
   var body: some View {
     GeometryReader { geo in
@@ -160,11 +242,11 @@ struct RadialWheel: View {
   private func disc(diameter d: CGFloat, scale s: CGFloat) -> some View {
     Group {
       if reduceTransparency {
-        Circle().fill(Color(white: 0.11))
+        Circle().fill(palette.reducedDisc)
       } else {
         Circle()
-          .fill(Color.black.opacity(0.5))
-          .glassEffect(.regular.tint(Color.black.opacity(0.45)), in: Circle())
+          .fill(palette.disc)
+          .glassEffect(.regular.tint(palette.discTint), in: Circle())
       }
     }
     .shadow(color: .black.opacity(0.35), radius: 2 * s, y: 1)
@@ -193,8 +275,7 @@ struct RadialWheel: View {
         shape
           .fill(
             LinearGradient(
-              colors: [DesignTokens.Palette.wheelHotTop, DesignTokens.Palette.wheelHotBottom],
-              startPoint: .topLeading, endPoint: .bottomTrailing)
+              colors: palette.hotColors, startPoint: .topLeading, endPoint: .bottomTrailing)
           )
           .overlay(
             // A soft specular sheen across the top, as on a lit glass petal.
@@ -203,12 +284,13 @@ struct RadialWheel: View {
                 colors: [.white.opacity(0.14), .clear], center: .init(x: 0.35, y: 0.2), startRadius: 0,
                 endRadius: d * 0.22))
           )
-          .shadow(color: DesignTokens.Palette.wheelHotBottom.opacity(0.65), radius: 16 * s)
+          .shadow(color: palette.hotGlow.opacity(0.65), radius: 16 * s)
       } else {
         shape.fill(
           LinearGradient(
             colors: [
-              .white.opacity(item.isEnabled ? 0.11 : 0.06), .white.opacity(item.isEnabled ? 0.06 : 0.03),
+              palette.petalTop.opacity(item.isEnabled ? 1 : 0.55),
+              palette.petalBottom.opacity(item.isEnabled ? 1 : 0.5),
             ],
             startPoint: .top, endPoint: .bottom))
       }
@@ -226,7 +308,7 @@ struct RadialWheel: View {
           .lineLimit(2)
           .minimumScaleFactor(0.75)
       }
-      .foregroundStyle(item.isEnabled ? Color.white : Color.white.opacity(0.4))
+      .foregroundStyle(isHot ? palette.hotLabel : (item.isEnabled ? palette.label : palette.disabledLabel))
       .frame(width: 64 * s)
       .offset(labelOffset)
       .opacity(labelsShown ? 1 : 0)
@@ -263,18 +345,18 @@ struct RadialWheel: View {
   private func center(scale s: CGFloat, litItem: WheelItem?) -> some View {
     ZStack {
       Circle()
-        .fill(Color.black.opacity(0.42).shadow(.inner(color: .black.opacity(0.7), radius: 4 * s, y: 1.5 * s)))
+        .fill(palette.well.shadow(.inner(color: palette.wellShadow, radius: 4 * s, y: 1.5 * s)))
         .frame(width: 84 * s, height: 84 * s)
       Text(litItem?.title ?? centerText)
         .font(.system(size: 9 * s, weight: .bold))
         .tracking(0.3 * s)
         .textCase(litItem == nil ? nil : .uppercase)
-        .foregroundStyle(.white)
+        .foregroundStyle(palette.pillText)
         .lineLimit(1)
         .minimumScaleFactor(0.6)
         .padding(.horizontal, 10 * s)
         .frame(width: 74 * s, height: 30 * s)
-        .background(Color.white.opacity(0.09), in: Capsule(style: .continuous))
+        .background(palette.pill, in: Capsule(style: .continuous))
         .contentTransition(.opacity)
         .animation(.easeOut(duration: 0.12), value: litItem?.id)
         .opacity(labelsShown ? 1 : 0)

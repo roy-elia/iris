@@ -6,7 +6,7 @@ struct OnboardingView: View {
   let onFinish: () -> Void
 
   enum Page: Int, CaseIterable {
-    case welcome, convert, tools, actions, folders, finish
+    case welcome, convert, tools, actions, fileTypes, folders, finish
   }
 
   init(onFinish: @escaping () -> Void, startPage: Page = .welcome) {
@@ -27,6 +27,7 @@ struct OnboardingView: View {
         case .convert: wheelPage(.convert)
         case .tools: wheelPage(.tools)
         case .actions: wheelPage(.actions)
+        case .fileTypes: fileTypes
         case .folders: folders
         case .finish: finish
         }
@@ -82,6 +83,74 @@ struct OnboardingView: View {
     }
     .padding(.horizontal, 32)
   }
+
+  /// What the wheels offer for each kind of file.
+  private var fileTypes: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      HStack {
+        backButton
+        Spacer()
+      }
+      Text("The wheels fit the file").font(.largeTitle.weight(.bold))
+      Text("Drop a different kind of file and each wheel offers what makes sense for it.")
+        .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+      LazyVGrid(
+        columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12
+      ) {
+        ForEach(Self.fileTypeCards, id: \.title) { card in
+          HStack(alignment: .top, spacing: 12) {
+            Image(systemName: card.symbol)
+              .font(.title2)
+              .foregroundStyle(DesignTokens.Palette.accentText)
+              .frame(width: 30)
+              .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+              Text(card.title).font(.headline)
+              Text(card.detail).font(.caption).foregroundStyle(DesignTokens.Palette.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+          }
+          .padding(12)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+          .accessibilityElement(children: .combine)
+        }
+      }
+      HStack {
+        Spacer()
+        continueButton
+      }
+    }
+    .padding(.horizontal, 36)
+  }
+
+  private static let fileTypeCards: [(symbol: String, title: String, detail: String)] = [
+    (
+      "photo", "Images",
+      "Convert, compress to a size, metadata, annotate, redact, crop, backgrounds, frames, collages, QR codes."
+    ),
+    (
+      "film", "Video",
+      "MP4, MOV, WebM, GIF and more; compress, trim, split, join, speed, frames, crop and timed redaction."
+    ),
+    (
+      "waveform", "Audio",
+      "MP3, WAV, FLAC, Opus and more; trim silence, bleep, normalise loudness, channels, visualizer videos."
+    ),
+    (
+      "doc.richtext", "Documents and PDFs",
+      "Word, RTF, Markdown, HTML, EPUB and Pages; PDF to text or images, OCR, organise pages."
+    ),
+    (
+      "captions.bubble", "Subtitles and archives",
+      "SRT and VTT convert both ways; zip files unpack into a folder."
+    ),
+    (
+      "paperclip", "Floats",
+      "Park files in a glass tab at the screen edge, then drag them out wherever you need them."
+    ),
+  ]
 
   private var folders: some View {
     HStack(spacing: 36) {
@@ -209,10 +278,11 @@ struct OnboardingView: View {
   private func blurb(_ kind: WheelKind) -> String {
     switch kind {
     case .convert:
-      "Turn images into PNG, JPEG, HEIC, AVIF, TIFF, BMP or PDF. WebP files can be opened but not written."
+      "Change the format: images, videos, audio, documents, PDFs and subtitles each get the choices that fit them."
     case .tools:
-      "Compress, strip metadata, remove backgrounds, or open the editor to crop, annotate and redact."
-    case .actions: "AirDrop, float on top, copy, move, copy paths or open a terminal in the folder."
+      "Compress, edit and fix: crop, annotate, redact, trim, split, bleep, normalise, organise PDF pages and more."
+    case .actions:
+      "AirDrop, keep files in a Float at the screen edge, copy, move, copy paths or open a terminal in the folder."
     }
   }
 

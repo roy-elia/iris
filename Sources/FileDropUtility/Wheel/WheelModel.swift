@@ -109,6 +109,7 @@ enum WheelCommand: Equatable {
   case extractArchive
   case airDrop
   case float
+  case addToFloat
   case copy
   case copyPath
   case move
@@ -303,7 +304,11 @@ extension WheelKind {
       return [
         WheelItem(
           id: "airdrop", title: "AirDrop", systemImage: "dot.radiowaves.left.and.right", command: .airDrop),
-        WheelItem(id: "float", title: "Float", systemImage: "pin", command: .float),
+        WheelItem(id: "float", title: "Float", systemImage: "paperclip", command: .float),
+        WheelItem(
+          id: "float-add", title: "Add to Float", systemImage: "paperclip.badge.ellipsis",
+          command: .addToFloat,
+          disabledReason: FloatManager.openCount > 0 ? nil : "No Float is open"),
         WheelItem(id: "copy", title: "Copy", systemImage: "doc.on.doc", command: .copy),
         WheelItem(id: "move", title: "Move", systemImage: "folder", command: .move),
         WheelItem(id: "copypath", title: "Copy Path", systemImage: "doc.text", command: .copyPath),

@@ -7,7 +7,6 @@ final class WindowManager {
   static let shared = WindowManager()
 
   private var editors: [URL: NSWindow] = [:]
-  private var floats: [URL: NSWindow] = [:]
   private var onboarding: NSWindow?
   private var main: NSWindow?
 
@@ -95,25 +94,6 @@ final class WindowManager {
     track(window) { [weak self] in self?.organizers[url] = nil }
     organizers[url] = window
     show(window)
-  }
-
-  func openFloat(for url: URL) {
-    if let window = floats[url] {
-      window.orderFrontRegardless()
-      return
-    }
-    let window = makeWindow(
-      content: FloatView(url: url), size: NSSize(width: 260, height: 260), title: url.lastPathComponent,
-      transparent: true)
-    window.level = .floating
-    window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-    track(window) { [weak self] in self?.floats[url] = nil }
-    floats[url] = window
-    window.orderFrontRegardless()
-  }
-
-  func closeFloat(for url: URL) {
-    floats[url]?.close()
   }
 
   func openOnboarding() {

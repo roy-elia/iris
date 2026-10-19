@@ -21,9 +21,14 @@ final class AppModel: ObservableObject {
     didSet {
       saveSettings()
       if oldValue.appearance != settings.appearance { applyAppearance() }
+      if oldValue.checkForUpdates != settings.checkForUpdates { scheduleUpdateChecks() }
     }
   }
   @Published var settingsError: String?
+  @Published var availableUpdate: AvailableUpdate?
+  /// The outcome of the last manual check, shown in Settings.
+  @Published var updateStatus: String?
+  private var updateTimer: Timer?
 
   private let settingsStore: SettingsStore
   private let historyStore: HistoryStore
@@ -38,6 +43,46 @@ final class AppModel: ObservableObject {
   var totalSizeText: String {
     let total = files.reduce(Int64(0)) { $0 + $1.byteSize }
     return ByteCountFormatter.string(fromByteCount: total, countStyle: .file)
+  }
+
+  // MARK: Updates
+
+  private static let lastUpdateCheckKey = "lastUpdateCheck"
+
+  /// Checks once a day while the setting is on and a feed is configured.
+  func scheduleUpdateChecks() {
+    updateTimer?.invalidate()
+    guard settings.checkForUpdates, UpdateChecker.feedURL() != nil else { return }
+    let last = UserDefaults.standard.object(forKey: Self.lastUpdateCheckKey) as? Date ?? .distantPast
+    if Date().timeIntervalSince(last) >= UpdateChecker.interval { checkForUpdates(manual: false) }
+    updateTimer = Timer.scheduledTimer(withTimeInterval: 60 * 60, repeats: true) { _ in
+      MainActor.assumeIsolated {
+        let last = UserDefaults.standard.object(forKey: Self.lastUpdateCheckKey) as? Date ?? .distantPast
+        if Date().timeIntervalSince(last) >= UpdateChecker.interval {
+          AppModel.shared.checkForUpdates(manual: false)
+        }
+      }
+    }
+  }
+
+  func checkForUpdates(manual: Bool) {
+    guard let feed = UpdateChecker.feedURL() else {
+      updateStatus = "This build has no update feed."
+      return
+    }
+    if manual { updateStatus = "Checking…" }
+    let current = UpdateChecker.currentVersion()
+    Task {
+      do {
+        let update = try await UpdateChecker.check(feed: feed, current: current)
+        UserDefaults.standard.set(Date(), forKey: Self.lastUpdateCheckKey)
+        availableUpdate = update
+        updateStatus =
+          update.map { "Version \($0.version) is available." } ?? "You're up to date (\(current))."
+      } catch {
+        if manual { updateStatus = Self.message(for: error, fallback: "The check failed.") }
+      }
+    }
   }
 
   // MARK: Queue
@@ -154,7 +199,9 @@ final class AppModel: ObservableObject {
     case .airDrop:
       NSSharingService(named: .sendViaAirDrop)?.perform(withItems: fileURLs)
     case .float:
-      for url in fileURLs.prefix(6) { WindowManager.shared.openFloat(for: url) }
+      FloatManager.shared.create(with: fileURLs)
+    case .addToFloat:
+      FloatManager.shared.addToLatest(fileURLs)
     case .copy:
       NSPasteboard.general.clearContents()
       NSPasteboard.general.writeObjects(fileURLs as [NSURL])

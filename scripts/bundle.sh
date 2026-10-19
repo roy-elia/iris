@@ -30,6 +30,12 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </dict>
 </plist>
 PLIST
+# Optional: UPDATE_FEED_URL=https://api.github.com/repos/<owner>/<repo>/releases/latest
+# turns on the "Check for updates daily" setting. Without it the app never checks.
+if [[ -n "${UPDATE_FEED_URL:-}" ]]; then
+  [[ "$UPDATE_FEED_URL" == https://* ]] || { echo "UPDATE_FEED_URL must be https" >&2; exit 1; }
+  /usr/libexec/PlistBuddy -c "Add :FDUUpdateFeedURL string $UPDATE_FEED_URL" "$APP/Contents/Info.plist"
+fi
 
 # Bundled helpers (see scripts/fetch-tools.sh): Mach-O tools in Contents/Helpers, the
 # ExifTool Perl distribution and all licences in Contents/Resources.

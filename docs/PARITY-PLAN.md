@@ -27,14 +27,14 @@ Legend: ✅ have · 🟡 partial · ❌ missing · ⛔ excluded, needs your deci
 | **Configurable** modifier combination per wheel | `WheelModifierSettings`, `conversionWheelDragModifierMask`; "Tap the chosen modifier combination while dragging files." | ✅ (Phase 0) |
 | Drag monitor polls button, modifiers, Escape and pasteboard | `DragGestureMonitor` fields | ✅ |
 | Wheel highlight sound and haptics, with a setting to turn them off | `FanHighlightSoundPlayer`; "Sound and haptic feedback" | ✅ (Phase 0) |
-| Wheel themes **(inferred: light/dark/tinted)** | `ConversionFanTheme`, `conversionFanThemeDidChange` | ❌ |
+| Wheel themes **(inferred: light/dark/tinted)** | `ConversionFanTheme`, `conversionFanThemeDidChange` | ✅ Dark, Light, Accent Tint |
 | Batch drops of any size | "Batch drops of any size" | ✅ |
-| **Float:** a glass tab docked to a screen edge holding a stack of files, with a paper-clip visual | `FloatingTab*` (Edge, Placement, StackPreview, PaperClip), "Create a New Float", "Add Files to an Existing Float", "Remove from Float", "Close Float without deleting files"; "Drag to carry all files"; "Double-click to open" | 🟡 single-file card |
+| **Float:** a glass tab docked to a screen edge holding a stack of files, with a paper-clip visual | `FloatingTab*` (Edge, Placement, StackPreview, PaperClip), "Create a New Float", "Add Files to an Existing Float", "Remove from Float", "Close Float without deleting files"; "Drag to carry all files"; "Double-click to open" | ✅ |
 | Home-folder or chosen-folder access, so results save beside originals | "Allow Home Folder Access", "Choose a folder where Tangerine may save results…", "No folders allowed yet." | ❌ (we're unsandboxed today, see 2.6) |
 | Launch at login (Login Items) | "Allow Tangerine in macOS Login Items…", "Open Login Items" | ✅ |
 | Choice of terminal app (Terminal, iTerm2, …) | `TerminalApplicationSettings`, `com.googlecode.iterm2` | ✅ (Phase 0) |
 | Onboarding | "Welcome to Tangerine", "Step 1. Drag files." | ✅ |
-| Update notice | "Update available" | ❌ |
+| Update notice | "Update available" | ✅ (needs a feed URL at build time; off by default) |
 | Results saved next to originals | "Results are saved next to the originals." | ✅ |
 | Operation progress and failures | "Operation in progress", "Operation failures" | ✅ toast + history |
 
@@ -277,6 +277,12 @@ public struct VideoRecipe: Codable, Sendable {
   - Pages/Keynote/Numbers and Office files via AppleScript when the app is installed, else saved preview or Quick Look
   - Markdown uses a built-in parser rather than swift-markdown, to avoid a new dependency
   - 21 new tests
+- **Phase 5:** done (2026-10-19):
+  - Float v2: edge-docked glass tabs holding stacks, hover to open, drag all or one, snap to an edge, saved across launches, "Add to Float" on the Actions wheel
+  - wheel themes: Dark, Light, Accent Tint
+  - update check against a GitHub-style releases feed, opt-in, HTTPS only, feed set at build time
+  - onboarding page for every file kind; wheel blurbs updated
+  - 9 new tests
 - **Open from Phase 2:**
   - WebM output: added after Phase 2 with libvpx 1.17.0 (VP9) and ffmpeg's Opus encoder.
   - Timeline handles for redaction ranges are buttons ("Set Start/End"), not draggable edges.

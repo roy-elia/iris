@@ -126,6 +126,11 @@ struct SettingsTab: View {
         .disabled(!model.settings.wheelTriggerEnabled)
         Toggle("Sound and haptic feedback", isOn: $model.settings.soundAndHaptics)
           .accessibilityIdentifier("soundAndHaptics")
+        Picker("Wheel theme", selection: $model.settings.wheelTheme) {
+          ForEach(WheelTheme.allCases, id: \.self) { Text($0.title).tag($0) }
+        }
+        .pickerStyle(.menu)
+        .accessibilityIdentifier("wheelTheme")
       }
       .glassCard()
 
@@ -142,6 +147,22 @@ struct SettingsTab: View {
           isOn: Binding(get: { model.settings.launchAtLogin }, set: { model.setLaunchAtLogin($0) })
         )
         .accessibilityIdentifier("launchAtLogin")
+        Toggle("Check for updates daily", isOn: $model.settings.checkForUpdates)
+          .disabled(UpdateChecker.feedURL() == nil)
+          .help(
+            UpdateChecker.feedURL() == nil
+              ? "This build has no update feed." : "Looks for a newer release once a day."
+          )
+          .accessibilityIdentifier("checkForUpdates")
+        if model.settings.checkForUpdates {
+          HStack {
+            Button("Check Now") { model.checkForUpdates(manual: true) }.buttonStyle(.glass).controlSize(
+              .small)
+            if let status = model.updateStatus {
+              Text(status).font(.caption).foregroundStyle(DesignTokens.Palette.secondaryText)
+            }
+          }
+        }
         if let error = model.settingsError {
           Text(error).font(.caption).foregroundStyle(DesignTokens.Palette.errorText)
         }

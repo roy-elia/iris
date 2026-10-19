@@ -172,10 +172,12 @@ import SwiftUI
       ("Wheel-DropHover", CGSize(width: 420, height: 420)),
       ("Onboarding-Welcome", CGSize(width: 820, height: 520)),
       ("Onboarding-Tools", CGSize(width: 820, height: 520)),
+      ("Onboarding-Files", CGSize(width: 820, height: 520)),
       ("Onboarding-Finish", CGSize(width: 820, height: 520)),
       ("Toast", CGSize(width: 460, height: 90)),
       ("Editor", CGSize(width: 900, height: 640)),
-      ("Float", CGSize(width: 284, height: 284)),
+      ("Float-Collapsed", CGSize(width: 140, height: 160)),
+      ("Float-Expanded", CGSize(width: 280, height: 360)),
       ("Tool-Compress", CGSize(width: 424, height: 330)),
       ("Tool-Metadata", CGSize(width: 464, height: 520)),
       ("Tool-Background", CGSize(width: 404, height: 230)),
@@ -195,6 +197,8 @@ import SwiftUI
       ("Audio-Channels", CGSize(width: 960, height: 440)),
       ("Tool-Visualizer", CGSize(width: 424, height: 340)),
       ("Wheel-DocConvert", CGSize(width: 420, height: 420)),
+      ("Wheel-ThemeLight", CGSize(width: 420, height: 420)),
+      ("Wheel-ThemeTinted", CGSize(width: 420, height: 420)),
       ("Wheel-PDFConvert", CGSize(width: 420, height: 420)),
       ("Wheel-PDFTools", CGSize(width: 420, height: 420)),
       ("PDF-Organizer", CGSize(width: 900, height: 600)),
@@ -212,9 +216,11 @@ import SwiftUI
       case "Wheel-DropHover": dropHover(model)
       case "Onboarding-Welcome": OnboardingView(onFinish: {}, startPage: .welcome).environmentObject(model)
       case "Onboarding-Tools": OnboardingView(onFinish: {}, startPage: .tools).environmentObject(model)
+      case "Onboarding-Files": OnboardingView(onFinish: {}, startPage: .fileTypes).environmentObject(model)
       case "Onboarding-Finish": OnboardingView(onFinish: {}, startPage: .finish).environmentObject(model)
       case "Editor": EditorView(model: editorModel()).environmentObject(model)
-      case "Float": FloatView(url: PreviewData.sampleImage())
+      case "Float-Collapsed": floatPreview(expanded: false)
+      case "Float-Expanded": floatPreview(expanded: true)
       case "Tool-Compress": CompressView(urls: [PreviewData.sampleImage()])
       case "Tool-Metadata": MetadataView(urls: [PreviewData.sampleImage()])
       case "Tool-Background": BackgroundView(urls: [PreviewData.sampleImage()])
@@ -253,6 +259,20 @@ import SwiftUI
       case "Audio-Bleep": AudioEditorView(model: PreviewData.audioEditor(.bleep)).environmentObject(model)
       case "Audio-Channels":
         AudioEditorView(model: PreviewData.audioEditor(.channels)).environmentObject(model)
+      case "Wheel-ThemeLight":
+        RadialWheel(
+          kind: .tools, items: WheelKind.tools.items(for: []), centerText: "2.4 MB", mode: .drop,
+          hotID: "crop"
+        ) { _, _ in }
+        .environment(\.wheelTheme, .light)
+        .padding(DesignTokens.Spacing.inset)
+      case "Wheel-ThemeTinted":
+        RadialWheel(
+          kind: .tools, items: WheelKind.tools.items(for: []), centerText: "2.4 MB", mode: .drop,
+          hotID: "crop"
+        ) { _, _ in }
+        .environment(\.wheelTheme, .tinted)
+        .padding(DesignTokens.Spacing.inset)
       case "Wheel-DocConvert":
         RadialWheel(
           kind: .convert, items: WheelKind.convert.items(for: PreviewData.documentFiles(["Notes.docx"])),
@@ -277,6 +297,21 @@ import SwiftUI
       default:
         ToastPreview()
       }
+    }
+
+    private static func floatPreview(expanded: Bool) -> some View {
+      let names = ["Hero shot.png", "Brief.pdf", "Interview.m4a", "Notes.md"]
+      let urls = names.map { URL(fileURLWithPath: "/Users/me/Desktop/\($0)") }
+      let pages = PreviewData.samplePages(urls.count)
+      var thumbs = Dictionary(uniqueKeysWithValues: zip(urls, pages))
+      if let image = NSImage(contentsOf: PreviewData.sampleImage()) { thumbs[urls[0]] = image }
+      let manager = FloatManager(folder: FileManager.default.temporaryDirectory)
+      let stack = FloatStack(urls: urls.reversed(), edge: .right)
+      manager.preview(stack, expanded: expanded, thumbnails: thumbs)
+      let size = manager.size(for: stack, expanded: expanded)
+      return FloatTabView(id: stack.id).environmentObject(manager)
+        .frame(width: size.width, height: size.height)
+        .padding(DesignTokens.Spacing.inset)
     }
 
     private static func editorModel() -> EditorModel {

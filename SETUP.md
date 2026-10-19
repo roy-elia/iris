@@ -75,6 +75,12 @@ A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the
 
 **Subtitles:** SRT ↔ VTT. **Archives:** zip → a folder next to it (checked for unsafe paths, more than 20,000 files, or more than 2 GB unpacked).
 
+**Shell:**
+- **Floats:** the Actions wheel's Float puts the files in a glass tab tucked against the right screen edge (Add to Float adds to the latest one). Hover to open it into a stack. Drag the tab or its header to carry every file, drag a row for one file, double-click to open, right-click for Open, Show in Finder, Copy Path, Remove from Float and Close Float. Drag the grip to move it; it snaps to the nearer edge. Drop files on a Float to add them. Floats are saved and come back after a relaunch; closing one never touches the files.
+- **Wheel themes:** Dark (default), Light and Accent Tint, under Settings.
+- **Update check:** off by default. It needs a build made with `UPDATE_FEED_URL=https://…/releases/latest scripts/bundle.sh`; then Settings › "Check for updates daily" looks once a day, and a newer release adds "Update Available" to the menu. Builds without a feed never make the call.
+- **Onboarding** has a page showing what the wheels do for each kind of file.
+
 **Tool windows** (floating glass panels opened from the Tools wheel):
 - **Compress:** Smallest, Balanced or Best quality presets, or a target size in KB/MB. Each file is compressed to the target or below, separately. Dimensions shrink only when even the lowest quality is too big.
 - **Metadata:** edit Title, Description, Artist, Copyright, Keywords and Date taken; remove location; browse every field; or strip all. Uses the bundled ExifTool.
@@ -189,7 +195,7 @@ There are no API keys or network calls at runtime, so there is no `.env`.
 ```bash
 cd /Users/royelia/file-drop-utility
 scripts/fetch-tools.sh          # once: download, verify and build the helpers into Vendor/ (~5 min)
-scripts/test.sh                 # 180 tests (tool tests skip if Vendor/out is missing)
+scripts/test.sh                 # 189 tests (tool tests skip if Vendor/out is missing)
 scripts/lint.sh                 # swift-format --strict
 swift build
 scripts/bundle.sh               # dist/File Drop Utility.app (ad-hoc signed), helpers included
@@ -224,6 +230,7 @@ Confirmed by you by hand (2026-10-18): a real drag with the redrawn wheel looks 
 
 ## Known gaps
 
+- **Floats:** dragging out of a Float, hover-to-open and edge snapping need a real pointer, so they're checked by snapshots and unit tests (placement, snapping, persistence), not end to end. The update check has no feed configured, so only its parsing and version logic are tested.
 - **Documents:** Pages, Keynote and Numbers aren't installed on this Mac, so the scripting paths (Pages output, iWork and Office → PDF through the apps) are untested; the preview and Quick Look fallbacks are tested. PDF output from text is laid out on US Letter pages. Images inside documents survive DOCX/RTF/PDF output but not Markdown, HTML or EPUB output.
 - **Audio:** OGG, Opus and WMA can't play in the editor (AVFoundation doesn't read them); the waveform and every edit still work. Ogg Vorbis and Opus use ffmpeg's own encoders, which are adequate rather than best-in-class (libvorbis and libopus aren't bundled). Normalize is single-pass loudnorm, accurate to about ±1 LU on typical material.
 
@@ -247,4 +254,3 @@ Confirmed by you by hand (2026-10-18): a real drag with the redrawn wheel looks 
 - Lossless JPEG metadata stripping.
 - A bespoke app icon (it currently uses the system tray symbol).
 - Per-file progress for large batches.
-- Remembering where each floating card was placed.
