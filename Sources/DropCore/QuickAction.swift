@@ -185,6 +185,36 @@ public enum QuickActionRunner {
   }
 }
 
+/// Finder service requests waiting for the running job to finish, oldest first.
+public struct QuickActionQueue: Sendable {
+  public struct Request: Equatable, Sendable {
+    public let action: QuickAction
+    public let urls: [URL]
+
+    public init(action: QuickAction, urls: [URL]) {
+      self.action = action
+      self.urls = urls
+    }
+  }
+
+  public private(set) var pending: [Request] = []
+
+  public init() {}
+
+  public var isEmpty: Bool { pending.isEmpty }
+
+  public mutating func enqueue(_ action: QuickAction, on urls: [URL]) {
+    pending.append(Request(action: action, urls: urls))
+  }
+
+  /// Removes and returns the oldest request, or nil when none is waiting.
+  public mutating func next() -> Request? {
+    pending.isEmpty ? nil : pending.removeFirst()
+  }
+
+  public mutating func removeAll() { pending.removeAll() }
+}
+
 /// The `--run` command line: `FileDropUtility --run <action> [--out <folder>] <file>…`.
 public struct QuickActionCommand: Equatable, Sendable {
   public let action: QuickAction

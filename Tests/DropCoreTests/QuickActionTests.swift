@@ -147,4 +147,31 @@ import Testing
       #expect(QuickAction(spec: spec) != nil, "\(spec)")
     }
   }
+
+  @Test func queueRunsRequestsInOrder() {
+    var queue = QuickActionQueue()
+    #expect(queue.isEmpty)
+    #expect(queue.next() == nil)
+    let a = URL(fileURLWithPath: "/tmp/a.png")
+    let b = URL(fileURLWithPath: "/tmp/b.mov")
+    queue.enqueue(.convertImage(.jpeg), on: [a])
+    queue.enqueue(.compress, on: [a, b])
+    queue.enqueue(.makePDF, on: [b])
+    #expect(queue.next() == .init(action: .convertImage(.jpeg), urls: [a]))
+    queue.enqueue(.resize(.percent(50)), on: [a])
+    #expect(queue.next() == .init(action: .compress, urls: [a, b]))
+    #expect(queue.next() == .init(action: .makePDF, urls: [b]))
+    #expect(queue.next() == .init(action: .resize(.percent(50)), urls: [a]))
+    #expect(queue.next() == nil)
+    #expect(queue.isEmpty)
+  }
+
+  @Test func queueRemoveAllDropsWaitingRequests() {
+    var queue = QuickActionQueue()
+    queue.enqueue(.compress, on: [URL(fileURLWithPath: "/tmp/a")])
+    queue.enqueue(.makePDF, on: [URL(fileURLWithPath: "/tmp/b")])
+    queue.removeAll()
+    #expect(queue.isEmpty)
+    #expect(queue.next() == nil)
+  }
 }

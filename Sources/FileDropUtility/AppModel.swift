@@ -16,6 +16,8 @@ final class AppModel: ObservableObject {
   private var currentJob: JobHandle?
   /// A Finder service run, which may be several jobs.
   private var quickActionTask: Task<Void, Never>?
+  /// Finder service requests that arrived while a job was running.
+  private var quickActionQueue = QuickActionQueue()
   @Published var lastResult: OperationResult?
   @Published var lastOperation: String?
   @Published var history: [HistoryEntry]
@@ -275,20 +277,30 @@ final class AppModel: ObservableObject {
       default:
         _ = result
       }
+      startNextQuickAction()
     }
   }
 
-  /// Runs a Finder service's `QuickAction` and shows the result like a wheel drop.
+  /// Runs a Finder service's `QuickAction` and shows the result like a wheel drop. When
+  /// another job is running, the request waits its turn.
   func runQuickAction(_ action: QuickAction, on urls: [URL]) {
-    guard !isRunning else {
-      Toast.show("File Drop Utility is busy. Try again when it finishes.", outputs: [], isError: true)
-      return
+    quickActionQueue.enqueue(action, on: urls)
+    if isRunning {
+      Toast.show("\(action.title) will start when the current task finishes.", outputs: [])
+    } else {
+      startNextQuickAction()
     }
+  }
+
+  /// Starts the oldest waiting service request, if nothing else is running.
+  private func startNextQuickAction() {
+    guard !isRunning, let request = quickActionQueue.next() else { return }
     isRunning = true
     progress = 0
     let settings = settings
     quickActionTask = Task {
-      let result = await QuickActionRunner.run(action, on: urls, settings: settings) { fraction in
+      let result = await QuickActionRunner.run(request.action, on: request.urls, settings: settings) {
+        fraction in
         Task { @MainActor in
           if AppModel.shared.quickActionTask != nil { AppModel.shared.progress = fraction }
         }
@@ -296,7 +308,8 @@ final class AppModel: ObservableObject {
       quickActionTask = nil
       isRunning = false
       progress = nil
-      finish(result, operation: action.title, origin: .overlay, inputCount: urls.count)
+      finish(result, operation: request.action.title, origin: .overlay, inputCount: request.urls.count)
+      startNextQuickAction()
     }
   }
 
@@ -305,8 +318,9 @@ final class AppModel: ObservableObject {
     TerminalApp.installed { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil }
   }
 
-  /// Stops the running job, if any.
+  /// Stops the running job, if any, and drops the service requests waiting behind it.
   func cancelCurrentJob() {
+    quickActionQueue.removeAll()
     currentJob?.cancel()
     quickActionTask?.cancel()
   }
