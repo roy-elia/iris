@@ -165,6 +165,10 @@ final class AppModel: ObservableObject {
       WindowManager.shared.openTool("collage", title: "Collage") { CollageView(urls: fileURLs) }
     case .readQR:
       run(.readQRCodes, on: targets, origin: origin)
+    case .resize:
+      WindowManager.shared.openTool("resize", title: "Resize") { ResizeView(urls: fileURLs) }
+    case .grayscale:
+      run(.grayscale, on: targets, origin: origin)
     case .convertVideo(let output):
       run(.convertVideo(output), on: targets, origin: origin)
     case .videoEditor(let tool):

@@ -114,18 +114,37 @@ public enum ImageOps {
 
   /// Encodes `image` as `format`. Throws for formats macOS cannot write.
   public static func write(_ image: CGImage, as format: ImageFormat, quality: Double, to url: URL) throws {
-    guard format.isImageIOWritable,
-      let dest = CGImageDestinationCreateWithURL(url as CFURL, format.typeIdentifier as CFString, 1, nil)
-    else { throw DropError.writeFailed(url.lastPathComponent) }
+    guard format.isImageIOWritable else { throw DropError.writeFailed(url.lastPathComponent) }
     var options: [CFString: Any] = [:]
     if format.usesQuality {
       options[kCGImageDestinationLossyCompressionQuality] = AppSettings.clampQuality(quality)
     }
-    CGImageDestinationAddImage(dest, image, options as CFDictionary)
-    guard CGImageDestinationFinalize(dest) else {
+    func encode(_ image: CGImage) -> Bool {
+      guard
+        let dest = CGImageDestinationCreateWithURL(url as CFURL, format.typeIdentifier as CFString, 1, nil)
+      else { return false }
+      CGImageDestinationAddImage(dest, image, options as CFDictionary)
+      return CGImageDestinationFinalize(dest)
+    }
+    // Some encoders (TGA, JPEG 2000, OpenEXR) refuse pixel layouts other decoders produce,
+    // such as float HDR pixels or cropped buffers; those are retried as plain 8-bit sRGB.
+    guard encode(image) || eightBitSRGB(image).map(encode) == true else {
       try? FileManager.default.removeItem(at: url)
       throw DropError.writeFailed(url.lastPathComponent)
     }
+  }
+
+  /// `image` redrawn as 8-bit sRGB (RGBA, or RGB when it has no alpha).
+  static func eightBitSRGB(_ image: CGImage) -> CGImage? {
+    let alpha = hasAlpha(image)
+    guard
+      let ctx = CGContext(
+        data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0,
+        space: CGColorSpace(name: CGColorSpace.sRGB)!,
+        bitmapInfo: (alpha ? CGImageAlphaInfo.premultipliedLast : .noneSkipLast).rawValue)
+    else { return nil }
+    ctx.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+    return ctx.makeImage()
   }
 
   /// Whether the image has an alpha channel that is actually used.

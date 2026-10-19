@@ -107,4 +107,14 @@ enum Fixtures {
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
     return CGImageSourceGetType(source) as String?
   }
+
+  /// A tiny uncompressed Radiance HDR (RGBE) image, which ImageIO reads but can't write.
+  @discardableResult
+  static func writeHDR(to url: URL, width: Int = 4, height: Int = 4) throws -> URL {
+    var data = Data("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y \(height) +X \(width)\n".utf8)
+    // Widths under 8 are stored flat: one R, G, B, shared-exponent quad per pixel.
+    for _ in 0..<(width * height) { data.append(contentsOf: [200, 100, 50, 128]) }
+    try data.write(to: url)
+    return url
+  }
 }

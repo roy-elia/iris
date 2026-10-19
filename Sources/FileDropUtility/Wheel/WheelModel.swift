@@ -95,6 +95,8 @@ enum WheelCommand: Equatable {
   case frame
   case collage
   case readQR
+  case resize
+  case grayscale
   case edit(EditorTool)
   case convertVideo(VideoOutput)
   case videoEditor(VideoTool)
@@ -251,10 +253,12 @@ extension WheelKind {
 
     switch self {
     case .convert:
-      let formats: [ImageFormat] = [.png, .jpeg, .heic, .avif, .tiff, .bmp, .webp, .gif]
+      let formats: [ImageFormat] = [
+        .png, .jpeg, .heic, .avif, .tiff, .bmp, .webp, .gif, .ico, .icns, .jpeg2000, .tga, .exr,
+      ]
       var items = formats.map { format in
         WheelItem(
-          id: format.rawValue, title: format.displayName, systemImage: nil, command: .convert(format),
+          id: format.rawValue, title: format.shortName, systemImage: nil, command: .convert(format),
           disabledReason: !format.isWritable ? "\(format.displayName) encoder missing" : imagesOnly)
       }
       let pdfReason: String? =
@@ -274,7 +278,7 @@ extension WheelKind {
         WheelItem(
           id: "metadata", title: "Metadata", systemImage: "tag", command: .metadata,
           disabledReason: imagesOnly
-            ?? (files.contains { $0.kind == .image(.svg) } ? "Not for SVG files" : nil)),
+            ?? (files.allSatisfy(Processor.canEditMetadata) ? nil : "Not for this format")),
         WheelItem(
           id: "annotate", title: "Annotate", systemImage: EditorTool.annotate.systemImage,
           command: .edit(.annotate), disabledReason: oneImage),
@@ -296,6 +300,12 @@ extension WheelKind {
           disabledReason: collageReason),
         WheelItem(
           id: "qr", title: "QR Code", systemImage: "qrcode.viewfinder", command: .readQR,
+          disabledReason: imagesOnly),
+        WheelItem(
+          id: "resize", title: "Resize", systemImage: "arrow.up.left.and.arrow.down.right", command: .resize,
+          disabledReason: imagesOnly),
+        WheelItem(
+          id: "grayscale", title: "Grayscale", systemImage: "circle.lefthalf.filled", command: .grayscale,
           disabledReason: imagesOnly),
         WheelItem(
           id: "edit", title: "Adjust", systemImage: EditorTool.adjust.systemImage, command: .edit(.adjust),

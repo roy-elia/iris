@@ -65,6 +65,8 @@ public enum ImageConvert {
     case .webp:
       try await writeWebP(
         from: readable, quality: quality, keepMetadata: options.preserveMetadata, to: destination)
+    case .ico, .icns:
+      try ImageToolOps.writeIcon(readable, as: format, to: destination)
     case .gif where frameCount(readable) > 1:
       try writeAnimatedGIF(from: readable, to: destination)
     default:
@@ -102,10 +104,10 @@ public enum ImageConvert {
       let image = try ImageOps.loadOriented(source)
       CGImageDestinationAddImage(dest, image, options as CFDictionary)
     }
-    guard CGImageDestinationFinalize(dest) else {
-      try? FileManager.default.removeItem(at: destination)
-      throw DropError.writeFailed(destination.lastPathComponent)
-    }
+    if CGImageDestinationFinalize(dest) { return }
+    // The encoder refused the decoded pixels (float HDR into JPEG 2000, say): write them as
+    // 8-bit sRGB, without metadata.
+    try ImageOps.write(try ImageOps.loadOriented(source), as: format, quality: quality, to: destination)
   }
 
   /// Copies every frame and its timing into a looping GIF.

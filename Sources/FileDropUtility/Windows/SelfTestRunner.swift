@@ -2,6 +2,7 @@
   import AppKit
   import CoreImage
   import DropCore
+  import ImageIO
   import PDFKit
   import SwiftUI
 
@@ -177,6 +178,8 @@
       case .convert(let format): return await check(.convert(format, quality: 0.8))
       case .toPDF: return await check(files.allSatisfy { $0.kind == .pdf } ? .mergePDFs : .imagesToPDF)
       case .readQR: return await check(.readQRCodes)
+      case .grayscale: return await check(.grayscale)
+      case .resize: return await window("Resize", then: .resize(.percent(50)))
       case .convertVideo(let o): return await check(.convertVideo(o))
       case .convertAudio(let o): return await check(.convertAudio(o))
       case .convertDocument(let o): return await check(.convertDocument(o))
@@ -332,6 +335,20 @@
         ##"<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120"><rect width="200" height="120" fill="#0a6"/><circle cx="100" cy="60" r="40" fill="#fff"/></svg>"##
         .write(to: svg, atomically: true, encoding: .utf8)
 
+      // Formats ImageIO reads: written by ImageIO, as an icon, or (HDR) by hand.
+      let psd = file("layers.psd")
+      try writeImageIO(scene, to: psd, type: ImageFormat.psd.typeIdentifier)
+      let tga = file("texture.tga")
+      try writeImageIO(scene, to: tga, type: ImageFormat.tga.typeIdentifier)
+      let exr = file("render.exr")
+      try writeImageIO(scene, to: exr, type: ImageFormat.exr.typeIdentifier)
+      let ico = file("favicon.ico")
+      try ImageToolOps.writeIcon(scene, as: .ico, to: ico)
+      let hdr = file("sky.hdr")
+      var rgbe = Data("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 4 +X 4\n".utf8)
+      for _ in 0..<16 { rgbe.append(contentsOf: [200, 120, 60, 128]) }
+      try rgbe.write(to: hdr)
+
       // Media.
       func ffmpeg(_ args: [String]) async throws {
         _ = try await ToolRunner.run(
@@ -428,6 +445,7 @@
       var f = Fixtures(extra: md)
       f.groups = [
         ("png", [scene]), ("jpg", [jpg]), ("heic", [heic]), ("svg", [svg]), ("qr", [qr]),
+        ("psd", [psd]), ("tga", [tga]), ("exr", [exr]), ("ico", [ico]), ("hdr", [hdr]),
         ("images×2", [scene, jpg]),
         ("mp4", [mp4]), ("videos×2", [mp4, mov]),
         ("wav", [wav]), ("audio×2", [wav, mp3]),
@@ -437,6 +455,15 @@
         ("srt", [srt]), ("vtt", [vtt]), ("zip", [zip]),
       ]
       return f
+    }
+
+    static func writeImageIO(_ source: URL, to url: URL, type: String) throws {
+      let image = try ImageOps.loadOriented(source)
+      guard let dest = CGImageDestinationCreateWithURL(url as CFURL, type as CFString, 1, nil) else {
+        throw DropError.writeFailed(url.lastPathComponent)
+      }
+      CGImageDestinationAddImage(dest, image, nil)
+      guard CGImageDestinationFinalize(dest) else { throw DropError.writeFailed(url.lastPathComponent) }
     }
 
     /// A sky, ground and a person-like figure, so background removal has a subject.

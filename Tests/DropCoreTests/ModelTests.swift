@@ -13,14 +13,14 @@ import Testing
   }
 
   @Test func rejectsUnknownExtensions() {
-    #expect(ImageFormat(fileExtension: "psd") == nil)
+    #expect(ImageFormat(fileExtension: "xcf") == nil)
     #expect(ImageFormat(fileExtension: "gif") == .gif)
     #expect(ImageFormat(fileExtension: "SVG") == .svg)
     #expect(ImageFormat(fileExtension: "") == nil)
   }
 
   @Test func onlyLossyFormatsUseQuality() {
-    #expect(ImageFormat.allCases.filter(\.usesQuality) == [.jpeg, .heic, .avif, .webp])
+    #expect(ImageFormat.allCases.filter(\.usesQuality) == [.jpeg, .heic, .avif, .webp, .jpeg2000])
   }
 }
 

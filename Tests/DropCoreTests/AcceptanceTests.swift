@@ -34,7 +34,13 @@ import Testing
       let out = try #require(result.outputs.first)
       #expect(out.pathExtension == format.fileExtension)
       #expect(Fixtures.typeIdentifier(of: out) == format.typeIdentifier)
-      #expect(Fixtures.properties(of: out)[kCGImagePropertyPixelWidth] as? Int == 64)
+      let props = Fixtures.properties(of: out)
+      if format.isIcon {
+        // Icons hold square images at standard sizes.
+        #expect(props[kCGImagePropertyPixelWidth] as? Int == props[kCGImagePropertyPixelHeight] as? Int)
+      } else {
+        #expect(props[kCGImagePropertyPixelWidth] as? Int == 64)
+      }
     }
   }
 

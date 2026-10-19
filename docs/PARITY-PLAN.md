@@ -327,3 +327,11 @@ The wheel segments grow with each phase. `WheelKind.items(for:)` already enables
 3. **Downloading bundled tools:** ffmpeg (LGPL build) + LAME, libwebp's `cwebp`, ExifTool. I'll download only from the official sites (ffmpeg.org, developers.google.com/speed/webp, exiftool.org) after your OK, and record licences and checksums.
 4. **Pages writing without Pages installed:** use scripting (needs Pages), or build an IWA writer (large; weeks of work).
 5. **Distribution:** stay unsandboxed with a Developer ID (simplest), or prepare for the Mac App Store (sandbox + security-scoped folder access).
+
+## 7. Filee gaps closed without new engines
+
+Filee (MIT, C#) converts 244 formats. These are the ones macOS or the already-bundled tools handle, written from scratch in Swift. Formats that need LibreOffice, Pandoc, calibre, Ghostscript or an HWP reader stay out.
+
+| Step | Added | How |
+|---|---|---|
+| 1. Images | Inputs: camera RAW (CR2, CR3, NEF, ARW, DNG, RAF, ORF and other ImageIO RAWs), PSD, ICNS, ICO, JPEG 2000, OpenEXR, TGA, PPM/PGM/PBM, Radiance HDR. Outputs: ICO (16–256 px), ICNS (16–1024 px), JPEG 2000, TGA, OpenEXR. Tools: Resize (longest side or %), Grayscale. | ImageIO; icons are squared onto a transparent canvas at each standard size |

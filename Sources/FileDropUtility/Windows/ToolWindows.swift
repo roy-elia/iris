@@ -491,6 +491,62 @@ struct FrameView: View {
   }
 }
 
+// MARK: Resize
+
+struct ResizeView: View {
+  enum Mode: String, CaseIterable {
+    case edge = "Longest side"
+    case percent = "Percentage"
+  }
+
+  let urls: [URL]
+  @State private var mode: Mode = .edge
+  @State private var edge = 1600
+  @State private var percent = 50.0
+  @State private var sourceSize: (width: Int, height: Int)?
+
+  private var spec: ResizeSpec { mode == .edge ? .maxEdge(edge) : .percent(percent) }
+  private var isValid: Bool {
+    mode == .edge ? ResizeSpec.edgeRange.contains(edge) : ResizeSpec.percentRange.contains(percent)
+  }
+
+  var body: some View {
+    ToolPanel(title: "Resize", urls: urls, primaryTitle: "Save Resized Copy", primaryDisabled: !isValid) {
+      runTool(.resize(spec), on: urls)
+    } content: {
+      Picker("Mode", selection: $mode) {
+        ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+      }
+      .pickerStyle(.segmented)
+      .labelsHidden()
+      HStack {
+        if mode == .edge {
+          TextField("Pixels", value: $edge, format: .number).frame(width: 90)
+          Text("px")
+        } else {
+          TextField("Percent", value: $percent, format: .number).frame(width: 90)
+          Text("%")
+        }
+        Spacer()
+        if let size = sourceSize, isValid {
+          let new = spec.size(width: size.width, height: size.height)
+          Text("\(size.width)×\(size.height) → \(new.width)×\(new.height)")
+            .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+        }
+      }
+      .textFieldStyle(.roundedBorder)
+    }
+    .frame(width: 400)
+    .task {
+      let url = urls[0]
+      sourceSize = await Task.detached {
+        (try? ImageInput.readableURL(for: url)).flatMap { try? ImageOps.loadOriented($0) }
+          .map { ($0.width, $0.height) }
+      }.value
+    }
+  }
+}
+
 private struct LabeledSlider: View {
   let title: String
   @Binding var value: Double

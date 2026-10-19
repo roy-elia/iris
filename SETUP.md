@@ -34,8 +34,8 @@ wording, code or bundled tools.
 
 | Wheel | Key | Segments |
 |---|---|---|
-| Convert | ⇧ Shift (configurable) | PNG, PDF, JPEG, HEIC, AVIF, TIFF, BMP, WebP (bundled cwebp), GIF (animations keep every frame). SVG files are accepted as input. |
-| Tools | ⌘ Command (configurable) | Compress (presets or a target size), Metadata (view, edit, remove location, strip), Annotate, Redact, Crop (one or many images), Add BG (remove, colour or image), Frame, Collage, QR Code, Adjust |
+| Convert | ⇧ Shift (configurable) | PNG, PDF, JPEG, HEIC, AVIF, TIFF, BMP, WebP (bundled cwebp), GIF (animations keep every frame), ICO (16–256 px), ICNS (16–1024 px), JPEG 2000, TGA, OpenEXR. Inputs also include SVG, camera RAW (CR2, CR3, NEF, ARW, DNG, RAF, ORF and the other RAWs ImageIO reads), PSD, PPM/PGM/PBM and Radiance HDR. |
+| Tools | ⌘ Command (configurable) | Compress (presets or a target size), Metadata (view, edit, remove location, strip), Annotate, Redact, Crop (one or many images), Add BG (remove, colour or image), Frame, Collage, QR Code, Resize (longest side in px, or %), Grayscale, Adjust |
 | Actions | ⌃ Control | AirDrop, Float, Copy, Move, Copy Path, Terminal |
 
 A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the queued files don't fit it. Press the modifier any time during the drag, even with the pointer still. Switching modifiers switches the wheel. Letting go of the key closes the wheel unless you're over it, and Escape closes it. While dragging over the overlay wheel, the segment under the pointer lights up in the accent colour with a soft glow, the centre pill shows its name, and a soft tick plays (with a trackpad tap). A drop plays a pop, runs the command, and reports the result in a glass toast at the top of the screen.

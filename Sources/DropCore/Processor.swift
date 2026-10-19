@@ -54,7 +54,8 @@ public struct Processor: Sendable {
     case .convert(let format, _):
       if !format.isWritable { return "\(format.displayName) can't be written on this Mac." }
       if !allImages { return imagesOnly(operation) }
-    case .stripMetadata, .imagesToPDF, .replaceBackground, .batchEdit, .frame, .readQRCodes:
+    case .stripMetadata, .imagesToPDF, .replaceBackground, .batchEdit, .frame, .readQRCodes, .resize,
+      .grayscale:
       if !allImages { return imagesOnly(operation) }
       if case .replaceBackground(.image(let path)) = operation, !FileManager.default.fileExists(atPath: path)
       {
@@ -119,8 +120,8 @@ public struct Processor: Sendable {
       if bytes < TargetSizeOps.minimumTarget { return "Enter a target size of at least 1 KB." }
     case .editMetadata(let edits):
       if !allImages { return imagesOnly(operation) }
-      if files.contains(where: { $0.kind == .image(.svg) }) {
-        return "SVG files have no photo metadata to edit."
+      if let file = files.first(where: { !Self.canEditMetadata($0) }) {
+        return "\(file.name) can't hold photo metadata. Convert it to JPEG, PNG or TIFF first."
       }
       if edits.isEmpty { return "There are no metadata changes to save." }
     case .collage:
@@ -131,6 +132,12 @@ public struct Processor: Sendable {
       if files.count < 2 { return "Drop at least two PDFs to merge." }
     }
     return nil
+  }
+
+  /// Whether ExifTool can write `file`'s metadata.
+  public static func canEditMetadata(_ file: DroppedFile) -> Bool {
+    if case .image(let format) = file.kind { return format.supportsMetadataEditing }
+    return false
   }
 
   private static func videosOnly(_ operation: FileOperation) -> String {
@@ -219,6 +226,22 @@ public struct Processor: Sendable {
         let out = target(file, suffix: "no-bg", ext: ext)
         await record(&result, file: file, output: out) {
           try BackgroundOps.replaceBackground(readable(file), fill: fill, destination: out)
+        }
+      }
+
+    case .resize(let spec):
+      for file in files {
+        let out = target(file, suffix: "resized", ext: EditOps.outputFormat(for: file.url).fileExtension)
+        await record(&result, file: file, output: out) {
+          try ImageToolOps.resize(readable(file), spec: spec, destination: out)
+        }
+      }
+
+    case .grayscale:
+      for file in files {
+        let out = target(file, suffix: "grayscale", ext: EditOps.outputFormat(for: file.url).fileExtension)
+        await record(&result, file: file, output: out) {
+          try ImageToolOps.grayscale(readable(file), destination: out)
         }
       }
 

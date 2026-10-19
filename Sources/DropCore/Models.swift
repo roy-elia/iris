@@ -1,23 +1,43 @@
 import Foundation
 
-/// Image formats the app can read. SVG is read-only; WebP is written with the bundled
-/// `cwebp`; everything else goes through ImageIO.
+/// Image formats the app can read. SVG, camera RAW, PSD, Netpbm and Radiance HDR are
+/// read-only; WebP is written with the bundled `cwebp`; ICO and ICNS are written as
+/// multi-size icons; everything else goes through ImageIO.
 public enum ImageFormat: String, CaseIterable, Codable, Sendable {
   case png, jpeg, heic, avif, tiff, bmp, webp, gif, svg
+  case ico, icns, jpeg2000, tga, exr
+  case raw, psd, netpbm, hdr
 
   /// Formats the app can write right now.
   public static var writable: [ImageFormat] { allCases.filter(\.isWritable) }
 
   public var isWritable: Bool {
     switch self {
-    case .svg: false
+    case .svg, .raw, .psd, .netpbm, .hdr: false
     case .webp: ToolLocator.isAvailable(.cwebp)
     default: true
     }
   }
 
-  /// Written by ImageIO (as opposed to a bundled tool).
-  public var isImageIOWritable: Bool { self != .svg && self != .webp }
+  /// Written by ImageIO as a single image of any size (as opposed to a bundled tool, or
+  /// an icon that needs fixed square sizes).
+  public var isImageIOWritable: Bool {
+    switch self {
+    case .webp, .ico, .icns: false
+    default: isWritable
+    }
+  }
+
+  /// Whether the bundled ExifTool can write this format's metadata.
+  public var supportsMetadataEditing: Bool {
+    switch self {
+    case .svg, .bmp, .ico, .icns, .tga, .exr, .netpbm, .hdr: false
+    default: true
+    }
+  }
+
+  /// Icon formats, written as several square sizes.
+  public var isIcon: Bool { self == .ico || self == .icns }
 
   public var fileExtension: String {
     switch self {
@@ -30,6 +50,15 @@ public enum ImageFormat: String, CaseIterable, Codable, Sendable {
     case .webp: "webp"
     case .gif: "gif"
     case .svg: "svg"
+    case .ico: "ico"
+    case .icns: "icns"
+    case .jpeg2000: "jp2"
+    case .tga: "tga"
+    case .exr: "exr"
+    case .raw: "dng"
+    case .psd: "psd"
+    case .netpbm: "ppm"
+    case .hdr: "hdr"
     }
   }
 
@@ -45,6 +74,15 @@ public enum ImageFormat: String, CaseIterable, Codable, Sendable {
     case .webp: "org.webmproject.webp"
     case .gif: "com.compuserve.gif"
     case .svg: "public.svg-image"
+    case .ico: "com.microsoft.ico"
+    case .icns: "com.apple.icns"
+    case .jpeg2000: "public.jpeg-2000"
+    case .tga: "com.truevision.tga-image"
+    case .exr: "com.ilm.openexr-image"
+    case .raw: "public.camera-raw-image"
+    case .psd: "com.adobe.photoshop-image"
+    case .netpbm: "public.pbm"
+    case .hdr: "public.radiance"
     }
   }
 
@@ -59,20 +97,56 @@ public enum ImageFormat: String, CaseIterable, Codable, Sendable {
     case .webp: "WebP"
     case .gif: "GIF"
     case .svg: "SVG"
+    case .ico: "ICO"
+    case .icns: "ICNS"
+    case .jpeg2000: "JPEG 2000"
+    case .tga: "TGA"
+    case .exr: "OpenEXR"
+    case .raw: "Camera RAW"
+    case .psd: "PSD"
+    case .netpbm: "PPM"
+    case .hdr: "HDR"
+    }
+  }
+
+  /// A short label for the wheel.
+  public var shortName: String {
+    switch self {
+    case .jpeg2000: "JP2"
+    case .exr: "EXR"
+    case .raw: "RAW"
+    default: displayName
     }
   }
 
   /// Whether the format takes a lossy quality setting.
-  public var usesQuality: Bool { self == .jpeg || self == .heic || self == .avif || self == .webp }
+  public var usesQuality: Bool {
+    switch self {
+    case .jpeg, .heic, .avif, .webp, .jpeg2000: true
+    default: false
+    }
+  }
 
   /// Whether the format can store transparency.
-  public var supportsAlpha: Bool { self != .jpeg && self != .bmp }
+  public var supportsAlpha: Bool {
+    switch self {
+    case .jpeg, .bmp, .raw, .netpbm, .hdr: false
+    default: true
+    }
+  }
 
   /// Whether the format can hold several frames (an animation).
   public var supportsAnimation: Bool { self == .gif || self == .webp || self == .png || self == .heic }
 
+  /// Camera RAW extensions ImageIO decodes.
+  public static let rawExtensions: Set<String> = [
+    "cr2", "cr3", "crw", "nef", "nrw", "arw", "srf", "sr2", "dng", "raf", "orf", "rw2", "pef", "srw", "3fr",
+    "iiq", "rwl", "erf", "mos", "mrw", "x3f",
+  ]
+
   public init?(fileExtension ext: String) {
-    switch ext.lowercased() {
+    let ext = ext.lowercased()
+    switch ext {
     case "png": self = .png
     case "jpg", "jpeg": self = .jpeg
     case "heic", "heif": self = .heic
@@ -82,7 +156,17 @@ public enum ImageFormat: String, CaseIterable, Codable, Sendable {
     case "webp": self = .webp
     case "gif": self = .gif
     case "svg": self = .svg
-    default: return nil
+    case "ico": self = .ico
+    case "icns": self = .icns
+    case "jp2", "j2k", "jpf", "jpx": self = .jpeg2000
+    case "tga": self = .tga
+    case "exr": self = .exr
+    case "psd": self = .psd
+    case "ppm", "pgm", "pbm", "pnm": self = .netpbm
+    case "hdr": self = .hdr
+    default:
+      guard Self.rawExtensions.contains(ext) else { return nil }
+      self = .raw
     }
   }
 }
@@ -219,6 +303,8 @@ public enum FileOperation: Codable, Equatable, Sendable {
   case frame(FrameRecipe)
   case collage(CollageRecipe)
   case readQRCodes
+  case resize(ResizeSpec)
+  case grayscale
   case convertVideo(VideoOutput)
   case compressVideo(VideoCompression)
   case editVideo(VideoRecipe)
@@ -264,6 +350,8 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .frame: "Frame image"
     case .collage: "Create collage"
     case .readQRCodes: "Read QR codes"
+    case .resize(let spec): "Resize to \(spec.summary)"
+    case .grayscale: "Grayscale"
     case .convertVideo(let output):
       output.isAudioOnly ? "Extract \(output.displayName) audio" : "Convert to \(output.displayName)"
     case .compressVideo: "Compress video"
