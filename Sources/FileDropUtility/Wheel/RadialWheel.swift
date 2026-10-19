@@ -34,22 +34,30 @@ struct PetalShape: Shape {
   var gap: CGFloat
   var cornerRadius: CGFloat
 
-  var animatableData: AnimatablePair<AnimatablePair<Double, Double>, AnimatablePair<CGFloat, CGFloat>> {
+  var animatableData:
+    AnimatablePair<AnimatablePair<Double, Double>, AnimatablePair<CGFloat, AnimatablePair<CGFloat, CGFloat>>>
+  {
     get {
       AnimatablePair(
-        AnimatablePair(startAngle.radians, endAngle.radians), AnimatablePair(innerRadius, outerRadius))
+        AnimatablePair(startAngle.radians, endAngle.radians),
+        AnimatablePair(innerRadius, AnimatablePair(outerRadius, cornerRadius)))
     }
     set {
       startAngle = .radians(newValue.first.first)
       endAngle = .radians(newValue.first.second)
       innerRadius = newValue.second.first
-      outerRadius = newValue.second.second
+      outerRadius = newValue.second.second.first
+      cornerRadius = newValue.second.second.second
     }
   }
 
   func path(in rect: CGRect) -> Path {
     let center = CGPoint(x: rect.midX, y: rect.midY)
-    let r = max(0, min(cornerRadius, (outerRadius - innerRadius) / 2 - 0.5))
+    // The corner radius must also fit the petal's angular width at its inner edge, or narrow
+    // petals on busy wheels would collapse to nothing.
+    let span = CGFloat((endAngle - startAngle).radians)
+    let angularLimit = span < 2 ? (span * innerRadius - gap) / (2 - span) * 0.9 : .infinity
+    let r = max(0, min(cornerRadius, (outerRadius - innerRadius) / 2 - 0.5, angularLimit))
     let outer = outerRadius - r
     let inner = innerRadius + r
     guard outer > inner, inner > 0 else { return Path() }
@@ -156,10 +164,16 @@ struct RadialWheel: View {
     let lit = litIndex(diameter: d, pointer: pointer)
     return ZStack {
       disc(diameter: d, scale: s)
-      ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-        petal(item, index: index, isHot: index == lit, diameter: d, scale: s, pointer: pointer)
+      // The petals' glass lives in its own container, so the lit petal's teal glass is drawn
+      // on its own rather than folded into the disc's glass variant.
+      GlassEffectContainer(spacing: 0) {
+        ZStack {
+          ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+            petal(item, index: index, isHot: index == lit, diameter: d, scale: s, pointer: pointer)
+          }
+          center(scale: s, litItem: lit.map { items[$0] })
+        }
       }
-      center(scale: s, litItem: lit.map { items[$0] })
     }
     .scaleEffect(opened ? 1 : 0.3)
     .opacity(opened ? 1 : 0)
@@ -204,12 +218,14 @@ struct RadialWheel: View {
   ) -> some View {
     let step = 360.0 / Double(items.count)
     let start = WheelGeometry.startAngle(index: index, count: items.count)
-    let widen = Angle(degrees: isHot ? 2.5 : 0)
-    let inner = 50 * s
-    let outer = d / 2 - 8 * s + (isHot ? 12 * s : 0)
+    // The lit petal grows into a soft, rounded blob: wider, past the rim, lifted off the
+    // centre well, with much rounder corners.
+    let widen = Angle(degrees: isHot ? 5 : 0)
+    let inner = 50 * s + (isHot ? 4 * s : 0)
+    let outer = d / 2 - 8 * s + (isHot ? 14 * s : 0)
     let shape = PetalShape(
       startAngle: start - widen, endAngle: start + .degrees(step) + widen, innerRadius: inner,
-      outerRadius: outer, gap: 7 * s, cornerRadius: 13 * s)
+      outerRadius: outer, gap: 7 * s, cornerRadius: (isHot ? 28 : 15) * s)
     let mid = Angle(degrees: start.degrees + step / 2)
     let labelRadius = (inner + outer) / 2
     let labelOffset = CGSize(width: cos(mid.radians) * labelRadius, height: sin(mid.radians) * labelRadius)
@@ -219,7 +235,11 @@ struct RadialWheel: View {
       // The lit petal is teal; the rest use hierarchical fills on the glass. On the teal
       // disc the lit petal flips to the background colour so it stands out.
       if isHot {
-        shape.fill(theme == .tinted ? AnyShapeStyle(.background) : AnyShapeStyle(WheelTeal.gradient))
+        // A see-through teal layer over the teal glass: the glass gives the edge and
+        // refraction, and the layer keeps it teal in the non-activating panel, where the
+        // system draws glass tints without colour.
+        shape.fill(
+          theme == .tinted ? AnyShapeStyle(.background) : AnyShapeStyle(WheelTeal.gradient.opacity(0.62)))
       } else if theme == .tinted {
         shape.fill(.background.opacity(item.isEnabled ? 0.18 : 0.08))
       } else {
@@ -250,6 +270,7 @@ struct RadialWheel: View {
       .opacity(labelsShown ? 1 : 0)
       .allowsHitTesting(false)
     }
+    .modifier(TealGlass(isOn: isHot && theme != .tinted, shape: shape))
     .offset(lean)
     .zIndex(isHot ? 1 : 0)
     .animation(
@@ -372,5 +393,20 @@ enum URLLoader {
     private var storage: [URL] = []
     func append(_ url: URL) { lock.withLock { storage.append(url) } }
     var urls: [URL] { lock.withLock { storage } }
+  }
+}
+
+/// Teal Liquid Glass behind the lit petal. Only the lit petal gets a glass effect: an
+/// `.identity` glass on the others would still merge them into the disc's glass.
+private struct TealGlass: ViewModifier {
+  let isOn: Bool
+  let shape: PetalShape
+
+  func body(content: Content) -> some View {
+    if isOn {
+      content.glassEffect(.regular.tint(WheelTeal.color).interactive(), in: shape)
+    } else {
+      content
+    }
   }
 }

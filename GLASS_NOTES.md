@@ -25,7 +25,7 @@ or draws its own substitute.
 | Files tab | `Panel/FilesTab.swift` | Drop zone `glassPanel(tint:interactive:)`; wheel launchers `.buttonStyle(.glass)` in a `GlassEffectContainer`; lists and result card in `GroupBox` |
 | History / Settings | `Panel/HistoryAndSettings.swift` | `GroupBox`; `Form` + `.formStyle(.grouped)`, `LabeledContent` |
 | Share button | `Panel/ShareButton.swift` | `NSButton.BezelStyle.glass` |
-| Radial wheel | `Wheel/RadialWheel.swift` | Disc `glassEffect(theme.glass, in: Circle())`: Regular → `.regular`, Clear → `.clear`, Tinted → `.regular` over a 60% teal fill; lit petal a solid teal gradient (`WheelTeal`, #00578F → #0378A8); idle petals `.quaternary` |
+| Radial wheel | `Wheel/RadialWheel.swift` | Disc `glassEffect(theme.glass, in: Circle())`: Regular → `.regular`, Clear → `.clear`, Tinted → `.regular` over a 60% teal fill; lit petal is teal Liquid Glass (`glassEffect(.regular.tint(teal).interactive())` under a 62% teal gradient layer, #00578F → #0378A8) shaped as a soft rounded blob; petals' glass sits in its own `GlassEffectContainer`; idle petals `.quaternary` |
 | Toast | `Wheel/WheelOverlay.swift` | `glassPanel` capsule, borderless text button inside |
 | Floats | `Windows/FloatView.swift` | `glassEffect(.regular.interactive())`; collapsed and expanded share `glassEffectID("float", in:)` so opening morphs one shape; rows on `.quinary` |
 | Onboarding | `Windows/OnboardingView.swift` | Standard opaque window; `.glassProminent` / `.glass` buttons; cards and mock menu bar on system fills, toggles in `GroupBox` |
@@ -40,9 +40,9 @@ or draws its own substitute.
 - The main window's tabs and More menu moved into the system toolbar; Settings is a grouped `Form`.
 - The toast's Show button is a text button (glass shouldn't sit on the glass toast).
 - Onboarding opens as an opaque standard window instead of a transparent one.
-- The wheel keeps the app's original teal for the lit petal (and the Tinted disc) as a fill,
-  not a glass tint: the wheel's panel is non-activating, and macOS draws glass tints on
-  inactive windows untinted, so a tinted-glass petal turned grey in real use.
+- The wheel keeps the app's original teal. The lit petal is teal-tinted glass with a
+  see-through teal layer on it: the wheel's panel is non-activating, and macOS draws glass
+  tints on inactive windows without colour, so tint alone turned grey in real use.
 - Kept on purpose: media overlays in the editors (crop dimming, the redaction preview's black and
   `.ultraThinMaterial` blur, white playheads with a shadow, the PDF page's white paper and shadow).
   They depict the output or must stay visible over arbitrary media, so they aren't chrome.
