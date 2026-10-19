@@ -2,12 +2,16 @@ import AppKit
 import DropCore
 import SwiftUI
 
-/// Sound and trackpad feedback for the wheel: the app's own synthesised highlight tap, and
-/// the macOS Pop sound for drops.
+/// Sound and trackpad feedback for the wheel: the app's own highlight tap, and the macOS
+/// Pop sound for drops.
 @MainActor
 enum WheelFeedback {
+  /// The bundled `Highlight.wav`; outside the .app (swift run, the self-test) the same sound
+  /// is generated in memory.
   private static let hoverSounds = SoundPool(
-    make: { NSSound(data: HighlightSound.wavData()) }, volume: 0.8, voices: 4)
+    make: {
+      (NSSound(named: "Highlight")?.copy() as? NSSound) ?? NSSound(data: HighlightSound.wavData())
+    }, volume: 0.8, voices: 4)
   private static let dropSounds = SoundPool(
     make: { NSSound(named: "Pop")?.copy() as? NSSound }, volume: 0.7, voices: 2)
 

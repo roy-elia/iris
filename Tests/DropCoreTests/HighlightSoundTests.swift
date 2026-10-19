@@ -21,4 +21,12 @@ import Testing
     #expect(data.subdata(in: 8..<16) == Data("WAVEfmt ".utf8))
     #expect(data.count == 44 + HighlightSound.samples().count * 2)
   }
+
+  /// The app bundles Resources/Highlight.wav; it must stay the sound this code generates.
+  @Test func bundledFileMatchesTheGenerator() throws {
+    let file = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("Resources/Highlight.wav")
+    #expect(try Data(contentsOf: file) == HighlightSound.wavData())
+  }
 }
