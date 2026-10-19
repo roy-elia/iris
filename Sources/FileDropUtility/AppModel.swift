@@ -14,6 +14,8 @@ final class AppModel: ObservableObject {
   /// Progress of the running job, 0…1, or nil when none is running.
   @Published var progress: Double?
   private var currentJob: JobHandle?
+  /// A Finder service run, which may be several jobs.
+  private var quickActionTask: Task<Void, Never>?
   @Published var lastResult: OperationResult?
   @Published var lastOperation: String?
   @Published var history: [HistoryEntry]
@@ -272,6 +274,28 @@ final class AppModel: ObservableObject {
     }
   }
 
+  /// Runs a Finder service's `QuickAction` and shows the result like a wheel drop.
+  func runQuickAction(_ action: QuickAction, on urls: [URL]) {
+    guard !isRunning else {
+      Toast.show("File Drop Utility is busy. Try again when it finishes.", outputs: [], isError: true)
+      return
+    }
+    isRunning = true
+    progress = 0
+    let settings = settings
+    quickActionTask = Task {
+      let result = await QuickActionRunner.run(action, on: urls, settings: settings) { fraction in
+        Task { @MainActor in
+          if AppModel.shared.quickActionTask != nil { AppModel.shared.progress = fraction }
+        }
+      }
+      quickActionTask = nil
+      isRunning = false
+      progress = nil
+      finish(result, operation: action.title, origin: .overlay, inputCount: urls.count)
+    }
+  }
+
   struct TerminalApp {
     let name: String
     let bundleID: String
@@ -293,7 +317,10 @@ final class AppModel: ObservableObject {
   }
 
   /// Stops the running job, if any.
-  func cancelCurrentJob() { currentJob?.cancel() }
+  func cancelCurrentJob() {
+    currentJob?.cancel()
+    quickActionTask?.cancel()
+  }
 
   private func finish(_ result: OperationResult, operation: String, origin: Origin, inputCount: Int = 0) {
     lastResult = result

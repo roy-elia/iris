@@ -65,6 +65,19 @@ public enum QuickAction: Equatable, Hashable, Sendable {
     }
   }
 
+  /// A short name for history and notifications.
+  public var title: String {
+    switch self {
+    case .convertImage(let format): "Convert to \(format.displayName)"
+    case .convertAudio(let output): "Convert to \(output.displayName)"
+    case .convertVideo(let output): "Convert to \(output.displayName)"
+    case .convertDocument(let output): "Convert to \(output.displayName)"
+    case .compress: "Compress"
+    case .resize(let spec): "Resize to \(spec.summary)"
+    case .makePDF: "Make PDF"
+    }
+  }
+
   /// Every spec form, for `--list` and help text.
   public static let specForms: [String] = [
     "convert-image:<" + ImageFormat.allCases.filter(\.isWritable).map(\.rawValue).joined(separator: "|")
@@ -149,7 +162,12 @@ public enum QuickActionRunner {
           if case .running(let fraction) = state { progress((Double(index) + fraction) / count) }
         }
       }
-      _ = await handle.result()
+      // Cancelling the caller's task cancels the job too.
+      _ = await withTaskCancellationHandler {
+        await handle.result()
+      } onCancel: {
+        handle.cancel()
+      }
       switch handle.state {
       case .finished(let stepResult):
         result.outputs += stepResult.outputs

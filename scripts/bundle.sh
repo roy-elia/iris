@@ -30,6 +30,36 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </dict>
 </plist>
 PLIST
+# Finder Quick Actions / Services. Each item sends runQuickAction (ServiceProvider.swift)
+# with a QuickAction spec as NSUserData; DropCore's QuickActionTests checks these specs.
+service() {  # service <menu title> <QuickAction spec> <file type UTI>...
+  local title=$1 spec=$2 types="" uti; shift 2
+  for uti in "$@"; do types+="<string>$uti</string>"; done
+  print -r -- "<dict>
+    <key>NSMenuItem</key><dict><key>default</key><string>$title</string></dict>
+    <key>NSMessage</key><string>runQuickAction</string>
+    <key>NSPortName</key><string>File Drop Utility</string>
+    <key>NSUserData</key><string>$spec</string>
+    <key>NSRequiredContext</key><dict/>
+    <key>NSSendFileTypes</key><array>$types</array>
+  </dict>"
+}
+DOCUMENTS=(public.plain-text public.rtf public.html net.daringfireball.markdown
+  org.openxmlformats.wordprocessingml.document com.microsoft.word.doc org.oasis-open.opendocument.text
+  com.apple.iwork.pages.sffpages com.apple.iwork.pages.pages org.idpf.epub-container
+  org.openxmlformats.spreadsheetml.sheet org.openxmlformats.presentationml.presentation)
+SERVICES=$(
+  service "Convert Image to PNG" convert-image:png public.image
+  service "Convert Image to JPEG" convert-image:jpeg public.image
+  service "Convert Video to MP4" convert-video:mp4 public.movie
+  service "Convert to MP3" convert-audio:mp3 public.audio public.movie
+  service "Convert Document to PDF" convert-document:pdf $DOCUMENTS
+  service "Compress Images, PDFs and Videos" compress public.image com.adobe.pdf public.movie
+  service "Resize Image to 50%" resize:50% public.image
+  service "Make PDF from Files" make-pdf public.image com.adobe.pdf
+)
+plutil -replace NSServices -xml "<array>$SERVICES</array>" "$APP/Contents/Info.plist"
+
 # Optional: UPDATE_FEED_URL=https://api.github.com/repos/<owner>/<repo>/releases/latest
 # turns on the "Check for updates daily" setting. Without it the app never checks.
 if [[ -n "${UPDATE_FEED_URL:-}" ]]; then

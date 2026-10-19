@@ -130,4 +130,21 @@ import Testing
       try QuickActionCommand.parse(["app", "--run", "compress", "a.png", "--out"], currentDirectory: cwd)
     }
   }
+
+  /// The Finder services in scripts/bundle.sh name their action by spec; each must parse.
+  @Test func bundleServiceSpecsParse() throws {
+    let script = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("scripts/bundle.sh")
+    let lines = try String(contentsOf: script, encoding: .utf8).split(separator: "\n")
+    let specs = lines.compactMap { line -> String? in
+      let words = line.trimmingCharacters(in: .whitespaces).split(separator: "\"")
+      guard words.first == "service ", words.count >= 3 else { return nil }
+      return words[2].trimmingCharacters(in: .whitespaces).split(separator: " ").first.map(String.init)
+    }
+    #expect(specs.count >= 8)
+    for spec in specs {
+      #expect(QuickAction(spec: spec) != nil, "\(spec)")
+    }
+  }
 }

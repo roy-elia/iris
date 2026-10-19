@@ -84,6 +84,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if SelfTestRunner.runIfRequested() { return }
       #endif
       AppModel.shared.applyAppearance()
+      // Finder's Quick Actions / Services menu (see NSServices in scripts/bundle.sh).
+      NSApp.servicesProvider = ServiceProvider.shared
+      NSUpdateDynamicServices()
       DragWatcher.shared.start()
       FloatManager.shared.restore()
       AppModel.shared.scheduleUpdateChecks()
