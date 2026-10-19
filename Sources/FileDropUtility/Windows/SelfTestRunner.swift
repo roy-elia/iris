@@ -189,6 +189,7 @@
       case .splitPDF: return await window("Split", then: .splitPDF(.ranges("1, 2-")))
       case .convertSubtitles(let f): return await check(.convertSubtitles(f))
       case .extractArchive: return await check(.extractArchive)
+      case .convertData(let f): return await check(.convertData(f))
       case .zip: return await check(.zipFiles)
 
       case .compress:
@@ -414,6 +415,26 @@
       try "<h1>Welcome</h1><p>Hello <em>world</em>.</p>".write(to: html, atomically: true, encoding: .utf8)
       let csv = file("scores.csv")
       try "Name,Score\nAda,9\n\"Lin, M\",8\n".write(to: csv, atomically: true, encoding: .utf8)
+      let json = file("people.json")
+      try
+        #"[{"name":"Ada","email":"ada@example.com","tags":["math"],"address":{"city":"London"}},{"name":"Lin","email":"lin@example.com","phone":"555-0100"}]"#
+        .write(to: json, atomically: true, encoding: .utf8)
+      let xml = file("catalog.xml")
+      try
+        #"<?xml version="1.0"?><catalog><book id="1"><title>Swift</title></book><book id="2"><title>Rust</title></book></catalog>"#
+        .write(to: xml, atomically: true, encoding: .utf8)
+      let plist = file("settings.plist")
+      try PropertyListSerialization.data(
+        fromPropertyList: ["theme": "dark", "volume": 7, "recent": ["a.txt", "b.txt"]], format: .xml,
+        options: 0
+      ).write(to: plist)
+      let vcf = file("contacts.vcf")
+      try
+        "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Ada Lovelace\r\nN:Lovelace;Ada;;;\r\nEMAIL:ada@example.com\r\nTEL:555-0100\r\nEND:VCARD\r\n"
+        .write(to: vcf, atomically: true, encoding: .utf8)
+      let contactsCSV = file("contacts.csv")
+      try "Name,Email,Phone\nAda Lovelace,ada@example.com,555-0100\nAlan Turing,alan@example.com,\n"
+        .write(to: contactsCSV, atomically: true, encoding: .utf8)
       let pdf = file("deck.pdf")
       try RichText.renderPDF(
         NSAttributedString(
@@ -491,6 +512,7 @@
         ("wav", [wav]), ("audio×2", [wav, mp3]),
         ("pdf", [pdf]), ("pdfs×2", [pdf, pdf2]),
         ("docx", [docx]), ("rtf", [rtf]), ("md", [md]), ("html", [html]), ("csv", [csv]),
+        ("contacts.csv", [contactsCSV]), ("json", [json]), ("xml", [xml]), ("plist", [plist]), ("vcf", [vcf]),
         ("clipping", [clip]),
         ("srt", [srt]), ("vtt", [vtt]), ("ass", [ass]), ("smi", [smi]), ("lrc", [lrc]), ("zip", [zip]),
         ("7z", [sevenZip]), ("tar.gz", [tarball]), ("iso", [iso]), ("gz", [gz]),

@@ -73,6 +73,11 @@ A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the
 - Pages without selectable text are read with Vision OCR.
 - **Tools wheel:** Organize, Split (one PDF per page, or page ranges such as "1-3, 7, 9-"), Compress, Merge. The organizer is a thumbnail grid: drag or use the arrows to reorder, turn pages, delete them (⌫), and optionally scale every page to the same width.
 
+**Data** (JSON, XML, property lists, vCards, and CSV tables): the Convert wheel offers JSON → CSV, XML or Plist; CSV → JSON or vCard (alongside the document outputs); XML → JSON; Plist → JSON; vCard → CSV.
+- JSON → CSV takes the top-level array of records (or the first array inside a top-level object); nested objects become "a.b" columns and arrays are written as JSON. CSV → JSON keeps every value as text.
+- XML → JSON: attributes become "@name" keys, repeated elements become arrays, and text beside child elements is "#text". External entities are never loaded.
+- vCard ↔ CSV uses Name, Given Name, Family Name, Organization, Title, Email, Phone, Address, Birthday, URL and Note columns; common header spellings ("First Name", "E-mail Address", "Mobile", "Company") are recognised. Several emails or phones share a cell, separated by "; ".
+
 **Subtitles:** SRT, VTT, ASS, SSA, SAMI (.smi) and LRC, each to any of the others. ASS/SSA bold and italic overrides become tags; SAMI keeps its first language class; LRC lines last until the next line. Files that aren't UTF-8 (such as Korean CP949 SAMI files) are decoded from the likeliest legacy encoding. **Archives:** zip, CBZ, 7z, tar, tar.gz/tgz, tar.bz2, tar.xz and ISO → a folder next to it; a single .gz, .bz2 or .xz file → the file inside. Every archive is checked first for unsafe paths, more than 20,000 files, or more than 2 GB unpacked (zip with ditto, the rest with macOS's bsdtar).
 
 **Shell:**

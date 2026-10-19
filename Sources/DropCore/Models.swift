@@ -180,6 +180,8 @@ public enum FileKind: Equatable, Sendable {
   case document(DocumentFormat)
   case office(OfficeFormat)
   case subtitle(SubtitleFormat)
+  /// JSON, XML, property lists and vCards (CSV is a table document).
+  case data(DataFormat)
   case archive
   case unsupported
 
@@ -197,6 +199,8 @@ public enum FileKind: Equatable, Sendable {
       self = .office(format)
     } else if let format = SubtitleFormat(fileExtension: ext) {
       self = .subtitle(format)
+    } else if let format = DataFormat(fileExtension: ext) {
+      self = .data(format)
     } else if ArchiveOps.isArchive(url) {
       self = .archive
     } else if ext.lowercased() == "pdf" {
@@ -226,6 +230,15 @@ public enum FileKind: Equatable, Sendable {
     switch self {
     case .document, .office, .pdf: true
     default: false
+    }
+  }
+
+  /// The data format, CSV tables included.
+  public var dataFormat: DataFormat? {
+    switch self {
+    case .data(let format): format
+    case .office(.csv): .csv
+    default: nil
     }
   }
 
@@ -326,6 +339,8 @@ public enum FileOperation: Codable, Equatable, Sendable {
   case splitPDF(PDFSplit)
   case organizePDF(PDFPagePlan)
   case convertSubtitles(SubtitleFormat)
+  /// JSON, CSV, XML, plist and vCard conversions.
+  case convertData(DataFormat)
   case extractArchive
   /// Compress all the files into one zip.
   case zipFiles
@@ -377,6 +392,7 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .splitPDF: "Split PDF"
     case .organizePDF: "Organize PDF"
     case .convertSubtitles(let format): "Convert to \(format.displayName)"
+    case .convertData(let format): "Convert to \(format.displayName)"
     case .extractArchive: "Extract archive"
     case .zipFiles: "Zip"
     }

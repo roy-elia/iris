@@ -203,6 +203,8 @@ final class AppModel: ObservableObject {
       WindowManager.shared.openPDFOrganizer(for: pdf.url)
     case .convertSubtitles(let format):
       run(.convertSubtitles(format), on: targets, origin: origin)
+    case .convertData(let format):
+      run(.convertData(format), on: targets, origin: origin)
     case .extractArchive:
       run(.extractArchive, on: targets, origin: origin)
     case .visualizer:

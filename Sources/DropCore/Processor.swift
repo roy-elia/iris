@@ -112,6 +112,10 @@ public struct Processor: Sendable {
       if !files.allSatisfy(\.kind.isSubtitle) {
         return "\(operation.summary) works on SRT, VTT, ASS, SSA, SAMI and LRC subtitles."
       }
+    case .convertData(let output):
+      if let file = files.first(where: { !($0.kind.dataFormat?.outputs.contains(output) ?? false) }) {
+        return "\(file.name) can't be converted to \(output.displayName)."
+      }
     case .extractArchive:
       if files.contains(where: { $0.kind != .archive }) {
         return "Extract works on zip, 7z, tar, gz, bz2, xz and ISO archives."
@@ -463,6 +467,14 @@ public struct Processor: Sendable {
         let out = target(file, suffix: "", ext: format.fileExtension)
         await record(&result, file: file, output: out) {
           try SubtitleOps.convert(file.url, to: format, destination: out)
+        }
+      }
+
+    case .convertData(let output):
+      for file in files {
+        let out = target(file, suffix: "", ext: output.fileExtension)
+        await record(&result, file: file, output: out) {
+          try DataOps.convert(file.url, to: output, destination: out)
         }
       }
 

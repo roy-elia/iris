@@ -111,6 +111,7 @@ enum WheelCommand: Equatable {
   case splitPDF
   case organizePDF
   case convertSubtitles(SubtitleFormat)
+  case convertData(DataFormat)
   case extractArchive
   case airDrop
   case float
@@ -215,7 +216,9 @@ extension WheelKind {
           WheelItem(id: "d-cbz", title: "CBZ", systemImage: nil, command: .pdfToCBZ),
         ] + [DocumentOutput.docx, .rtf, .txt, .md, .html, .epub, .epubFixed].map(convert)
       }
+      // CSV tables also convert to JSON and vCard.
       return [DocumentOutput.pdf, .docx, .rtf, .txt, .md, .html, .epub, .pages].map(convert)
+        + (files.allSatisfy { $0.kind == .office(.csv) } ? dataItems(for: files) : [])
     case .tools:
       return [
         WheelItem(
@@ -233,6 +236,16 @@ extension WheelKind {
     }
   }
 
+  /// Convert segments for JSON, XML, plist, vCard and CSV files: the outputs every file has.
+  func dataItems(for files: [DroppedFile]) -> [WheelItem] {
+    let outputs = DataFormat.allCases.filter { output in
+      files.allSatisfy { $0.kind.dataFormat?.outputs.contains(output) == true }
+    }
+    return outputs.map {
+      WheelItem(id: "j-\($0.rawValue)", title: $0.displayName, systemImage: nil, command: .convertData($0))
+    }
+  }
+
   /// Segments for this wheel, enabled or not depending on what's being dropped.
   /// `files` may be empty while dragging, when the kinds aren't known yet.
   func items(for files: [DroppedFile]) -> [WheelItem] {
@@ -245,6 +258,9 @@ extension WheelKind {
     if known && files.allSatisfy(\.kind.isAudio) { return audioItems(count: files.count) }
     if known && files.allSatisfy(\.kind.isDocumentLike) && (self == .convert || (self == .tools && allPDFs)) {
       return documentItems(for: files)
+    }
+    if known && self == .convert && files.allSatisfy({ if case .data = $0.kind { true } else { false } }) {
+      return dataItems(for: files)
     }
     if known && files.allSatisfy(\.kind.isSubtitle) && self == .convert {
       return SubtitleFormat.allCases.map {
