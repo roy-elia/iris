@@ -96,6 +96,9 @@ enum WheelCommand: Equatable {
   case collage
   case readQR
   case edit(EditorTool)
+  case convertVideo(VideoOutput)
+  case videoEditor(VideoTool)
+  case joinVideos
   case airDrop
   case float
   case copy
@@ -116,6 +119,39 @@ struct WheelItem: Identifiable, Equatable {
 }
 
 extension WheelKind {
+  /// Segments when every dropped file is a video.
+  func videoItems(count: Int) -> [WheelItem] {
+    let oneVideo: String? = count == 1 ? nil : "One video at a time"
+    switch self {
+    case .convert:
+      let outputs: [VideoOutput] = [.mp4, .mov, .m4v, .mkv, .avi, .webm, .gif, .mp3, .m4a]
+      return outputs.map { output in
+        WheelItem(
+          id: "v-\(output.rawValue)", title: output.displayName, systemImage: nil,
+          command: .convertVideo(output),
+          disabledReason: output.unavailableReason)
+      }
+    case .tools:
+      func tool(_ t: VideoTool, _ reason: String? = nil) -> WheelItem {
+        WheelItem(
+          id: "v-\(t.rawValue)", title: t.title, systemImage: t.systemImage, command: .videoEditor(t),
+          disabledReason: reason)
+      }
+      return [
+        WheelItem(
+          id: "v-compress", title: "Compress", systemImage: "arrow.down.right.and.arrow.up.left",
+          command: .compress),
+        tool(.trim, oneVideo), tool(.split, oneVideo),
+        WheelItem(
+          id: "v-join", title: "Join", systemImage: "rectangle.stack.badge.plus", command: .joinVideos,
+          disabledReason: count >= 2 ? nil : "Two or more videos"),
+        tool(.speed, oneVideo), tool(.frames, oneVideo), tool(.crop, oneVideo), tool(.redact, oneVideo),
+      ]
+    case .actions:
+      return items(for: [])
+    }
+  }
+
   /// Segments for this wheel, enabled or not depending on what's being dropped.
   /// `files` may be empty while dragging, when the kinds aren't known yet.
   func items(for files: [DroppedFile]) -> [WheelItem] {
@@ -123,6 +159,8 @@ extension WheelKind {
     let allImages = known && files.allSatisfy(\.kind.isImage)
     let allPDFs = known && files.allSatisfy { $0.kind == .pdf }
     let imagesOnly: String? = known && !allImages ? "Images only" : nil
+    let allVideos = known && files.allSatisfy(\.kind.isVideo)
+    if allVideos { return videoItems(count: files.count) }
     let oneImage: String? = known && !(files.count == 1 && allImages) ? "One image at a time" : nil
 
     switch self {

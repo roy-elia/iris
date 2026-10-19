@@ -32,7 +32,7 @@ public enum CompressOps {
       guard doc.write(to: destination, withOptions: options) else {
         throw DropError.writeFailed(destination.lastPathComponent)
       }
-    case .unsupported:
+    case .video, .unsupported:
       throw DropError.unsupportedFile(source.lastPathComponent)
     }
 
@@ -51,7 +51,7 @@ public enum CompressOps {
       if format.usesQuality { return format.fileExtension }
       let alpha = (try? ImageOps.loadOriented(source)).map(ImageOps.hasAlpha) ?? false
       return targetFormat(for: format, hasAlpha: alpha).fileExtension
-    case .unsupported: return source.pathExtension
+    case .video, .unsupported: return source.pathExtension
     }
   }
 

@@ -51,6 +51,39 @@ import SwiftUI
       }
       return url
     }
+
+    /// A short test-pattern clip with a tone, made once with the bundled ffmpeg.
+    static func sampleVideo() -> URL {
+      let url = FileManager.default.temporaryDirectory.appendingPathComponent("fdu-sample-clip.mp4")
+      if FileManager.default.fileExists(atPath: url.path) { return url }
+      guard let ffmpeg = ToolLocator.url(for: .ffmpeg) else { return url }
+      let p = Process()
+      p.executableURL = ffmpeg
+      p.arguments = [
+        "-hide_banner", "-nostdin", "-y", "-loglevel", "error", "-f", "lavfi", "-i",
+        "testsrc2=size=1280x720:rate=30:duration=8", "-f", "lavfi", "-i", "sine=frequency=330:duration=8",
+        "-c:v", "h264_videotoolbox", "-b:v", "3000k", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest",
+        url.path,
+      ]
+      try? p.run()
+      p.waitUntilExit()
+      return url
+    }
+
+    /// A video editor with sample edits for the given tool.
+    @MainActor
+    static func videoEditor(_ tool: VideoTool) -> VideoEditorModel {
+      let model = VideoEditorModel(url: sampleVideo(), tool: tool)
+      model.trimStart = 1.2
+      model.splitPoints = [2.5, 5.5]
+      model.removedClips = [1]
+      model.frameTimes = [1.5, 4.0]
+      model.redactions = [
+        TimedRedaction(rect: NormRect(x: 0.55, y: 0.2, width: 0.3, height: 0.25), start: 0, end: 6)
+      ]
+      model.selectedRedaction = 0
+      return model
+    }
   }
 
   /// Each screen, by name, for previews and snapshots.
@@ -76,6 +109,12 @@ import SwiftUI
       ("Tool-Frame", CGSize(width: 464, height: 560)),
       ("Tool-Collage", CGSize(width: 484, height: 600)),
       ("Tool-QR", CGSize(width: 444, height: 230)),
+      ("Tool-Join", CGSize(width: 444, height: 300)),
+      ("Wheel-VideoTools", CGSize(width: 420, height: 420)),
+      ("Wheel-VideoConvert", CGSize(width: 420, height: 420)),
+      ("Video-Trim", CGSize(width: 1000, height: 640)),
+      ("Video-Split", CGSize(width: 1000, height: 640)),
+      ("Video-Redact", CGSize(width: 1000, height: 640)),
     ]
 
     @ViewBuilder
@@ -99,6 +138,24 @@ import SwiftUI
       case "Tool-Frame": FrameView(urls: [PreviewData.sampleImage()])
       case "Tool-Collage":
         CollageView(urls: [PreviewData.sampleImage(), PreviewData.sampleImage(), PreviewData.sampleImage()])
+      case "Tool-Join":
+        JoinView(urls: [
+          PreviewData.sampleVideo(), URL(fileURLWithPath: "/tmp/Intro.mov"),
+          URL(fileURLWithPath: "/tmp/Outro.mp4"),
+        ])
+      case "Wheel-VideoTools":
+        RadialWheel(
+          kind: .tools, items: WheelKind.tools.videoItems(count: 1), centerText: "8.0 s", mode: .click
+        ) { _, _ in }
+        .padding(DesignTokens.Spacing.inset)
+      case "Wheel-VideoConvert":
+        RadialWheel(
+          kind: .convert, items: WheelKind.convert.videoItems(count: 1), centerText: "3.1 MB", mode: .click
+        ) { _, _ in }
+        .padding(DesignTokens.Spacing.inset)
+      case "Video-Trim": VideoEditorView(model: PreviewData.videoEditor(.trim)).environmentObject(model)
+      case "Video-Split": VideoEditorView(model: PreviewData.videoEditor(.split)).environmentObject(model)
+      case "Video-Redact": VideoEditorView(model: PreviewData.videoEditor(.redact)).environmentObject(model)
       case "Tool-QR": QRResultsView(codes: ["https://example.com/menu", "WIFI:S:Studio;T:WPA;P:example;;"])
       default:
         ToastPreview()

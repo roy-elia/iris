@@ -163,6 +163,9 @@ struct CompressView: View {
   let urls: [URL]
   @State private var mode: Mode = .preset
   @State private var preset: Preset = .balanced
+  @State private var strength: VideoStrength = .medium
+
+  private var isVideo: Bool { urls.allSatisfy { FileKind(url: $0).isVideo } }
   @State private var amount: Double = 500
   @State private var unit: Unit = .kb
 
@@ -181,10 +184,11 @@ struct CompressView: View {
     ToolPanel(
       title: "Compress", urls: urls, primaryTitle: "Compress", primaryDisabled: targetError != nil
     ) {
-      if mode == .preset {
-        runTool(.compress(quality: preset.rawValue), on: urls)
-      } else {
-        runTool(.compressToSize(bytes: targetBytes), on: urls)
+      switch (isVideo, mode) {
+      case (true, .preset): runTool(.compressVideo(.strength(strength)), on: urls)
+      case (true, .target): runTool(.compressVideo(.target(bytes: targetBytes)), on: urls)
+      case (false, .preset): runTool(.compress(quality: preset.rawValue), on: urls)
+      case (false, .target): runTool(.compressToSize(bytes: targetBytes), on: urls)
       }
     } content: {
       Picker("Mode", selection: $mode) {
@@ -192,7 +196,16 @@ struct CompressView: View {
       }
       .pickerStyle(.segmented)
       .labelsHidden()
-      if mode == .preset {
+      if mode == .preset && isVideo {
+        Picker("Strength", selection: $strength) {
+          ForEach(VideoStrength.allCases, id: \.self) { Text($0.title).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        Text(
+          "Re-encodes with Apple's hardware H.264 encoder. Stronger means smaller files with more visible loss."
+        )
+        .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+      } else if mode == .preset {
         Picker("Preset", selection: $preset) {
           ForEach(Preset.allCases) { Text($0.title).tag($0) }
         }
@@ -596,5 +609,52 @@ struct QRResultsView: View {
     .frame(width: 420)
     .glassPanel(cornerRadius: DesignTokens.Radius.window)
     .padding(DesignTokens.Spacing.inset)
+  }
+}
+
+// MARK: Join
+
+struct JoinView: View {
+  @State var urls: [URL]
+
+  init(urls: [URL]) {
+    _urls = State(initialValue: urls)
+  }
+
+  var body: some View {
+    ToolPanel(title: "Join Videos", urls: urls, primaryTitle: "Join", primaryDisabled: urls.count < 2) {
+      runTool(.joinVideos, on: urls)
+    } content: {
+      Text("Plays in this order. Different sizes are fitted to the first video's frame.")
+        .font(.callout).foregroundStyle(DesignTokens.Palette.secondaryText)
+      VStack(spacing: 6) {
+        ForEach(Array(urls.enumerated()), id: \.element) { index, url in
+          HStack(spacing: 10) {
+            Text("\(index + 1)").font(.callout.monospacedDigit().weight(.semibold)).frame(width: 18)
+            Image(systemName: "film").foregroundStyle(DesignTokens.Palette.accentText).accessibilityHidden(
+              true)
+            Text(url.lastPathComponent).font(.callout).lineLimit(1).truncationMode(.middle)
+            Spacer()
+            Button {
+              urls.swapAt(index, index - 1)
+            } label: {
+              Image(systemName: "chevron.up")
+            }
+            .buttonStyle(.plain).disabled(index == 0).accessibilityLabel("Move \(url.lastPathComponent) up")
+            Button {
+              urls.swapAt(index, index + 1)
+            } label: {
+              Image(systemName: "chevron.down")
+            }
+            .buttonStyle(.plain).disabled(index == urls.count - 1).accessibilityLabel(
+              "Move \(url.lastPathComponent) down")
+          }
+          .padding(.horizontal, 10)
+          .padding(.vertical, 8)
+          .background(.black.opacity(0.06), in: Capsule(style: .continuous))
+        }
+      }
+    }
+    .frame(width: 420)
   }
 }

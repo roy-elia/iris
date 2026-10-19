@@ -47,6 +47,7 @@ public struct Processor: Sendable {
   public static func validate(_ operation: FileOperation, files: [DroppedFile]) -> String? {
     if files.isEmpty { return "Drop some files first." }
     let allImages = !files.contains(where: { !$0.kind.isImage })
+    let allVideos = !files.contains(where: { !$0.kind.isVideo })
     switch operation {
     case .convert(let format, _):
       if !format.isWritable { return "\(format.displayName) can't be written on this Mac." }
@@ -60,7 +61,27 @@ public struct Processor: Sendable {
     case .edit:
       if files.count != 1 || !files[0].kind.isImage { return "Edit works on one image at a time." }
     case .compress:
-      if files.contains(where: { $0.kind == .unsupported }) { return "Compress works on images and PDFs." }
+      if files.contains(where: { $0.kind == .unsupported || $0.kind.isVideo }) {
+        return "Compress works on images and PDFs."
+      }
+    case .convertVideo(let output):
+      if !allVideos { return videosOnly(operation) }
+      if let reason = output.unavailableReason { return "\(output.displayName): \(reason)." }
+    case .compressVideo(let compression):
+      if !allVideos { return videosOnly(operation) }
+      if case .target(let bytes) = compression, bytes < TargetSizeOps.minimumTarget {
+        return "Enter a target size of at least 1 KB."
+      }
+    case .editVideo, .splitVideo, .videoSnapshots:
+      if files.count != 1 || !files[0].kind.isVideo {
+        return "\(operation.summary) works on one video at a time."
+      }
+      if case .videoSnapshots(let times) = operation, times.isEmpty {
+        return "Select at least one frame within the video."
+      }
+    case .joinVideos:
+      if !allVideos { return videosOnly(operation) }
+      if files.count < 2 { return "Select at least two videos to join." }
     case .compressToSize(let bytes):
       if !allImages { return imagesOnly(operation) }
       if bytes < TargetSizeOps.minimumTarget { return "Enter a target size of at least 1 KB." }
@@ -77,13 +98,20 @@ public struct Processor: Sendable {
     return nil
   }
 
+  private static func videosOnly(_ operation: FileOperation) -> String {
+    let names = VideoFormat.allCases.map(\.displayName).joined(separator: ", ")
+    return "\(operation.summary) works on videos only (\(names))."
+  }
+
   private static func imagesOnly(_ operation: FileOperation) -> String {
     let names = ImageFormat.allCases.map(\.displayName).joined(separator: ", ")
     return "\(operation.summary) works on images only (\(names))."
   }
 
   /// Runs `operation`. Per-file operations keep going past individual failures.
-  public func run(_ operation: FileOperation, on files: [DroppedFile]) async -> OperationResult {
+  public func run(
+    _ operation: FileOperation, on files: [DroppedFile], progress: (@Sendable (Double) -> Void)? = nil
+  ) async -> OperationResult {
     var result = OperationResult()
     if let message = Self.validate(operation, files: files) {
       result.failures.append(.init(file: "", message: message))
@@ -206,6 +234,71 @@ public struct Processor: Sendable {
         }
       }
 
+    case .convertVideo(let output):
+      for (i, file) in files.enumerated() {
+        let out = target(file, suffix: "", ext: output.fileExtension)
+        await record(&result, file: file, output: out) {
+          try await VideoOps.convert(file.url, to: output, destination: out) { p in
+            progress?((Double(i) + p) / Double(files.count))
+          }
+        }
+      }
+
+    case .compressVideo(let compression):
+      for (i, file) in files.enumerated() {
+        let out = target(file, suffix: "compressed", ext: Self.videoContainer(for: file.url).fileExtension)
+        await record(&result, file: file, output: out) {
+          try await VideoOps.compress(file.url, compression: compression, destination: out) { p in
+            progress?((Double(i) + p) / Double(files.count))
+          }
+        }
+      }
+
+    case .editVideo(let recipe):
+      let file = files[0]
+      let out = target(file, suffix: "edited", ext: Self.videoContainer(for: file.url).fileExtension)
+      await record(&result, file: file, output: out) {
+        try await VideoOps.convert(
+          file.url, to: Self.videoContainer(for: file.url), recipe: recipe, destination: out,
+          progress: progress)
+      }
+
+    case .splitVideo(let plan):
+      let file = files[0]
+      let ext = Self.videoContainer(for: file.url).fileExtension
+      do {
+        let info = try await VideoOps.probe(file.url)
+        let keptCount = plan.clips(duration: info.duration).indices.filter { !plan.removed.contains($0) }
+          .count
+        let outs =
+          plan.joinKept
+          ? [target(file, suffix: "edited", ext: ext)]
+          : (1...max(keptCount, 1)).map { target(file, suffix: "part \($0)", ext: ext) }
+        try await VideoOps.split(file.url, plan: plan, destinations: outs, progress: progress)
+        result.outputs += outs
+      } catch {
+        result.failures.append(.init(file: file.name, message: Self.message(for: error)))
+      }
+
+    case .joinVideos:
+      let ext = Self.videoContainer(for: files[0].url).fileExtension
+      let out = claim(
+        outputDirectory(for: files[0].url).appendingPathComponent("Joined").appendingPathExtension(ext))
+      await record(&result, file: nil, output: out) {
+        try await VideoOps.join(files.map(\.url), destination: out, progress: progress)
+      }
+
+    case .videoSnapshots(let times):
+      let file = files[0]
+      let outs = times.map { target(file, suffix: VideoOps.timeLabel($0), ext: "png") }
+      do {
+        try await VideoOps.snapshots(file.url, times: times, destinations: outs)
+        result.outputs += outs
+      } catch {
+        for out in outs { try? FileManager.default.removeItem(at: out) }
+        result.failures.append(.init(file: file.name, message: Self.message(for: error)))
+      }
+
     case .mergePDFs:
       let out = claim(outputDirectory(for: files[0].url).appendingPathComponent("Merged.pdf"))
       await record(&result, file: nil, output: out) {
@@ -220,6 +313,12 @@ public struct Processor: Sendable {
       }
     }
     return result
+  }
+
+  /// The container edited videos are written in: the source's, if it can be written.
+  static func videoContainer(for source: URL) -> VideoOutput {
+    let output = VideoOutput(rawValue: source.pathExtension.lowercased())
+    return output.flatMap { !$0.isAudioOnly && $0 != .gif && $0.isAvailable ? $0 : nil } ?? .mp4
   }
 
   static func message(for error: Error) -> String {

@@ -155,11 +155,12 @@ public struct ProcessorJob: Job {
   }
 
   public var title: String { operation.summary }
+  public var isHeavy: Bool { operation.isMedia }
 
   public func run(_ context: JobContext) async throws -> OperationResult {
     let processor = Processor(settings: settings)
-    context.progress(0.05)
-    let result = await processor.run(operation, on: files)
+    context.progress(0.01)
+    let result = await processor.run(operation, on: files) { fraction in context.progress(fraction) }
     context.progress(1)
     return result
   }

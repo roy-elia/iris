@@ -47,7 +47,7 @@ Formats found in the executable: `png jpg heic avif tiff bmp webp gif svg ai pdf
 | Group | Inputs → outputs (Tangerine) | Ours |
 |---|---|---|
 | Images | png, jpg, heic, avif, tiff, bmp, webp, gif, svg/ai (vector artwork) → png, jpg, heic, avif, tiff, bmp, **webp**, **gif**, pdf | ✅ |
-| Video | mp4, mov, m4v, webm, mkv, avi → mp4, mov, webm, gif **(inferred)**, audio-only | ❌ |
+| Video | mp4, mov, m4v, webm, mkv, avi → mp4, mov, webm, gif **(inferred)**, audio-only | ✅ except WebM output (needs libvpx) |
 | Audio | mp3, wav, m4a, aac, flac, aiff, ogg, opus, wma → mp3, wav, m4a, aac, flac, aiff, ogg, opus; bit depth setting ("Choose an output bit depth") | ❌ |
 | Text documents | docx, pages, rtf, rtfd, txt, md, html, text clippings ↔ docx, pages ("Creates a native Pages document"), rtf, txt, md, html, pdf | ❌ |
 | EPUB | epub ↔ pdf, docx and others; reflowable or fixed-layout ("fixed layout book of page images") | ❌ |
@@ -72,10 +72,10 @@ Formats found in the executable: `png jpg heic avif tiff bmp webp gif svg ai pdf
 | Image | **Frame or beautify:** background presets, radial gradients, canvas ratio, padding (`FrameImageEditor`, `FrameCanvasRatio`) | ✅ |
 | Image | **Collage:** grid, spacing and background, fill or fit ("Creating collage", "Fill cells (crop edges)", "Fit whole images") | ✅ |
 | Image | **Read QR codes** ("Reading QR codes", `QRCodeResultsPanel`) | ✅ |
-| Video | **Trim** (`VideoTrimEditor`) · **Split** into clips or join remaining (`VideoSplitEditor`) · **Join** ("Select at least two videos to join") | ❌ |
-| Video | **Speed** 0.25× and up (`VideoSpeedEditor`) · **Snapshots** of frames (`VideoSnapshotEditor`, "Saving snapshots") | ❌ |
-| Video | **Crop** ("Keep the crop inside the video frame") · **Redact** over time ranges (`VideoRedactionTimeline`, "Show for Entire Video") | ❌ |
-| Video | **Compress** with strength or target size ("The target leaves too little space for video.") | ❌ |
+| Video | **Trim** (`VideoTrimEditor`) · **Split** into clips or join remaining (`VideoSplitEditor`) · **Join** ("Select at least two videos to join") | ✅ |
+| Video | **Speed** 0.25× and up (`VideoSpeedEditor`) · **Snapshots** of frames (`VideoSnapshotEditor`, "Saving snapshots") | ✅ |
+| Video | **Crop** ("Keep the crop inside the video frame") · **Redact** over time ranges (`VideoRedactionTimeline`, "Show for Entire Video") | ✅ |
+| Video | **Compress** with strength or target size ("The target leaves too little space for video.") | ✅ |
 | Audio | **Trim** with waveform, auto-trim silent ends, silence threshold (`AudioTrimEditor`, "Detecting silence") | ❌ |
 | Audio | **Bleep** ranges or the whole file (`AudioBleepTimeline`, "Save Bleeped Copy") | ❌ |
 | Audio | **Normalize volume** · **Channels:** mono or stereo with L/R balance (`AudioChannelsEditor`, "Left volume") | ❌ |
@@ -254,6 +254,16 @@ public struct VideoRecipe: Codable, Sendable {
   - background: colour or image
   - Frame, Collage, QR
   - 23 new tests
+- **Phase 2:** done (2026-10-18):
+  - video convert (MP4, MOV, M4V, MKV, AVI, GIF, MP3/M4A audio)
+  - compress by strength or to a target size
+  - trim, split (separate clips or joined kept clips), join, speed, frames, crop, timed redaction
+  - video editor with a thumbnail timeline
+  - Join window
+  - 18 new tests on generated clips
+- **Open from Phase 2:**
+  - WebM *output* needs libvpx (your call: download and build it, BSD licence).
+  - Timeline handles for redaction ranges are buttons ("Set Start/End"), not draggable edges.
 - **Open from Phase 1:**
   - WebP output is still-only: animated GIF → WebP takes the first frame, because `img2webp` isn't bundled.
   - Shapes and text can't be moved after placing; undo and redraw instead.

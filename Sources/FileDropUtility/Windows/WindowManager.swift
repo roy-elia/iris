@@ -46,6 +46,24 @@ final class WindowManager {
     show(window)
   }
 
+  private var videoEditors: [URL: NSWindow] = [:]
+
+  func openVideoEditor(for url: URL, tool: VideoTool) {
+    if let window = videoEditors[url] {
+      window.makeKeyAndOrderFront(nil)
+      NSApp.activate()
+      return
+    }
+    let view = VideoEditorView(model: VideoEditorModel(url: url, tool: tool)).environmentObject(
+      AppModel.shared)
+    let window = makeWindow(
+      content: view, size: NSSize(width: 1000, height: 680), title: "Edit \(url.lastPathComponent)")
+    window.minSize = NSSize(width: 820, height: 520)
+    track(window) { [weak self] in self?.videoEditors[url] = nil }
+    videoEditors[url] = window
+    show(window)
+  }
+
   func openFloat(for url: URL) {
     if let window = floats[url] {
       window.orderFrontRegardless()

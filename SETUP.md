@@ -40,6 +40,16 @@ wording, code or bundled tools.
 
 A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the queued files don't fit it. Press the modifier any time during the drag, even with the pointer still. Switching modifiers switches the wheel. Letting go of the key closes the wheel unless you're over it, and Escape closes it. While dragging over the overlay wheel, the segment under the pointer lights up in the accent colour with a soft glow, the centre pill shows its name, and a soft tick plays (with a trackpad tap). A drop plays a pop, runs the command, and reports the result in a glass toast at the top of the screen.
 
+**Video** (when every dropped file is a video: MP4, MOV, M4V, WebM, MKV, AVI):
+- **Convert wheel:** MP4, MOV, M4V, MKV, AVI, GIF (palette-optimised, 15 fps), and MP3 or M4A audio. WebM output is disabled: it needs a VP9 encoder (see Known gaps).
+- **Tools wheel:** Compress (Light, Medium or Strong, or a target size), Trim, Split, Join, Speed, Frames, Crop, Redact.
+- **Video editor:**
+  - the picture fills the window, with a glass timeline of thumbnails under it
+  - tools: trim handles, split points with removable clips (export separately or join what's kept), speed 0.25–4×, frame snapshots as PNG, crop, and timed redactions (solid, pixelate or blur, each with its own time range)
+  - files AVFoundation can play get live playback (Space); others get still frames while scrubbing
+- **Join window:** set the order. Videos of different sizes are fitted to the first one's frame, and silent clips get a silent track.
+- Encoding uses Apple's hardware H.264 encoder through the bundled ffmpeg; progress shows in the status menu, and Stop Current Task cancels.
+
 **Tool windows** (floating glass panels opened from the Tools wheel):
 - **Compress:** Smallest, Balanced or Best quality presets, or a target size in KB/MB. Each file is compressed to the target or below, separately. Dimensions shrink only when even the lowest quality is too big.
 - **Metadata:** edit Title, Description, Artist, Copyright, Keywords and Date taken; remove location; browse every field; or strip all. Uses the bundled ExifTool.
@@ -60,7 +70,7 @@ A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the
 - **Float:** an always-on-top glass card per file. Move it by its header; drag the preview to drop the file somewhere else.
 - **Onboarding:** six pages shown on first launch and from Getting Started: Welcome, the three wheels with key caps, folder access, and Finish (launch at login and the wheel toggle).
 
-**Output names:** `name.ext` (convert), `name no-metadata.ext`, `name metadata.ext`, `name compressed.ext`, `name no-bg.png`, `name edited.ext`, `name framed.png`, `Collage.png`, `Merged.pdf`, `Images.pdf`. Existing files are never overwritten; a collision becomes `name (1).ext`.
+**Output names:** `name.ext` (convert), `name edited.mp4`, `name part 1.mp4`, `Joined.mp4`, `name 0m01.5s.png` (video frames), `name no-metadata.ext`, `name metadata.ext`, `name compressed.ext`, `name no-bg.png`, `name edited.ext`, `name framed.png`, `Collage.png`, `Merged.pdf`, `Images.pdf`. Existing files are never overwritten; a collision becomes `name (1).ext`.
 
 ## Design system
 
@@ -153,7 +163,7 @@ There are no API keys or network calls at runtime, so there is no `.env`.
 ```bash
 cd /Users/royelia/file-drop-utility
 scripts/fetch-tools.sh          # once: download, verify and build the helpers into Vendor/ (~5 min)
-scripts/test.sh                 # 121 tests (tool tests skip if Vendor/out is missing)
+scripts/test.sh                 # 139 tests (tool tests skip if Vendor/out is missing)
 scripts/lint.sh                 # swift-format --strict
 swift build
 scripts/bundle.sh               # dist/File Drop Utility.app (ad-hoc signed), helpers included
@@ -187,6 +197,8 @@ Without Xcode, the snapshot harness renders the same screens in real windows. Gl
 Confirmed by you by hand (2026-10-18): a real drag with the redrawn wheel looks and feels like the reference. Synthesised events can't drive a drag session on this Mac, so that hand test is the end-to-end check.
 
 ## Known gaps
+
+- **WebM output:** needs a VP9 encoder (libvpx, BSD licence), which the bundled LGPL ffmpeg doesn't include. WebM files work as inputs. Adding it means downloading and building libvpx; I'll do that only with your OK.
 
 - **WebP export:** macOS's ImageIO reads WebP but can't write it. WebP files work as inputs; the WebP segment is disabled with that reason. Export would need libwebp (BSD licence), which I'd add only with your OK.
 - **Dynamic Type:** SwiftUI text styles on macOS don't respond to `dynamicTypeSize`. The Largest Text snapshots look the same as normal. Views use text styles throughout, so they'll scale wherever the OS scales them, but macOS 26 offers no system-wide Dynamic Type to test.

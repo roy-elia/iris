@@ -91,12 +91,15 @@ public enum ImageFormat: String, CaseIterable, Codable, Sendable {
 public enum FileKind: Equatable, Sendable {
   case image(ImageFormat)
   case pdf
+  case video(VideoFormat)
   case unsupported
 
   public init(url: URL) {
     let ext = url.pathExtension
     if let format = ImageFormat(fileExtension: ext) {
       self = .image(format)
+    } else if let format = VideoFormat(fileExtension: ext) {
+      self = .video(format)
     } else if ext.lowercased() == "pdf" {
       self = .pdf
     } else {
@@ -106,6 +109,11 @@ public enum FileKind: Equatable, Sendable {
 
   public var isImage: Bool {
     if case .image = self { return true }
+    return false
+  }
+
+  public var isVideo: Bool {
+    if case .video = self { return true }
     return false
   }
 }
@@ -163,6 +171,21 @@ public enum FileOperation: Codable, Equatable, Sendable {
   case frame(FrameRecipe)
   case collage(CollageRecipe)
   case readQRCodes
+  case convertVideo(VideoOutput)
+  case compressVideo(VideoCompression)
+  case editVideo(VideoRecipe)
+  case splitVideo(SplitPlan)
+  case joinVideos
+  /// Save the frames at these times (seconds).
+  case videoSnapshots([Double])
+
+  /// Whether the operation is long-running media work.
+  public var isMedia: Bool {
+    switch self {
+    case .convertVideo, .compressVideo, .editVideo, .splitVideo, .joinVideos, .videoSnapshots: true
+    default: false
+    }
+  }
 
   public var summary: String {
     switch self {
@@ -181,6 +204,13 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .frame: "Frame image"
     case .collage: "Create collage"
     case .readQRCodes: "Read QR codes"
+    case .convertVideo(let output):
+      output.isAudioOnly ? "Extract \(output.displayName) audio" : "Convert to \(output.displayName)"
+    case .compressVideo: "Compress video"
+    case .editVideo: "Edit video"
+    case .splitVideo(let plan): plan.joinKept ? "Cut video" : "Split video"
+    case .joinVideos: "Join videos"
+    case .videoSnapshots(let times): times.count == 1 ? "Save frame" : "Save frames"
     }
   }
 }

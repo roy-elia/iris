@@ -60,7 +60,7 @@
       window.setContentSize(window.contentViewController!.view.fittingSize)
       window.level = .floating
       window.orderFrontRegardless()
-      try? await Task.sleep(for: .milliseconds(screen == "Editor" ? 2500 : 900))
+      try? await Task.sleep(for: .milliseconds(screen == "Editor" || screen.hasPrefix("Video-") ? 3000 : 900))
 
       let out = folder.appendingPathComponent("\(screen)--\(variant.name).png")
       let process = Process()

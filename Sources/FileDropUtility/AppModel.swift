@@ -120,6 +120,13 @@ final class AppModel: ObservableObject {
       WindowManager.shared.openTool("collage", title: "Collage") { CollageView(urls: fileURLs) }
     case .readQR:
       run(.readQRCodes, on: targets, origin: origin)
+    case .convertVideo(let output):
+      run(.convertVideo(output), on: targets, origin: origin)
+    case .videoEditor(let tool):
+      guard let video = targets.first(where: \.kind.isVideo) else { return }
+      WindowManager.shared.openVideoEditor(for: video.url, tool: tool)
+    case .joinVideos:
+      WindowManager.shared.openTool("join", title: "Join Videos") { JoinView(urls: fileURLs) }
     case .edit(let tool):
       let images = targets.filter(\.kind.isImage).map(\.url)
       guard let first = images.first else { return }
