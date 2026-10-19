@@ -104,6 +104,25 @@ Ours now works the same way, written from scratch:
 
 Checked live with a synthesised drag: pressing ⇧ mid-drag with the pointer still opens the Convert wheel, and releasing ⇧ closes it.
 
+### 8. Wheel visuals rebuilt to match the reference
+
+Your second hand test said the wheel looked wrong. Frame-by-frame study of the sample video, plus Tangerine's fan type and property names, showed a native-glass disc model with a highlighted slot, an intro animation and a gradient petal tint. The wheel was redrawn from scratch to match:
+- **Disc:** dark Liquid Glass behind the petals. The wheel is always dark, like a heads-up control. Designed at 252pt; everything scales from that.
+- **Petals:** `PetalShape`, an annular sector with true circular corners (13pt radius, 7pt gaps). Unlit petals are a faint white gradient on the disc, with no outlines.
+- **Center:** a recessed well with an inner shadow, holding a small pill. The pill shows the dragged files' total size (read once the drag is over the wheel) or the lit petal's name. Segments are enabled or disabled from the real dragged files.
+- **Lit petal:**
+  - fills with a blue-teal gradient (the accent you chose) and a soft sheen
+  - glows
+  - swells about 12pt past the rim and widens slightly
+  - leans up to 7pt toward the pointer
+  
+  All of this runs on a 0.3s spring.
+- **Opening:** springs from 30% scale with a slight overshoot and fades in, then the labels fade in 90ms later. Switching modifier replays it. Closing fades out over 0.14s. Under Reduce Motion the wheel appears without the spring and the lean.
+- **Labels:** 8pt bold uppercase with tracking, and 13pt semibold symbols, as in the reference.
+- **Click-mode wheels** (main window, onboarding) share the same look, hover tracking and tick sound.
+
+The reference's orange wasn't copied: the lit colour stays your blue-teal. It's two values in `DesignTokens.Palette` (`wheelHotTop`, `wheelHotBottom`).
+
 ## Verification
 
 - **Code checks:**
@@ -121,7 +140,7 @@ Checked live with a synthesised drag: pressing ⇧ mid-drag with the pointer sti
 |---|---|
 | Remove all outlines from bubble elements | Stroke token and every stroke overlay deleted. The glass rim and shadows define edges, and the lit segment glows instead. |
 | Functional drag-and-drop with sound | Polling trigger modelled on Tangerine's approach: it opens on a key press without movement, switches wheels, closes on key release or Escape, and stays open while over the wheel. AppKit drop target with segment hit-testing. Pooled tick and pop sounds, plus haptics. A real drop by hand is still pending. |
-| Hover illumination for the selected task | The segment under the pointer fills with the accent colour, glows and scales, and the centre names it. |
+| Hover illumination for the selected task | The petal under the pointer fills with an accent gradient, glows, swells past the rim and leans toward the pointer; the centre pill names it. |
 | Top-bar dropdown matching the screenshot | Native `.menu`-style menu with the same structure, order, separators and shortcuts. Licensing items left out. |
 | Genuine Apple Liquid Glass | `glassEffect` on every surface, tinted glass for the lit state, free-floating segments, no strokes. Opaque only under Reduce Transparency. |
 | No "temu" styling | Removed the outlines, the disc-within-a-disc wheel and the outlined keycaps. The custom panel menu is now the system menu. |

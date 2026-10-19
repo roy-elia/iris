@@ -111,7 +111,8 @@ import SwiftUI
     private static func dropHover(_ model: AppModel) -> some View {
       let items = WheelKind.actions.items(for: [])
       return RadialWheel(
-        kind: .actions, items: items, centerText: "Drop", mode: .drop, hotID: items.last?.id
+        kind: .actions, items: items, centerText: "5 KB", mode: .drop, hotID: items.last?.id,
+        pointer: CGPoint(x: -150, y: -30)
       ) { _, _ in }
       .padding(DesignTokens.Spacing.inset)
     }

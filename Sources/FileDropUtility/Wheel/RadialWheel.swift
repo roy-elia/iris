@@ -2,37 +2,12 @@ import DropCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// One segment of a ring: an annular sector with rounded joins.
-struct RingSegment: Shape {
-  var startAngle: Angle
-  var endAngle: Angle
-  var innerRatio: CGFloat = 0.42
-  /// Gap between neighbouring segments, in points along the ring.
-  var gap: CGFloat = 6
-
-  func path(in rect: CGRect) -> Path {
-    let center = CGPoint(x: rect.midX, y: rect.midY)
-    let outer = min(rect.width, rect.height) / 2
-    let inner = outer * innerRatio
-    // Convert the linear gap into an angle at each radius so the gap is even.
-    let outerInset = Angle(radians: Double(gap / 2 / outer))
-    let innerInset = Angle(radians: Double(gap / 2 / inner))
-    var p = Path()
-    p.addArc(
-      center: center, radius: outer, startAngle: startAngle + outerInset, endAngle: endAngle - outerInset,
-      clockwise: false)
-    p.addArc(
-      center: center, radius: inner, startAngle: endAngle - innerInset, endAngle: startAngle + innerInset,
-      clockwise: true)
-    p.closeSubpath()
-    return p
-  }
-}
-
-/// Geometry shared by the SwiftUI wheel and the AppKit drop target, so the segment that
-/// lights up is always the one under the pointer.
+/// The wheel's proportions, designed at a 252pt diameter and scaled from there. Shared
+/// with the AppKit drop target, so the segment that lights up is the one under the pointer.
 enum WheelGeometry {
-  static let innerRatio: CGFloat = 0.42
+  static let design: CGFloat = 252
+  /// Petal inner radius over disc radius.
+  static let innerRatio: CGFloat = 50.0 / 126
 
   /// Angle where segment `index` of `count` starts. Segment 0 is centred at the top and
   /// the rest follow clockwise (in flipped, y-down coordinates).
@@ -49,9 +24,61 @@ enum WheelGeometry {
   }
 }
 
-/// The radial action wheel: separate Liquid Glass segments around a glass centre pill.
-/// In `.click` mode segments are buttons that light up under the pointer. In `.drop`
-/// mode an AppKit drop target tracks the drag and passes the lit segment in `hotID`.
+/// A petal: an annular sector with evenly rounded corners. Its angles and radii animate,
+/// so a lit petal can swell smoothly.
+struct PetalShape: Shape {
+  var startAngle: Angle
+  var endAngle: Angle
+  var innerRadius: CGFloat
+  var outerRadius: CGFloat
+  var gap: CGFloat
+  var cornerRadius: CGFloat
+
+  var animatableData: AnimatablePair<AnimatablePair<Double, Double>, AnimatablePair<CGFloat, CGFloat>> {
+    get {
+      AnimatablePair(
+        AnimatablePair(startAngle.radians, endAngle.radians), AnimatablePair(innerRadius, outerRadius))
+    }
+    set {
+      startAngle = .radians(newValue.first.first)
+      endAngle = .radians(newValue.first.second)
+      innerRadius = newValue.second.first
+      outerRadius = newValue.second.second
+    }
+  }
+
+  func path(in rect: CGRect) -> Path {
+    let center = CGPoint(x: rect.midX, y: rect.midY)
+    let r = max(0, min(cornerRadius, (outerRadius - innerRadius) / 2 - 0.5))
+    let outer = outerRadius - r
+    let inner = innerRadius + r
+    guard outer > inner, inner > 0 else { return Path() }
+    // Shrink the sector by the corner radius on every side, then grow it back with a
+    // round-joined stroke: the result has true circular corners.
+    let edgeInset = gap / 2 + r
+    let outerInset = Angle(radians: Double(edgeInset / outer))
+    let innerInset = Angle(radians: Double(edgeInset / inner))
+    guard startAngle + innerInset < endAngle - innerInset else { return Path() }
+    var core = Path()
+    core.addArc(
+      center: center, radius: outer, startAngle: startAngle + outerInset, endAngle: endAngle - outerInset,
+      clockwise: false)
+    core.addArc(
+      center: center, radius: inner, startAngle: endAngle - innerInset, endAngle: startAngle + innerInset,
+      clockwise: true)
+    core.closeSubpath()
+    guard r > 0 else { return core }
+    return core.union(core.strokedPath(StrokeStyle(lineWidth: r * 2, lineCap: .round, lineJoin: .round)))
+  }
+}
+
+/// The radial action wheel: rounded petals on a dark Liquid Glass disc, around a recessed
+/// centre well with a label pill. The petal under the pointer fills with an accent
+/// gradient, swells past the rim and leans toward the pointer. The wheel springs open
+/// from a third of its size, and the labels fade in just after.
+///
+/// In `.click` mode the wheel tracks the pointer itself. In `.drop` mode an AppKit drop
+/// target tracks the drag and passes the lit segment and pointer in.
 struct RadialWheel: View {
   enum Mode { case click, drop }
 
@@ -59,90 +86,158 @@ struct RadialWheel: View {
   let items: [WheelItem]
   let centerText: String
   let mode: Mode
-  /// The lit segment in `.drop` mode, set by `WheelDropView`.
+  /// `.drop` mode: the lit segment, set by `WheelDropView`.
   var hotID: String? = nil
+  /// `.drop` mode: the pointer relative to the wheel's centre, y-down.
+  var pointer: CGPoint? = nil
+  /// Changing this replays the opening animation.
+  var introRevision = 0
   let onSelect: (WheelItem, [URL]) -> Void
 
-  @State private var hovered: String?
-  @Environment(\.colorScheme) private var scheme
-  @Environment(\.colorSchemeContrast) private var contrast
-  @Environment(\.forceIncreasedContrast) private var forceContrast
+  @State private var hoverPoint: CGPoint?
+  @State private var opened = true
+  @State private var labelsShown = true
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-  private var litID: String? { mode == .drop ? hotID : hovered }
-  private var litItem: WheelItem? { items.first { $0.id == litID && $0.isEnabled } }
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
   var body: some View {
     GeometryReader { geo in
-      let size = min(geo.size.width, geo.size.height)
-      // Each segment keeps its own glass: a shared GlassEffectContainer would melt the
-      // neighbouring shapes into one disc.
-      ZStack {
-        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-          let start = WheelGeometry.startAngle(index: index, count: items.count)
-          let step = 360.0 / Double(items.count)
-          segment(item, start: start, end: start + .degrees(step), size: size)
-        }
-        center(size: size)
-      }
-      .frame(width: size, height: size)
-      .position(x: geo.size.width / 2, y: geo.size.height / 2)
+      let d = min(geo.size.width, geo.size.height)
+      wheel(diameter: d)
+        .frame(width: d, height: d)
+        .position(x: geo.size.width / 2, y: geo.size.height / 2)
     }
     .aspectRatio(1, contentMode: .fit)
+    // The wheel is a heads-up control, dark in either appearance, as in the reference.
+    .environment(\.colorScheme, .dark)
+    .onChange(of: introRevision, initial: true) { playIntro() }
     .accessibilityElement(children: .contain)
     .accessibilityLabel("\(kind.longTitle) wheel")
   }
 
+  // MARK: Layout
+
+  private func wheel(diameter d: CGFloat) -> some View {
+    let s = d / WheelGeometry.design
+    let pointer = mode == .drop ? self.pointer : hoverPoint
+    let lit = litIndex(diameter: d, pointer: pointer)
+    return ZStack {
+      disc(diameter: d, scale: s)
+      ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+        petal(item, index: index, isHot: index == lit, diameter: d, scale: s, pointer: pointer)
+      }
+      center(scale: s, litItem: lit.map { items[$0] })
+    }
+    .scaleEffect(opened ? 1 : 0.3)
+    .opacity(opened ? 1 : 0)
+    .contentShape(Circle())
+    .modifier(
+      ClickTracking(enabled: mode == .click, diameter: d, hoverPoint: $hoverPoint) { point in
+        guard let index = WheelGeometry.segment(at: point, outerRadius: d / 2, count: items.count),
+          items[index].isEnabled
+        else { return }
+        onSelect(items[index], [])
+      }
+    )
+    .onChange(of: lit) { old, new in
+      if mode == .click, let new, new != old { WheelFeedback.hover() }
+    }
+  }
+
+  private func litIndex(diameter d: CGFloat, pointer: CGPoint?) -> Int? {
+    let index: Int?
+    switch mode {
+    case .drop: index = items.firstIndex { $0.id == hotID }
+    case .click:
+      index = pointer.flatMap { WheelGeometry.segment(at: $0, outerRadius: d / 2, count: items.count) }
+    }
+    guard let index, items[index].isEnabled else { return nil }
+    return index
+  }
+
+  // MARK: Pieces
+
+  private func disc(diameter d: CGFloat, scale s: CGFloat) -> some View {
+    Group {
+      if reduceTransparency {
+        Circle().fill(Color(white: 0.11))
+      } else {
+        Circle()
+          .fill(Color.black.opacity(0.5))
+          .glassEffect(.regular.tint(Color.black.opacity(0.45)), in: Circle())
+      }
+    }
+    .shadow(color: .black.opacity(0.35), radius: 2 * s, y: 1)
+    .shadow(color: .black.opacity(0.40), radius: 26 * s, y: 12 * s)
+  }
+
   @ViewBuilder
-  private func segment(_ item: WheelItem, start: Angle, end: Angle, size: CGFloat) -> some View {
-    let shape = RingSegment(startAngle: start, endAngle: end, innerRatio: WheelGeometry.innerRatio, gap: 7)
-    let isHot = litID == item.id && item.isEnabled
-    let increased = contrast == .increased || forceContrast
-    let mid = Angle(degrees: (start.degrees + end.degrees) / 2)
-    let labelRadius = size / 2 * 0.71
-    let offset = CGSize(
-      width: cos(mid.radians) * labelRadius, height: sin(mid.radians) * labelRadius)
-    let contact = DesignTokens.Shadow.contact(for: scheme)
-    let ambient = DesignTokens.Shadow.ambient(for: scheme)
+  private func petal(
+    _ item: WheelItem, index: Int, isHot: Bool, diameter d: CGFloat, scale s: CGFloat, pointer: CGPoint?
+  ) -> some View {
+    let step = 360.0 / Double(items.count)
+    let start = WheelGeometry.startAngle(index: index, count: items.count)
+    let widen = Angle(degrees: isHot ? 2.5 : 0)
+    let inner = 50 * s
+    let outer = d / 2 - 8 * s + (isHot ? 12 * s : 0)
+    let shape = PetalShape(
+      startAngle: start - widen, endAngle: start + .degrees(step) + widen, innerRadius: inner,
+      outerRadius: outer, gap: 7 * s, cornerRadius: 13 * s)
+    let mid = Angle(degrees: start.degrees + step / 2)
+    let labelRadius = (inner + outer) / 2
+    let labelOffset = CGSize(width: cos(mid.radians) * labelRadius, height: sin(mid.radians) * labelRadius)
+    let lean = isHot ? leanOffset(toward: pointer, from: labelOffset, limit: 7 * s) : .zero
 
     ZStack {
-      shape
-        .fill(
-          isHot
-            ? AnyShapeStyle(DesignTokens.Palette.accentFill)
-            : AnyShapeStyle(DesignTokens.scrim(for: scheme, increasedContrast: increased))
-        )
-        .glassEffect(isHot ? .regular.tint(DesignTokens.Palette.accentFill) : .regular, in: shape)
-        // The lit segment glows in the accent colour instead of being outlined.
-        .shadow(
-          color: isHot ? DesignTokens.Palette.accentFill.opacity(0.55) : contact.color,
-          radius: isHot ? 14 : contact.radius, y: isHot ? 0 : contact.y
-        )
-        .shadow(color: isHot ? .clear : ambient.color, radius: ambient.radius, y: ambient.y)
-      VStack(spacing: 3) {
+      if isHot {
+        shape
+          .fill(
+            LinearGradient(
+              colors: [DesignTokens.Palette.wheelHotTop, DesignTokens.Palette.wheelHotBottom],
+              startPoint: .topLeading, endPoint: .bottomTrailing)
+          )
+          .overlay(
+            // A soft specular sheen across the top, as on a lit glass petal.
+            shape.fill(
+              RadialGradient(
+                colors: [.white.opacity(0.14), .clear], center: .init(x: 0.35, y: 0.2), startRadius: 0,
+                endRadius: d * 0.22))
+          )
+          .shadow(color: DesignTokens.Palette.wheelHotBottom.opacity(0.65), radius: 16 * s)
+      } else {
+        shape.fill(
+          LinearGradient(
+            colors: [
+              .white.opacity(item.isEnabled ? 0.11 : 0.06), .white.opacity(item.isEnabled ? 0.06 : 0.03),
+            ],
+            startPoint: .top, endPoint: .bottom))
+      }
+      VStack(spacing: 3 * s) {
         if let symbol = item.systemImage {
-          Image(systemName: symbol).font(.title3.weight(.medium)).accessibilityHidden(true)
+          Image(systemName: symbol)
+            .font(.system(size: 13 * s, weight: .semibold))
+            .accessibilityHidden(true)
         }
         Text(item.title)
-          .font(.system(.caption, design: .rounded).weight(.bold))
+          .font(.system(size: 8 * s, weight: .bold))
+          .tracking(0.4 * s)
           .textCase(.uppercase)
           .multilineTextAlignment(.center)
-          .minimumScaleFactor(0.7)
+          .lineLimit(2)
+          .minimumScaleFactor(0.75)
       }
-      .foregroundStyle(
-        isHot
-          ? DesignTokens.Palette.onAccent
-          : (item.isEnabled ? Color.primary : DesignTokens.Palette.secondaryText)
-      )
-      .frame(width: size * 0.2)
-      .offset(offset)
+      .foregroundStyle(item.isEnabled ? Color.white : Color.white.opacity(0.4))
+      .frame(width: 64 * s)
+      .offset(labelOffset)
+      .opacity(labelsShown ? 1 : 0)
       .allowsHitTesting(false)
     }
-    .contentShape(shape)
-    .scaleEffect(isHot && !reduceMotion ? 1.04 : 1)
+    .offset(lean)
     .zIndex(isHot ? 1 : 0)
-    .animation(DesignTokens.Motion.animation(reduceMotion: reduceMotion), value: isHot)
-    .modifier(SegmentClick(enabled: mode == .click, item: item, hovered: $hovered, onSelect: onSelect))
+    .animation(
+      reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.3, dampingFraction: 0.6), value: isHot
+    )
+    .animation(.interactiveSpring(response: 0.22, dampingFraction: 0.82), value: lean)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(item.title)
     .accessibilityHint(item.disabledReason ?? "")
@@ -154,46 +249,83 @@ struct RadialWheel: View {
     .help(item.disabledReason ?? item.title)
   }
 
-  /// The centre pill names the lit segment, or shows `centerText` when nothing is lit.
-  private func center(size: CGFloat) -> some View {
-    VStack(spacing: 2) {
-      Text(litItem?.title.uppercased() ?? centerText)
-        .font(
-          litItem == nil ? .headline.monospacedDigit() : .system(.subheadline, design: .rounded).weight(.bold)
-        )
+  /// The lit petal leans a few points toward the pointer, like it's being pulled.
+  private func leanOffset(toward pointer: CGPoint?, from anchor: CGSize, limit: CGFloat) -> CGSize {
+    guard let pointer, !reduceMotion else { return .zero }
+    let dx = (pointer.x - anchor.width) * 0.14
+    let dy = (pointer.y - anchor.height) * 0.14
+    let length = hypot(dx, dy)
+    guard length > limit else { return CGSize(width: dx, height: dy) }
+    return CGSize(width: dx / length * limit, height: dy / length * limit)
+  }
+
+  /// A recessed well with a pill naming the lit petal, or showing `centerText`.
+  private func center(scale s: CGFloat, litItem: WheelItem?) -> some View {
+    ZStack {
+      Circle()
+        .fill(Color.black.opacity(0.42).shadow(.inner(color: .black.opacity(0.7), radius: 4 * s, y: 1.5 * s)))
+        .frame(width: 84 * s, height: 84 * s)
+      Text(litItem?.title ?? centerText)
+        .font(.system(size: 9 * s, weight: .bold))
+        .tracking(0.3 * s)
+        .textCase(litItem == nil ? nil : .uppercase)
+        .foregroundStyle(.white)
         .lineLimit(1)
-        .minimumScaleFactor(0.7)
+        .minimumScaleFactor(0.6)
+        .padding(.horizontal, 10 * s)
+        .frame(width: 74 * s, height: 30 * s)
+        .background(Color.white.opacity(0.09), in: Capsule(style: .continuous))
         .contentTransition(.opacity)
-      Text(kind.title).font(.caption2).foregroundStyle(DesignTokens.Palette.secondaryText)
+        .animation(.easeOut(duration: 0.12), value: litItem?.id)
+        .opacity(labelsShown ? 1 : 0)
     }
-    .padding(.horizontal, 14)
-    .padding(.vertical, 8)
-    .frame(maxWidth: size * 0.34)
-    .glassPanel(cornerRadius: 999)
-    .animation(DesignTokens.Motion.animation(reduceMotion: reduceMotion), value: litID)
+    .allowsHitTesting(false)
     .accessibilityElement(children: .combine)
+  }
+
+  // MARK: Motion
+
+  private func playIntro() {
+    guard !reduceMotion else {
+      opened = true
+      labelsShown = true
+      return
+    }
+    var reset = Transaction()
+    reset.disablesAnimations = true
+    withTransaction(reset) {
+      opened = false
+      labelsShown = false
+    }
+    DispatchQueue.main.async {
+      withAnimation(.spring(response: 0.3, dampingFraction: 0.66)) { opened = true }
+      withAnimation(.easeOut(duration: 0.14).delay(0.09)) { labelsShown = true }
+    }
   }
 }
 
-/// Hover and click behaviour for a segment in `.click` mode.
-private struct SegmentClick: ViewModifier {
+/// Pointer tracking and clicks for a `.click` mode wheel. Points are relative to the
+/// wheel's centre, y-down.
+private struct ClickTracking: ViewModifier {
   let enabled: Bool
-  let item: WheelItem
-  @Binding var hovered: String?
-  let onSelect: (WheelItem, [URL]) -> Void
+  let diameter: CGFloat
+  @Binding var hoverPoint: CGPoint?
+  let onClick: (CGPoint) -> Void
 
   func body(content: Content) -> some View {
     if enabled {
       content
-        .onHover { inside in
-          if inside {
-            if hovered != item.id, item.isEnabled { WheelFeedback.hover() }
-            hovered = item.id
-          } else if hovered == item.id {
-            hovered = nil
+        .onContinuousHover(coordinateSpace: .local) { phase in
+          switch phase {
+          case .active(let location):
+            hoverPoint = CGPoint(x: location.x - diameter / 2, y: location.y - diameter / 2)
+          case .ended:
+            hoverPoint = nil
           }
         }
-        .onTapGesture { if item.isEnabled { onSelect(item, []) } }
+        .onTapGesture(coordinateSpace: .local) { location in
+          onClick(CGPoint(x: location.x - diameter / 2, y: location.y - diameter / 2))
+        }
     } else {
       content
     }

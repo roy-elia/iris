@@ -32,6 +32,10 @@ enum DesignTokens {
     /// Fill for prominent buttons and selected segments. White text on it is ≥ 4.5:1 measured with the glass highlight (7:1+ flat).
     static let accentFill = Color(
       nsColor: dynamic(light: (0.00, 0.36, 0.45), dark: (0.00, 0.34, 0.43)))
+    /// The lit wheel petal's gradient, top-leading to bottom-trailing. White bold text
+    /// at the label's position (mid-gradient) is about 5:1.
+    static let wheelHotTop = Color(red: 0.00, green: 0.34, blue: 0.56)
+    static let wheelHotBottom = Color(red: 0.02, green: 0.60, blue: 0.76)
     /// Accent for text and icons on glass. ≥ 6:1 on light and ≥ 9:1 on dark backgrounds.
     static let accentText = Color(
       nsColor: dynamic(light: (0.00, 0.40, 0.50), dark: (0.40, 0.82, 0.92)))

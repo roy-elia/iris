@@ -1,4 +1,5 @@
 import AppKit
+import DropCore
 import SwiftUI
 
 /// Sound and trackpad feedback for the wheel, using built-in macOS system sounds.
@@ -44,26 +45,46 @@ private final class SoundPool {
   }
 }
 
-/// The segment lit by the drag in progress, shared between the AppKit drop target and
-/// the SwiftUI wheel.
+/// What the drag overlay shows, shared between the AppKit drop target and the SwiftUI
+/// wheel.
 @MainActor
 final class WheelDropState: ObservableObject {
+  @Published var kind: WheelKind = .convert
+  /// The dragged files, readable once the drag is over the wheel.
+  @Published var files: [DroppedFile] = []
   @Published var hotID: String?
+  /// The pointer relative to the wheel's centre, y-down, while the drag is over it.
+  @Published var pointer: CGPoint?
+  @Published var introRevision = 0
   /// The drag is over the wheel, so letting go of the modifier keeps it open.
   var isDragInside = false
+
+  var items: [WheelItem] { kind.items(for: files) }
+  var centerText: String {
+    guard !files.isEmpty else { return "Drop" }
+    return ByteCountFormatter.string(fromByteCount: files.reduce(0) { $0 + $1.byteSize }, countStyle: .file)
+  }
+
+  func reset() {
+    files = []
+    hotID = nil
+    pointer = nil
+    isDragInside = false
+  }
 }
 
-/// Wraps a drop-mode wheel so it redraws when the lit segment changes.
+/// Wraps a drop-mode wheel so it redraws as the drag moves.
 struct DropWheelHost: View {
-  let kind: WheelKind
-  let items: [WheelItem]
   let diameter: CGFloat
   @ObservedObject var state: WheelDropState
 
   var body: some View {
-    RadialWheel(kind: kind, items: items, centerText: "Drop", mode: .drop, hotID: state.hotID) { _, _ in }
-      .frame(width: diameter, height: diameter)
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
+    RadialWheel(
+      kind: state.kind, items: state.items, centerText: state.centerText, mode: .drop, hotID: state.hotID,
+      pointer: state.pointer, introRevision: state.introRevision
+    ) { _, _ in }
+    .frame(width: diameter, height: diameter)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 }
 
@@ -75,8 +96,7 @@ struct DropWheelHost: View {
 /// middle of another app's drag, which SwiftUI's per-view `onDrop` did not.
 @MainActor
 final class WheelDropView: NSView {
-  var items: [WheelItem] = []
-  var diameter: CGFloat = 340
+  var diameter: CGFloat = WheelGeometry.design
   let state: WheelDropState
   var onDrop: (WheelItem, [URL]) -> Void = { _, _ in }
 
@@ -92,17 +112,28 @@ final class WheelDropView: NSView {
   // y-down, matching SwiftUI's angles.
   override var isFlipped: Bool { true }
 
-  private func item(for sender: NSDraggingInfo) -> WheelItem? {
+  private func offset(of sender: NSDraggingInfo) -> CGPoint {
     let local = convert(sender.draggingLocation, from: nil)
-    let offset = CGPoint(x: local.x - bounds.midX, y: local.y - bounds.midY)
+    return CGPoint(x: local.x - bounds.midX, y: local.y - bounds.midY)
+  }
+
+  private func item(at offset: CGPoint) -> WheelItem? {
+    let items = state.items
     guard let index = WheelGeometry.segment(at: offset, outerRadius: diameter / 2, count: items.count) else {
       return nil
     }
     return items[index]
   }
 
+  private static func urls(in sender: NSDraggingInfo) -> [URL] {
+    sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])
+      as? [URL] ?? []
+  }
+
   private func update(_ sender: NSDraggingInfo) -> NSDragOperation {
-    let item = item(for: sender)
+    let point = offset(of: sender)
+    state.pointer = point
+    let item = item(at: point)
     let id = item?.isEnabled == true ? item?.id : nil
     if id != state.hotID {
       state.hotID = id
@@ -113,25 +144,30 @@ final class WheelDropView: NSView {
 
   override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
     state.isDragInside = true
+    // As the drop target, the pasteboard is readable now: show the files' size and
+    // enable only the segments that fit them.
+    if state.files.isEmpty {
+      state.files = Self.urls(in: sender).compactMap { try? DroppedFile.load($0) }
+    }
     return update(sender)
   }
+
   override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation { update(sender) }
   override func wantsPeriodicDraggingUpdates() -> Bool { false }
 
   override func draggingExited(_ sender: NSDraggingInfo?) {
     state.isDragInside = false
     state.hotID = nil
+    state.pointer = nil
   }
 
   override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
-    item(for: sender)?.isEnabled == true
+    item(at: offset(of: sender))?.isEnabled == true
   }
 
   override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-    guard let item = item(for: sender), item.isEnabled else { return false }
-    let urls =
-      sender.draggingPasteboard.readObjects(
-        forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+    guard let item = item(at: offset(of: sender)), item.isEnabled else { return false }
+    let urls = Self.urls(in: sender)
     guard !urls.isEmpty else { return false }
     WheelFeedback.drop()
     // Run after the drag session finishes so the source app isn't kept waiting.

@@ -113,14 +113,10 @@ final class DragWatcher {
 @MainActor
 final class WheelOverlayController {
   private var panel: NSPanel?
-  private var currentKind: WheelKind?
-  private let size = NSSize(width: 380, height: 380)
-
+  /// Room around the wheel for the lit petal to swell into and for the shadow.
+  private let size = NSSize(width: 340, height: 340)
+  private let diameter = WheelGeometry.design
   private let dropState = WheelDropState()
-  private let diameter: CGFloat = 340
-
-  private var host: NSHostingView<DropWheelHost>?
-  private var dropView: WheelDropView?
   private var isShowing = false
 
   var isVisible: Bool { isShowing }
@@ -130,41 +126,20 @@ final class WheelOverlayController {
   func show(_ kind: WheelKind, at point: NSPoint) {
     let panel = self.panel ?? makePanel()
     self.panel = panel
-    if currentKind != kind {
-      currentKind = kind
+    if isShowing {
+      guard dropState.kind != kind else { return }
+      dropState.kind = kind
       dropState.hotID = nil
-      let items = kind.items(for: [])
-      let root = DropWheelHost(kind: kind, items: items, diameter: diameter, state: dropState)
-      if let host, let dropView {
-        // Same drop view, so a drag already over the panel keeps going.
-        host.rootView = root
-        dropView.items = items
-      } else {
-        let container = NSView(frame: NSRect(origin: .zero, size: size))
-        let host = NSHostingView(rootView: root)
-        host.frame = container.bounds
-        host.autoresizingMask = [.width, .height]
-        let dropView = WheelDropView(state: dropState)
-        dropView.items = items
-        dropView.diameter = diameter
-        dropView.onDrop = { item, urls in
-          AppModel.shared.perform(item.command, urls: urls, origin: .overlay)
-        }
-        dropView.frame = container.bounds
-        dropView.autoresizingMask = [.width, .height]
-        container.addSubview(host)
-        container.addSubview(dropView)  // On top, so it is the drag destination.
-        panel.contentView = container
-        self.host = host
-        self.dropView = dropView
-      }
+      dropState.introRevision += 1
+      return
     }
-    if !isShowing {
-      isShowing = true
-      panel.setFrameOrigin(NSPoint(x: point.x - size.width / 2, y: point.y - size.height / 2))
-      panel.alphaValue = 1
-      panel.orderFrontRegardless()
-    }
+    isShowing = true
+    dropState.reset()
+    dropState.kind = kind
+    dropState.introRevision += 1
+    panel.setFrameOrigin(NSPoint(x: point.x - size.width / 2, y: point.y - size.height / 2))
+    panel.alphaValue = 1
+    panel.orderFrontRegardless()
   }
 
   func hide() {
@@ -172,14 +147,15 @@ final class WheelOverlayController {
     isShowing = false
     dropState.hotID = nil
     dropState.isDragInside = false
-    currentKind = nil
     NSAnimationContext.runAnimationGroup { context in
-      context.duration = 0.12
+      context.duration = 0.14
       panel.animator().alphaValue = 0
     } completionHandler: { [weak self] in
       MainActor.assumeIsolated {
         // A show() during the fade wins.
-        if self?.isShowing == false { panel.orderOut(nil) }
+        guard self?.isShowing == false else { return }
+        panel.orderOut(nil)
+        self?.dropState.reset()
       }
     }
   }
@@ -195,6 +171,20 @@ final class WheelOverlayController {
     panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
     panel.hidesOnDeactivate = false
     panel.becomesKeyOnlyIfNeeded = true
+    let container = NSView(frame: NSRect(origin: .zero, size: size))
+    let host = NSHostingView(rootView: DropWheelHost(diameter: diameter, state: dropState))
+    host.frame = container.bounds
+    host.autoresizingMask = [.width, .height]
+    let dropView = WheelDropView(state: dropState)
+    dropView.diameter = diameter
+    dropView.onDrop = { item, urls in
+      AppModel.shared.perform(item.command, urls: urls, origin: .overlay)
+    }
+    dropView.frame = container.bounds
+    dropView.autoresizingMask = [.width, .height]
+    container.addSubview(host)
+    container.addSubview(dropView)  // On top, so it is the drag destination.
+    panel.contentView = container
     return panel
   }
 }
