@@ -235,6 +235,14 @@ public enum FileKind: Equatable, Sendable {
     }
   }
 
+  /// Workbooks whose sheets `sheetsToCSV` reads (Numbers and .xls need Numbers).
+  public var isSpreadsheet: Bool {
+    switch self {
+    case .office(let format): [.xlsx, .xls, .ods, .numbers].contains(format)
+    default: false
+    }
+  }
+
   public var isDocumentLike: Bool {
     switch self {
     case .document, .office, .pdf: true
@@ -352,6 +360,8 @@ public enum FileOperation: Codable, Equatable, Sendable {
   case convertSubtitles(SubtitleFormat)
   /// JSON, CSV, XML, plist and vCard conversions.
   case convertData(DataFormat)
+  /// Each sheet of an Excel, OpenDocument or Numbers workbook as a CSV file.
+  case sheetsToCSV
   case extractArchive
   /// Compress all the files into one zip.
   case zipFiles
@@ -363,7 +373,7 @@ public enum FileOperation: Codable, Equatable, Sendable {
       .extractSubtitles,
       .convertAudio,
       .editAudio, .audioVisualizer, .convertDocument, .pdfToImages, .pdfToTIFF,
-      .pdfToCBZ, .extractArchive, .zipFiles:
+      .pdfToCBZ, .sheetsToCSV, .extractArchive, .zipFiles:
       true
     default: false
     }
@@ -407,6 +417,7 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .organizePDF: "Organize PDF"
     case .convertSubtitles(let format): "Convert to \(format.displayName)"
     case .convertData(let format): "Convert to \(format.displayName)"
+    case .sheetsToCSV: "Save sheets as CSV"
     case .extractArchive: "Extract archive"
     case .zipFiles: "Zip"
     }

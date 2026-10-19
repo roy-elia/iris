@@ -113,6 +113,7 @@ enum WheelCommand: Equatable {
   case organizePDF
   case convertSubtitles(SubtitleFormat)
   case convertData(DataFormat)
+  case sheetsToCSV
   case extractArchive
   case airDrop
   case share
@@ -226,6 +227,17 @@ extension WheelKind {
             WheelItem(
               id: "d-\($0.rawValue)", title: $0.displayName, systemImage: nil, command: .pdfToImages($0))
           }
+      }
+      if files.allSatisfy(\.kind.isSpreadsheet) {
+        let problem = files.lazy.compactMap { file -> String? in
+          guard case .office(let format) = file.kind else { return nil }
+          return SpreadsheetOps.problem(format)
+        }.first
+        return [
+          convert(.pdf),
+          WheelItem(
+            id: "d-csv", title: "CSV", systemImage: nil, command: .sheetsToCSV, disabledReason: problem),
+        ]
       }
       // CSV tables also convert to JSON and vCard.
       return [DocumentOutput.pdf, .docx, .rtf, .txt, .md, .html, .epub, .pages].map(convert)

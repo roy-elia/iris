@@ -207,6 +207,8 @@ final class AppModel: ObservableObject {
       run(.convertSubtitles(format), on: targets, origin: origin)
     case .convertData(let format):
       run(.convertData(format), on: targets, origin: origin)
+    case .sheetsToCSV:
+      run(.sheetsToCSV, on: targets, origin: origin)
     case .extractArchive:
       run(.extractArchive, on: targets, origin: origin)
     case .visualizer:

@@ -227,6 +227,7 @@
       case .extractArchive: return await check(.extractArchive)
       case .extractSubtitles: return await check(.extractSubtitles)
       case .convertData(let f): return await check(.convertData(f))
+      case .sheetsToCSV: return await check(.sheetsToCSV)
       case .zip: return await check(.zipFiles)
 
       case .compress:

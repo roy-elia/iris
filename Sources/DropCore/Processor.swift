@@ -121,6 +121,15 @@ public struct Processor: Sendable {
       if let file = files.first(where: { !($0.kind.dataFormat?.outputs.contains(output) ?? false) }) {
         return "\(file.name) can't be converted to \(output.displayName)."
       }
+    case .sheetsToCSV:
+      if !files.allSatisfy(\.kind.isSpreadsheet) {
+        return "\(operation.summary) works on Excel, OpenDocument and Numbers spreadsheets."
+      }
+      if let file = files.first(where: {
+        if case .office(let format) = $0.kind { SpreadsheetOps.problem(format) != nil } else { true }
+      }) {
+        return "Saving the sheets of \(file.name) as CSV needs Numbers."
+      }
     case .extractArchive:
       if files.contains(where: { $0.kind != .archive }) {
         return "Extract works on zip, 7z, tar, gz, bz2, xz and ISO archives."
@@ -504,6 +513,19 @@ public struct Processor: Sendable {
         await record(&result, file: file, output: out) {
           try DataOps.convert(file.url, to: output, destination: out)
         }
+      }
+
+    case .sheetsToCSV:
+      for (i, file) in files.enumerated() {
+        guard case .office(let format) = file.kind else { continue }
+        do {
+          result.outputs += try await SpreadsheetOps.exportCSV(file.url, format: format) { sheet in
+            target(file, suffix: sheet ?? "", ext: "csv")
+          }
+        } catch {
+          result.failures.append(.init(file: file.name, message: Self.message(for: error)))
+        }
+        progress?(Double(i + 1) / Double(files.count))
       }
 
     case .extractArchive:
