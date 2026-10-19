@@ -594,6 +594,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
   public var wheelTheme: WheelTheme
   /// Look for a newer release once a day (off until the user turns it on).
   public var checkForUpdates: Bool
+  /// Saved chains of steps, offered on the Actions wheel.
+  public var recipes: [Recipe]
 
   public static let defaultTerminal = "com.apple.Terminal"
 
@@ -619,7 +621,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     terminalBundleID: String = AppSettings.defaultTerminal,
     formatSettings: [String: FormatSettings] = [:],
     wheelTheme: WheelTheme = .dark,
-    checkForUpdates: Bool = false
+    checkForUpdates: Bool = false,
+    recipes: [Recipe] = []
   ) {
     self.defaultFormat = defaultFormat.isWritable ? defaultFormat : .png
     self.quality = Self.clampQuality(quality)
@@ -634,6 +637,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     self.formatSettings = formatSettings
     self.wheelTheme = wheelTheme
     self.checkForUpdates = checkForUpdates
+    self.recipes = recipes
   }
 
   public static func clampQuality(_ value: Double) -> Double {
@@ -663,6 +667,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     formatSettings = (try? c.decode([String: FormatSettings].self, forKey: .formatSettings)) ?? [:]
     wheelTheme = (try? c.decode(WheelTheme.self, forKey: .wheelTheme)) ?? defaults.wheelTheme
     checkForUpdates = (try? c.decode(Bool.self, forKey: .checkForUpdates)) ?? defaults.checkForUpdates
+    recipes = (try? c.decode([Recipe].self, forKey: .recipes)) ?? defaults.recipes
   }
 }
 
