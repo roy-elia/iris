@@ -214,3 +214,17 @@ import Testing
     #expect(throws: CancellationError.self) { try result.get() }
   }
 }
+
+@Suite struct TerminalAppTests {
+  @Test func listsInstalledTerminalsWithTerminalFirst() {
+    let installed: Set = ["com.googlecode.iterm2", "dev.warp.Warp-Stable", "com.mitchellh.ghostty"]
+    let names = TerminalApp.installed { installed.contains($0) }.map(\.name)
+    #expect(names == ["Terminal", "iTerm2", "Warp", "Ghostty"])
+    #expect(TerminalApp.installed { _ in false }.map(\.bundleID) == [AppSettings.defaultTerminal])
+  }
+
+  @Test func fallsBackToTerminalWhenTheChoiceIsGone() {
+    #expect(TerminalApp.resolve("com.mitchellh.ghostty") { _ in true } == "com.mitchellh.ghostty")
+    #expect(TerminalApp.resolve("com.mitchellh.ghostty") { _ in false } == AppSettings.defaultTerminal)
+  }
+}
