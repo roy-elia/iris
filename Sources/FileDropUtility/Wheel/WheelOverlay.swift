@@ -167,6 +167,7 @@ final class WheelOverlayController {
     panel.isOpaque = false
     panel.backgroundColor = .clear
     panel.hasShadow = false
+    panel.animationBehavior = AppWindowAnimation.behavior
     panel.level = .popUpMenu
     panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
     panel.hidesOnDeactivate = false
@@ -220,6 +221,7 @@ enum Toast {
         p.isOpaque = false
         p.backgroundColor = .clear
         p.hasShadow = false
+        p.animationBehavior = AppWindowAnimation.behavior
         p.level = .statusBar
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         return p

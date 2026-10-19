@@ -86,7 +86,11 @@
             if let reason = item.disabledReason {
               (status, detail) = ("off", reason)
             } else {
-              (status, detail) = await exercise(item.command, files: files, out: out, fixtures: fixtures)
+              let command = item.command
+              (status, detail) =
+                await withTimeout(segmentTimeout) {
+                  await exercise(command, files: files, out: out, fixtures: fixtures)
+                } ?? ("FAIL", "no result after \(segmentTimeout.formatted()) s; the self-test moved on")
             }
             rows.append(
               Row(group: name, wheel: kind.title, segment: item.title, status: status, detail: detail))
@@ -116,6 +120,36 @@
             group: "menu", wheel: "-", segment: name, status: opened.isEmpty ? "FAIL" : "PASS",
             detail: opened.isEmpty ? "no window" : "window opened, \(size)"))
         for w in opened { w.close() }
+      }
+    }
+
+    /// Longer than any segment takes (the slowest, a video split, takes a few seconds).
+    /// `FDU_SELFTEST_TIMEOUT` (seconds) overrides it.
+    static let segmentTimeout: Double =
+      Double(ProcessInfo.processInfo.environment["FDU_SELFTEST_TIMEOUT"] ?? "") ?? 120
+
+    /// `work`'s result, or nil if it takes longer than `seconds`. A segment that hangs is left
+    /// running so the rest of the self-test (and its report) still happens.
+    private static func withTimeout(
+      _ seconds: Double, _ work: @escaping @MainActor () async -> (String, String)
+    ) async -> (String, String)? {
+      final class Once {
+        var done = false
+      }
+      let once = Once()
+      return await withCheckedContinuation { continuation in
+        Task { @MainActor in
+          let result = await work()
+          guard !once.done else { return }
+          once.done = true
+          continuation.resume(returning: result)
+        }
+        Task { @MainActor in
+          try? await Task.sleep(for: .seconds(seconds))
+          guard !once.done else { return }
+          once.done = true
+          continuation.resume(returning: nil)
+        }
       }
     }
 
@@ -352,6 +386,8 @@
       try writeImageIO(scene, to: exr, type: ImageFormat.exr.typeIdentifier)
       let ico = file("favicon.ico")
       try ImageToolOps.writeIcon(scene, as: .ico, to: ico)
+      let dng = file("camera.dng")
+      try SampleFiles.writeDNG(to: dng)
       let hdr = file("sky.hdr")
       var rgbe = Data("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 4 +X 4\n".utf8)
       for _ in 0..<16 { rgbe.append(contentsOf: [200, 120, 60, 128]) }
@@ -415,6 +451,14 @@
         "-i", mp4.path, "-i", subsSource.path, "-map", "0", "-map", "1", "-c", "copy", "-c:s", "srt",
         "-metadata:s:s:0", "language=eng", subbed.path,
       ])
+      let amr = file("memo.amr")
+      try await ffmpeg([
+        "-f", "lavfi", "-i", "sine=frequency=440:duration=1.5", "-ar", "8000", "-ac", "1", "-c:a",
+        "libopencore_amrnb", "-b:a", "12.2k", amr.path,
+      ])
+      // APE comes from Monkey's Audio's own encoder.
+      let ape = file("album.ape")
+      _ = try await ToolRunner.run(.mac, [wav.path, ape.path, "-c2000"])
       let ac3 = file("surround.ac3")
       try await ffmpeg([
         "-f", "lavfi", "-i", "sine=frequency=440:duration=1.5", "-ac", "2", "-c:a", "ac3", ac3.path,
@@ -542,10 +586,11 @@
       var f = Fixtures(extra: md)
       f.groups = [
         ("png", [scene]), ("jpg", [jpg]), ("heic", [heic]), ("svg", [svg]), ("qr", [qr]),
-        ("psd", [psd]), ("tga", [tga]), ("exr", [exr]), ("ico", [ico]), ("hdr", [hdr]),
+        ("psd", [psd]), ("tga", [tga]), ("exr", [exr]), ("ico", [ico]), ("hdr", [hdr]), ("dng", [dng]),
         ("images×2", [scene, jpg]),
         ("mp4", [mp4]), ("videos×2", [mp4, mov]), ("subbed.mkv", [subbed]),
-        ("wav", [wav]), ("audio×2", [wav, mp3]), ("ac3", [ac3]),
+        ("wav", [wav]), ("audio×2", [wav, mp3]), ("ac3", [ac3]), ("amr", [amr]),
+        ("ape", [ape]),
         ("pdf", [pdf]), ("pdfs×2", [pdf, pdf2]),
         ("docx", [docx]), ("rtf", [rtf]), ("md", [md]), ("html", [html]), ("csv", [csv]),
         ("contacts.csv", [contactsCSV]), ("json", [json]), ("xml", [xml]), ("plist", [plist]), ("vcf", [vcf]),

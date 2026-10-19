@@ -27,7 +27,7 @@ private let testPattern = [
       #expect(FileKind(url: URL(fileURLWithPath: "/a.\(ext)")) == .audio(format), "\(ext)")
     }
     #expect(VideoFormat.threeGP.displayName == "3GP")
-    #expect(AudioOps.output(for: URL(fileURLWithPath: "/a.ape")) == .flac)
+    #expect(AudioOps.output(for: URL(fileURLWithPath: "/a.ape")) == .ape)
     #expect(VideoOutput.hevc.fileExtension == "mp4" && VideoOutput.mp4720.displayName == "720p")
   }
 
@@ -128,5 +128,40 @@ private let testPattern = [
     ]
     #expect(VideoOps.trackLabels(tracks) == ["eng", "eng 2", "track 3"])
     #expect(!SubtitleTrack(index: 0, codec: "hdmv_pgs_subtitle").isText)
+  }
+
+  @Test(
+    .enabled(
+      if: hasTools && AudioOutput.amr.isAvailable && AudioOutput.awb.isAvailable
+        && AudioOutput.ape.isAvailable),
+    arguments: [(AudioOutput.amr, "amr_nb", 8000), (.awb, "amr_wb", 16000), (.ape, "ape", 44100)])
+  func writesAMRAndAPE(output: AudioOutput, codec: String, rate: Int) async throws {
+    let dir = try TempDir()
+    let src = try await AudioFixtures.make(dir.file("voice.wav"), seconds: 1)
+    let result = await Processor(settings: AppSettings(outputLocation: .folder(dir.url)))
+      .run(.convertAudio(output), on: [try DroppedFile.load(src)])
+    let out = try #require(result.outputs.first, "\(output): \(result.failures)")
+    #expect(out.lastPathComponent == "voice.\(output.fileExtension)")
+    let probe = try await ToolRunner.run(
+      .ffprobe, ["-v", "error", "-show_entries", "stream=codec_name,sample_rate", "-of", "csv=p=0", out.path])
+    #expect(
+      String(decoding: probe.stdout, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        == "\(codec),\(rate)")
+    #expect(abs(try await VideoOps.probe(out).duration - 1) < 0.1)
+    // And it reads back in: AMR and APE are inputs too.
+    #expect(try DroppedFile.load(out).kind.isAudio)
+  }
+
+  @Test(.enabled(if: hasTools && AudioOutput.ape.isAvailable)) func apeKeepsTwentyFourBits() async throws {
+    let dir = try TempDir()
+    let src = try await AudioFixtures.make(dir.file("master.wav"), seconds: 1)
+    let out = dir.file("master.ape")
+    try await AudioOps.convert(src, to: .ape, bitDepth: 24, destination: out)
+    let probe = try await ToolRunner.run(
+      .ffprobe,
+      ["-v", "error", "-show_entries", "stream=bits_per_raw_sample,sample_fmt", "-of", "csv=p=0", out.path])
+    #expect(String(decoding: probe.stdout, as: UTF8.self).contains("24"))
+    // Editing an APE file keeps it APE.
+    #expect(AudioOps.output(for: out) == .ape)
   }
 }

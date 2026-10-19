@@ -45,7 +45,7 @@ private func writeAnimatedGIF(_ url: URL) throws -> URL {
     let src = try Fixtures.writeImage(to: dir.file("a.png"), type: "public.png", width: 64, height: 32)
     let result = await Processor(settings: AppSettings()).run(
       .convert(.webp, quality: 0.8), on: try load(src))
-    let out = try #require(result.outputs.first)
+    let out = try #require(result.outputs.first, "\(result.failures)")
     #expect(out.pathExtension == "webp")
     #expect(Fixtures.typeIdentifier(of: out) == ImageFormat.webp.typeIdentifier)
     #expect(pixelSize(out) == (64, 32))
@@ -75,7 +75,7 @@ private func writeAnimatedGIF(_ url: URL) throws -> URL {
     let dir = try TempDir()
     let src = try Fixtures.writeImage(to: dir.file("a.png"), type: "public.png")
     let result = await Processor(settings: AppSettings()).run(.convert(.gif, quality: 1), on: try load(src))
-    let out = try #require(result.outputs.first)
+    let out = try #require(result.outputs.first, "\(result.failures)")
     #expect(Fixtures.typeIdentifier(of: out) == ImageFormat.gif.typeIdentifier)
   }
 

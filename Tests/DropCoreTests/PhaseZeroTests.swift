@@ -55,13 +55,20 @@ import Testing
     let steps: Int
     let tracker: Tracker?
     func run(_ context: JobContext) async throws -> OperationResult {
+      // end() must finish before the job does: the engine starts the next job as soon as
+      // this one returns, so a deferred end() would briefly count both as running.
       await tracker?.begin()
-      defer { Task { await tracker?.end() } }
-      for i in 1...steps {
-        try context.checkCancelled()
-        try await Task.sleep(for: .milliseconds(20))
-        context.progress(Double(i) / Double(steps))
+      do {
+        for i in 1...steps {
+          try context.checkCancelled()
+          try await Task.sleep(for: .milliseconds(20))
+          context.progress(Double(i) / Double(steps))
+        }
+      } catch {
+        await tracker?.end()
+        throw error
       }
+      await tracker?.end()
       return OperationResult(outputs: [URL(fileURLWithPath: "/tmp/out-\(steps)")])
     }
   }
@@ -147,6 +154,31 @@ import Testing
   func runsBundledFFmpeg() async throws {
     let out = try await ToolRunner.run(.ffmpeg, ["-hide_banner", "-version"])
     #expect(String(decoding: out.stdout, as: UTF8.self).contains("ffmpeg version"))
+  }
+
+  /// Output written just before a tool exits (ffprobe's JSON) must never be lost, however
+  /// many tools run at once.
+  @Test(.enabled(if: ToolLocator.isAvailable(.ffmpeg) && ToolLocator.isAvailable(.ffprobe)))
+  func neverDropsOutputUnderLoad() async throws {
+    let dir = try TempDir()
+    let wav = dir.file("tone.wav")
+    _ = try await ToolRunner.run(
+      .ffmpeg, ["-v", "error", "-f", "lavfi", "-i", "sine=duration=0.2", wav.path])
+    let args = ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", wav.path]
+    let expected = try await ToolRunner.run(.ffprobe, args).stdout.count
+    let lengths = try await withThrowingTaskGroup(of: Int.self) { group in
+      for _ in 0..<200 {
+        group.addTask { try await ToolRunner.run(.ffprobe, args).stdout.count }
+      }
+      return try await group.reduce(into: [Int]()) { $0.append($1) }
+    }
+    #expect(
+      lengths.count == 200 && lengths.allSatisfy { $0 == expected }, "\(lengths.filter { $0 != expected })")
+  }
+
+  /// A program that can't start fails cleanly instead of leaving its pipe readers waiting.
+  @Test func reportsAProgramThatCannotStart() async {
+    await #expect(throws: (any Error).self) { try await SystemProcess.run("/nonexistent/tool", []) }
   }
 
   @Test(.enabled(if: ToolLocator.isAvailable(.ffmpeg)))

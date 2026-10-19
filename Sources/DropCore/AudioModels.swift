@@ -36,6 +36,12 @@ public enum AudioFormat: String, CaseIterable, Codable, Sendable {
 /// Audio formats the app writes.
 public enum AudioOutput: String, CaseIterable, Codable, Sendable {
   case mp3, wav, m4a, aac, flac, aiff, ogg, opus
+  /// AMR narrowband (8 kHz mono speech, 12.2 kbps).
+  case amr
+  /// AMR wideband (16 kHz mono speech, 23.85 kbps).
+  case awb
+  /// Monkey's Audio (lossless), written by the bundled `mac` tool.
+  case ape
 
   public var fileExtension: String { rawValue }
 
@@ -43,17 +49,50 @@ public enum AudioOutput: String, CaseIterable, Codable, Sendable {
     switch self {
     case .aiff: "AIFF"
     case .opus: "Opus"
+    case .awb: "AMR-WB"
     default: rawValue.uppercased()
     }
   }
 
   /// Lossless PCM-style outputs honour the bit-depth setting.
-  public var usesBitDepth: Bool { self == .wav || self == .aiff || self == .flac }
+  public var usesBitDepth: Bool { self == .wav || self == .aiff || self == .flac || self == .ape }
 
-  /// Lossy outputs honour the bitrate setting.
-  public var usesBitrate: Bool { !usesBitDepth }
+  /// Lossy outputs honour the bitrate setting (AMR's speech modes are fixed).
+  public var usesBitrate: Bool { !usesBitDepth && self != .amr && self != .awb }
 
   public static let bitDepths = [16, 24, 32]
+
+  /// The bit depths this output offers.
+  public var bitDepthChoices: [Int] { self == .wav ? Self.bitDepths : [16, 24] }
+
+  /// AMR codecs only take one sample rate.
+  public var fixedSampleRate: Int? {
+    switch self {
+    case .opus: 48000
+    case .amr: 8000
+    case .awb: 16000
+    default: nil
+    }
+  }
+
+  /// Whether the encoder is bundled.
+  public var isAvailable: Bool {
+    switch self {
+    case .amr: VideoOps.hasEncoder("libopencore_amrnb")
+    case .awb: VideoOps.hasEncoder("libvo_amrwbenc")
+    case .ape: ToolLocator.isAvailable(.mac)
+    default: ToolLocator.isAvailable(.ffmpeg)
+    }
+  }
+
+  public var unavailableReason: String? {
+    guard !isAvailable else { return nil }
+    return switch self {
+    case .ape: "Monkey's Audio encoder missing"
+    case .amr, .awb: "AMR encoder missing"
+    default: "ffmpeg is missing"
+    }
+  }
 }
 
 /// A time range to bleep, in source seconds.

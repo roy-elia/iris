@@ -37,8 +37,29 @@ import Testing
     let result = await Processor(settings: AppSettings(outputLocation: .folder(dir.url)))
       .run(.convert(.png, quality: 1), on: [try load(src)])
     #expect(result.failures.isEmpty, "\(result.failures)")
-    let image = try ImageOps.loadOriented(try #require(result.outputs.first))
+    let image = try ImageOps.loadOriented(try #require(result.outputs.first, "\(result.failures)"))
     #expect(image.width == 60 && image.height == 30)
+  }
+
+  @Test func readsCameraRAW() async throws {
+    let dir = try TempDir()
+    let dng = dir.file("photo.dng")
+    try SampleFiles.writeDNG(to: dng)
+    #expect(Fixtures.typeIdentifier(of: dng) == "com.adobe.raw-image")
+    #expect(try load(dng).kind == .image(.raw))
+    let result = await Processor(settings: AppSettings(outputLocation: .folder(dir.url)))
+      .run(.convert(.jpeg, quality: 0.9), on: [try load(dng)])
+    let out = try #require(result.outputs.first, "\(result.failures)")
+    let image = try ImageOps.loadOriented(out)
+    #expect(image.width == 512 && image.height == 384)
+    // Demosaiced: red on the left, blue on the right.
+    let left = Fixtures.pixel(image, x: 64, y: 192)
+    let right = Fixtures.pixel(image, x: 448, y: 192)
+    #expect(left[0] > left[2] + 60 && right[2] > right[0] + 60, "\(left) \(right)")
+    // Strip Metadata writes RAW as PNG, since RAW can't be written back.
+    let stripped = await Processor(settings: AppSettings(outputLocation: .folder(dir.url)))
+      .run(.stripMetadata, on: [try load(dng)])
+    #expect(stripped.outputs.first?.pathExtension == "png", "\(stripped.failures)")
   }
 
   @Test func readsRadianceHDR() async throws {
@@ -56,7 +77,7 @@ import Testing
     let src = try Fixtures.writeImage(to: dir.file("a.png"), type: "public.png", width: 50, height: 20)
     let result = await Processor(settings: AppSettings(outputLocation: .folder(dir.url)))
       .run(.convert(format, quality: 0.8), on: [try load(src)])
-    let out = try #require(result.outputs.first)
+    let out = try #require(result.outputs.first, "\(result.failures)")
     #expect(out.pathExtension == format.fileExtension)
     #expect(Fixtures.typeIdentifier(of: out) == format.typeIdentifier)
     #expect(try ImageOps.loadOriented(out).width == 50)
@@ -95,7 +116,7 @@ import Testing
     let src = try Fixtures.writeImage(to: dir.file("photo.jpg"), width: 400, height: 100)
     let result = await Processor(settings: AppSettings(outputLocation: .folder(dir.url)))
       .run(.resize(.maxEdge(200)), on: [try load(src)])
-    let out = try #require(result.outputs.first)
+    let out = try #require(result.outputs.first, "\(result.failures)")
     #expect(out.lastPathComponent == "photo resized.jpg")
     let image = try ImageOps.loadOriented(out)
     #expect(image.width == 200 && image.height == 50)
@@ -106,7 +127,7 @@ import Testing
     let src = try Fixtures.writeImage(to: dir.file("orange.png"), type: "public.png")
     let result = await Processor(settings: AppSettings(outputLocation: .folder(dir.url)))
       .run(.grayscale, on: [try load(src)])
-    let out = try #require(result.outputs.first)
+    let out = try #require(result.outputs.first, "\(result.failures)")
     #expect(out.lastPathComponent == "orange grayscale.png")
     let px = Fixtures.pixel(try ImageOps.loadOriented(out), x: 5, y: 5)
     #expect(abs(px[0] - px[1]) <= 2 && abs(px[1] - px[2]) <= 2, "\(px)")
@@ -125,7 +146,9 @@ import Testing
     let result = await Processor(settings: AppSettings(outputLocation: .folder(dir.url)))
       .run(.convert(.jpeg2000, quality: 0.8), on: [hdr])
     #expect(result.failures.isEmpty, "\(result.failures)")
-    #expect(Fixtures.typeIdentifier(of: try #require(result.outputs.first)) == "public.jpeg-2000")
+    #expect(
+      Fixtures.typeIdentifier(of: try #require(result.outputs.first, "\(result.failures)"))
+        == "public.jpeg-2000")
   }
 
   @Test func editsKeepTGAAndEXR() async throws {
@@ -136,7 +159,7 @@ import Testing
       let result = await Processor(settings: AppSettings(outputLocation: .folder(dir.url)))
         .run(.edit(crop), on: [src])
       #expect(result.failures.isEmpty, "\(name): \(result.failures)")
-      #expect(try ImageOps.loadOriented(try #require(result.outputs.first)).width == 40)
+      #expect(try ImageOps.loadOriented(try #require(result.outputs.first, "\(result.failures)")).width == 40)
     }
   }
 

@@ -33,6 +33,10 @@ public enum AudioOps {
       return [
         "-c:a", "opus", "-strict", "-2", "-ar", "48000", "-ac", "2", "-b:a", "\(min(lossyBitrateKbps, 256))k",
       ]
+    case .amr: return ["-c:a", "libopencore_amrnb", "-ac", "1", "-b:a", "12.2k"]
+    case .awb: return ["-c:a", "libvo_amrwbenc", "-ac", "1", "-b:a", "23.85k", "-f", "amr"]
+    // Rendered to WAV first, then compressed by `mac`.
+    case .ape: return ["-c:a", "pcm_s\(min(depth, 24))le", "-f", "wav"]
     }
   }
 
@@ -47,8 +51,9 @@ public enum AudioOps {
     case .aiff: .aiff
     case .ogg: .ogg
     case .opus: .opus
-    case .ape: .flac  // Lossless in, lossless out.
-    case .wma, .caf, .amr, .ac3, nil: .m4a
+    case .ape: .ape
+    case .amr: .amr
+    case .wma, .caf, .ac3, nil: .m4a
     }
   }
 
@@ -193,16 +198,47 @@ public enum AudioOps {
     for bleep in recipe.bleeps where bleep.end <= bleep.start || bleep.start >= info.duration {
       throw DropError.wrongInput("Bleeps must cover a time range within the file.")
     }
-    let rate = output == .opus ? 48000 : (info.sampleRate > 0 ? info.sampleRate : 48000)
+    guard output.isAvailable else {
+      throw DropError.wrongInput("\(output.displayName): \(output.unavailableReason ?? "unavailable").")
+    }
+    let rate = output.fixedSampleRate ?? (info.sampleRate > 0 ? info.sampleRate : 48000)
     let graph = filterGraph(
       recipe, keep: keep, duration: info.duration, channels: max(info.audioChannels, 1), sampleRate: rate)
     var args = ["-hide_banner", "-nostdin", "-y", "-loglevel", "info", "-i", source.path]
     args += ["-filter_complex", graph, "-map", "[out]", "-map_metadata", "0", "-vn"]
     args += codecArgs(for: output, bitDepth: bitDepth, bitrateKbps: bitrateKbps)
     if output != .opus { args += ["-ar", "\(rate)"] }
-    args.append(destination.path)
+    guard output == .ape else {
+      args.append(destination.path)
+      try await VideoOps.render(
+        args, expectedDuration: keep.upperBound - keep.lowerBound, destination: destination,
+        progress: progress)
+      return
+    }
+    // APE: ffmpeg renders a WAV, which Monkey's Audio compresses.
+    let wav = FileManager.default.temporaryDirectory.appendingPathComponent(
+      "fdu-ape-\(UUID().uuidString).wav")
+    defer { try? FileManager.default.removeItem(at: wav) }
     try await VideoOps.render(
-      args, expectedDuration: keep.upperBound - keep.lowerBound, destination: destination, progress: progress)
+      args + [wav.path], expectedDuration: keep.upperBound - keep.lowerBound, destination: wav
+    ) { p in
+      progress?(p * 0.8)
+    }
+    try await compressAPE(wav, to: destination)
+    progress?(1)
+  }
+
+  /// Compresses a WAV to Monkey's Audio at the "normal" level.
+  static func compressAPE(_ wav: URL, to destination: URL) async throws {
+    do {
+      _ = try await ToolRunner.run(.mac, [wav.path, destination.path, "-c2000"])
+    } catch {
+      try? FileManager.default.removeItem(at: destination)
+      throw error
+    }
+    guard FileManager.default.fileExists(atPath: destination.path) else {
+      throw DropError.writeFailed(destination.lastPathComponent)
+    }
   }
 
   /// `count` peak levels (0…1) across the file, for drawing a waveform.

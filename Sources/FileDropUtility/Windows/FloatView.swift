@@ -145,6 +145,7 @@ final class FloatManager: ObservableObject {
     panel.isOpaque = false
     panel.backgroundColor = .clear
     panel.hasShadow = false
+    panel.animationBehavior = AppWindowAnimation.behavior
     panel.level = .floating
     panel.hidesOnDeactivate = false
     panel.isReleasedWhenClosed = false

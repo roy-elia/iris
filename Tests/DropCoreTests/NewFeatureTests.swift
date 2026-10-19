@@ -144,7 +144,7 @@ private func load(_ urls: URL...) throws -> [DroppedFile] { try urls.map { try D
     let dir = try TempDir()
     let src = try Fixtures.writeCGImage(Fixtures.noisyImage(width: 300, height: 300), to: dir.file("n.png"))
     let result = await Processor(settings: AppSettings()).run(.compress(quality: 0.5), on: try load(src))
-    let out = try #require(result.outputs.first)
+    let out = try #require(result.outputs.first, "\(result.failures)")
     #expect(out.lastPathComponent == "n compressed.jpg")
     #expect(CompressOps.fileSize(out) < CompressOps.fileSize(src))
   }

@@ -22,17 +22,17 @@ enum SystemProcess {
     // termination handler, so neither a full pipe nor a run loop can stall the wait.
     let collected = UncheckedBox(PipeData())
     let group = DispatchGroup()
-    for (pipe, isOut) in [(outPipe, true), (errPipe, false)] {
-      group.enter()
-      DispatchQueue.global().async {
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        collected.value.set(data, out: isOut)
-        group.leave()
-      }
-    }
+    PipeReader.drain(outPipe, group: group) { collected.value.append($0, out: true) }
+    PipeReader.drain(errPipe, group: group) { collected.value.append($0, out: false) }
     group.enter()
     process.terminationHandler = { _ in group.leave() }
-    try process.run()
+    do {
+      try process.run()
+    } catch {
+      try? outPipe.fileHandleForWriting.close()
+      try? errPipe.fileHandleForWriting.close()
+      throw error
+    }
     await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
       group.notify(queue: .global()) { done.resume() }
     }
@@ -53,9 +53,9 @@ enum SystemProcess {
     private var errData = Data()
     var out: Data { lock.withLock { outData } }
     var err: Data { lock.withLock { errData } }
-    func set(_ data: Data, out isOut: Bool) {
+    func append(_ data: Data, out isOut: Bool) {
       lock.withLock {
-        if isOut { outData = data } else { errData = data }
+        if isOut { outData.append(data) } else { errData.append(data) }
       }
     }
   }

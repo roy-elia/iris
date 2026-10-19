@@ -43,6 +43,7 @@ TOOLS="Vendor/out"
 if [[ -x "$TOOLS/bin/ffmpeg" && -x "$TOOLS/bin/cwebp" && -f "$TOOLS/exiftool/exiftool" ]]; then
   mkdir -p "$APP/Contents/Helpers" "$APP/Contents/Resources"
   cp "$TOOLS/bin/ffmpeg" "$TOOLS/bin/ffprobe" "$TOOLS/bin/cwebp" "$APP/Contents/Helpers/"
+  [[ -x "$TOOLS/bin/mac" ]] && cp "$TOOLS/bin/mac" "$APP/Contents/Helpers/"
   cp -R "$TOOLS/exiftool" "$APP/Contents/Resources/exiftool"
   cp -R "$TOOLS/licenses" "$APP/Contents/Resources/Licenses"
   for tool in "$APP"/Contents/Helpers/*; do codesign --force --sign - "$tool"; done

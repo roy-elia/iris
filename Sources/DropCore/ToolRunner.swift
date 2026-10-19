@@ -3,6 +3,8 @@ import Foundation
 /// A command-line helper shipped inside the app (see `scripts/fetch-tools.sh`).
 public enum BundledTool: String, CaseIterable, Sendable {
   case ffmpeg, ffprobe, cwebp, exiftool
+  /// Monkey's Audio's encoder.
+  case mac
 
   /// Path of the tool relative to a tools folder.
   var relativePath: String {
@@ -82,36 +84,38 @@ public enum ToolRunner {
     process.standardInput = FileHandle.nullDevice
 
     let collector = OutputCollector(onStderrLine: onStderrLine)
-    outPipe.fileHandleForReading.readabilityHandler = { handle in
-      collector.appendOut(handle.availableData)
-    }
-    errPipe.fileHandleForReading.readabilityHandler = { handle in
-      collector.appendErr(handle.availableData)
-    }
 
     return try await withTaskCancellationHandler {
       try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Output, Error>) in
-        process.terminationHandler = { finished in
-          outPipe.fileHandleForReading.readabilityHandler = nil
-          errPipe.fileHandleForReading.readabilityHandler = nil
-          collector.appendOut(outPipe.fileHandleForReading.readDataToEndOfFile())
-          collector.appendErr(errPipe.fileHandleForReading.readDataToEndOfFile())
-          let output = collector.output()
-          // ffmpeg traps SIGTERM and exits normally, so check whether we asked it to stop.
-          if collector.wasCancelled || finished.terminationReason == .uncaughtSignal {
-            continuation.resume(throwing: CancellationError())
-          } else if finished.terminationStatus != 0 {
-            let lastLines = output.stderr.split(separator: "\n").suffix(3).joined(separator: " ")
-            continuation.resume(
-              throwing: ToolError.failed(tool, status: finished.terminationStatus, message: lastLines))
-          } else {
-            continuation.resume(returning: output)
-          }
-        }
+        // The result is ready only when both pipes have reached end-of-file and the process
+        // has exited; output read after the exit is never dropped.
+        let group = DispatchGroup()
+        PipeReader.drain(outPipe, group: group) { collector.appendOut($0) }
+        PipeReader.drain(errPipe, group: group) { collector.appendErr($0) }
+        group.enter()
+        process.terminationHandler = { _ in group.leave() }
         do {
           try process.run()
         } catch {
-          continuation.resume(throwing: error)
+          // No child holds the write ends, so close ours to end the readers.
+          try? outPipe.fileHandleForWriting.close()
+          try? errPipe.fileHandleForWriting.close()
+          group.leave()
+          group.notify(queue: .global()) { continuation.resume(throwing: error) }
+          return
+        }
+        group.notify(queue: .global()) {
+          let output = collector.output()
+          // ffmpeg traps SIGTERM and exits normally, so check whether we asked it to stop.
+          if collector.wasCancelled || process.terminationReason == .uncaughtSignal {
+            continuation.resume(throwing: CancellationError())
+          } else if process.terminationStatus != 0 {
+            let lastLines = output.stderr.split(separator: "\n").suffix(3).joined(separator: " ")
+            continuation.resume(
+              throwing: ToolError.failed(tool, status: process.terminationStatus, message: lastLines))
+          } else {
+            continuation.resume(returning: output)
+          }
         }
       }
     } onCancel: {
@@ -126,6 +130,25 @@ public enum ToolRunner {
     guard let micros = Double(line.split(separator: "=").last ?? "") else { return nil }
     // ffmpeg reports out_time_ms in microseconds too (a long-standing naming quirk).
     return min(max(micros / 1_000_000 / duration, 0), 1)
+  }
+}
+
+/// Reads a pipe to end-of-file on its own thread. Blocking reads stay off GCD's worker
+/// threads, which are limited (64) and needed by system frameworks such as ImageIO's encoders.
+enum PipeReader {
+  static func drain(_ pipe: Pipe, group: DispatchGroup, onChunk: @escaping @Sendable (Data) -> Void) {
+    group.enter()
+    let handle = pipe.fileHandleForReading
+    let thread = Thread {
+      while true {
+        let chunk = handle.availableData
+        if chunk.isEmpty { break }
+        onChunk(chunk)
+      }
+      group.leave()
+    }
+    thread.name = "FileDropUtility pipe reader"
+    thread.start()
   }
 }
 

@@ -176,11 +176,10 @@ extension WheelKind {
     let oneFile: String? = count == 1 ? nil : "One file at a time"
     switch self {
     case .convert:
-      let outputs: [AudioOutput] = [.mp3, .m4a, .aac, .wav, .aiff, .flac, .ogg, .opus]
-      return outputs.map { output in
+      return AudioOutput.allCases.map { output in
         WheelItem(
           id: "a-\(output.rawValue)", title: output.displayName, systemImage: nil,
-          command: .convertAudio(output))
+          command: .convertAudio(output), disabledReason: output.unavailableReason)
       }
     case .tools:
       return AudioTool.allCases.map { tool in

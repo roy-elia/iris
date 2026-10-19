@@ -202,15 +202,12 @@ struct SettingsTab: View {
       .accessibilityIdentifier("audioDefaults")
       if audioForDefaults.usesBitDepth {
         Picker("Bit depth", selection: audioSetting(\.audioBitDepth, fallback: 16)) {
-          ForEach(
-            audioForDefaults == .aiff || audioForDefaults == .flac ? [16, 24] : AudioOutput.bitDepths,
-            id: \.self
-          ) {
+          ForEach(audioForDefaults.bitDepthChoices, id: \.self) {
             Text("\($0)-bit").tag($0)
           }
         }
         .pickerStyle(.segmented)
-      } else {
+      } else if audioForDefaults.usesBitrate {
         Picker("Bitrate", selection: audioSetting(\.audioBitrateKbps, fallback: 192)) {
           ForEach([96, 128, 192, 256, 320], id: \.self) { Text("\($0) kbps").tag($0) }
         }

@@ -31,7 +31,7 @@ import Testing
     for format in ImageFormat.writable {
       let result = await AppSettings().processor.run(.convert(format, quality: 0.7), on: try drop([src]))
       #expect(result.succeeded, "\(format)")
-      let out = try #require(result.outputs.first)
+      let out = try #require(result.outputs.first, "\(result.failures)")
       #expect(out.pathExtension == format.fileExtension)
       #expect(Fixtures.typeIdentifier(of: out) == format.typeIdentifier)
       let props = Fixtures.properties(of: out)
@@ -49,7 +49,7 @@ import Testing
     let dir = try TempDir()
     let src = try Fixtures.writeImage(to: dir.file("trip.jpg"), withMetadata: true)
     let result = await AppSettings().processor.run(.stripMetadata, on: try drop([src]))
-    let out = try #require(result.outputs.first)
+    let out = try #require(result.outputs.first, "\(result.failures)")
     let meta = try ImageOps.metadata(of: out)
     #expect(!meta.keys.contains { $0.hasPrefix("GPS:") })
     #expect(meta["TIFF: Make"] == nil)

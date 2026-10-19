@@ -341,4 +341,6 @@ Filee (MIT, C#) converts 244 formats. These are the ones macOS or the already-bu
 | 5. Data | JSON → CSV, XML, plist; CSV → JSON, vCard; XML → JSON; plist (XML or binary) → JSON; vCard → CSV. | JSONSerialization, PropertyListSerialization, XMLParser (external entities off), the existing CSV reader, and a vCard 3.0 reader/writer |
 | 6. Video and audio | Inputs: WMV/ASF, FLV, MPEG (mpg, mpeg, m2v), TS, M2TS/MTS, 3GP/3G2, OGV and VOB video; AMR, APE (Monkey's Audio) and AC-3 audio. Outputs: HEVC (MP4, hardware H.265, tagged hvc1), 720p (H.264 MP4 at most 720 px high, never scaled up). Tool: Subtitles saves each text subtitle track as SRT (picture-based DVD/Blu-ray tracks are refused with the reason). | The bundled ffmpeg's decoders (checked with `ffmpeg -decoders`), hevc_videotoolbox, and its SRT muxer |
 
-Not covered here, because they need an engine the app doesn't bundle: office formats beyond what macOS reads (LibreOffice), Pandoc-only markup, e-book formats beyond EPUB (calibre), PostScript/EPS (Ghostscript) and HWP. AMR and APE can be read but not written: the LGPL ffmpeg build has no encoder for either.
+Not covered here, because they need an engine the app doesn't bundle: office formats beyond what macOS reads (LibreOffice), Pandoc-only markup, e-book formats beyond EPUB (calibre), PostScript/EPS (Ghostscript) and HWP.
+
+Added afterwards (with your OK, 2026-10-19): AMR, AMR-WB and APE output. opencore-amr and vo-amrwbenc (Apache 2.0) are built into ffmpeg; APE is written by Monkey's Audio's `mac` tool (3-Clause BSD), bundled as a fifth helper.

@@ -51,7 +51,7 @@ A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the
 - Encoding uses Apple's hardware H.264 encoder through the bundled ffmpeg; progress shows in the status menu, and Stop Current Task cancels.
 
 **Audio** (when every dropped file is audio: MP3, WAV, M4A, AAC, FLAC, AIFF, OGG, Opus, WMA, CAF, AMR, APE, AC-3):
-- **Convert wheel:** MP3, M4A, AAC, WAV, AIFF, FLAC, OGG (Vorbis), Opus. Videos can be converted to audio too. Bit depth (WAV 16/24/32, AIFF and FLAC 16/24) and bitrate are set per format under Settings › Audio defaults.
+- **Convert wheel:** MP3, M4A, AAC, WAV, AIFF, FLAC, OGG (Vorbis), Opus, AMR (narrowband, 8 kHz mono, 12.2 kbps), AMR-WB (.awb, 16 kHz mono, 23.85 kbps) and APE (Monkey's Audio, lossless). Videos can be converted to audio too. Bit depth (WAV 16/24/32; AIFF, FLAC and APE 16/24) and bitrate are set per format under Settings › Audio defaults; AMR's speech rates are fixed.
 - **Tools wheel:** Trim, Bleep, Volume, Channels (the audio editor), and Visualizer.
 - **Audio editor:**
   - a large glass waveform with the playhead and live playback where AVFoundation can play the file
@@ -175,7 +175,7 @@ Increase Contrast can't be switched on per window, so the snapshots use macOS's 
 
 ## Dependencies and licences
 
-No third-party Swift packages. Four command-line helpers are bundled as separate executables, fetched and built by `scripts/fetch-tools.sh`. That script uses pinned versions from the official sites and checks each SHA-256. The ffmpeg and WebP archives were also GPG-verified when first downloaded (2026-10-18).
+No third-party Swift packages. Five command-line helpers are bundled as separate executables, fetched and built by `scripts/fetch-tools.sh`. That script uses pinned versions from the official sites and checks each SHA-256. The ffmpeg and WebP archives were also GPG-verified when first downloaded (2026-10-18).
 
 | Dependency | Licence | Use |
 |---|---|---|
@@ -183,6 +183,8 @@ No third-party Swift packages. Four command-line helpers are bundled as separate
 | ffmpeg 9.0.2 + ffprobe, built from source **LGPL-only** (`--disable-gpl --disable-nonfree --disable-autodetect`), links only macOS system libraries | LGPL v3 | Audio and video (phases 2–3) |
 | LAME 3.100, static inside ffmpeg | LGPL v2 | MP3 encoding |
 | libvpx 1.17.0, static inside ffmpeg (tag cloned from chromium.googlesource.com/webm/libvpx; commit 6df3ec34… matched against the github.com/webmproject mirror) | BSD-3-Clause + patent grant | VP8/VP9 for WebM output |
+| opencore-amr 0.1.6 and vo-amrwbenc 0.1.3, static inside ffmpeg (sourceforge.net/projects/opencore-amr; hashes match Homebrew's pinned ones) | Apache 2.0 | AMR-NB and AMR-WB output (ffmpeg is built `--enable-version3`, so LGPL v3) |
+| Monkey's Audio SDK 13.30 (monkeysaudio.com), its `mac` tool compiled with clang++ | 3-Clause BSD (Monkey's Audio License Agreement) | APE output (2026-10-19). The site publishes no checksum, so the pinned SHA-256 is the download's. |
 | cwebp 1.6.0 (Google's signed macOS arm64 build) | BSD-3-Clause + patent grant | WebP export (phase 1) |
 | ExifTool 13.59, run with macOS's `/usr/bin/perl` | Artistic or GPL (Perl terms) | Metadata view/edit (phase 1) |
 | swift-testing | Apache 2.0 with Runtime Library Exception | Tests |
@@ -235,7 +237,7 @@ Confirmed by you by hand (2026-10-18): a real drag with the redrawn wheel looks 
 
 ## Feature self-test
 
-`.build/debug/FileDropUtility --selftest <folder>` (debug builds) makes sample files of every kind (images including PSD, TGA, OpenEXR, ICO and HDR; QR; SVG; video in MP4, MOV, MKV with a subtitle track, WMV, FLV, MPEG, TS, 3GP, OGV and VOB; audio including AC-3; PDFs including a scanned page; Word, RTF, Markdown, HTML, CSV, JSON, XML, plist and vCard; a text clipping; SRT, VTT, ASS, a CP949 SAMI and LRC subtitles; zip, 7z, tar.gz, ISO and a single .gz) and runs every wheel segment for each: operations through the Processor with their outputs checked, window segments by opening the window and running what it saves, and actions by their effect (clipboard, Floats). The clipboard is restored afterwards. `FDU_SELFTEST_ONLY=png/Metadata` narrows it. The last run is in `docs/FEATURE-TEST.md`: 781 passed, 0 failed, 24 correct refusals (for example "No QR codes found" on a photo, or "has no subtitle tracks" on a video without any); AirDrop, Move and Terminal are skipped because they open system UI.
+`.build/debug/FileDropUtility --selftest <folder>` (debug builds) makes sample files of every kind (images including a camera-RAW DNG, PSD, TGA, OpenEXR, ICO and HDR; QR; SVG; video in MP4, MOV, MKV with a subtitle track, WMV, FLV, MPEG, TS, 3GP, OGV and VOB; audio including AC-3, AMR and APE; PDFs including a scanned page; Word, RTF, Markdown, HTML, CSV, JSON, XML, plist and vCard; a text clipping; SRT, VTT, ASS, a CP949 SAMI and LRC subtitles; zip, 7z, tar.gz, ISO and a single .gz) and runs every wheel segment for each: operations through the Processor with their outputs checked, window segments by opening the window and running what it saves, and actions by their effect (clipboard, Floats). The clipboard is restored afterwards. `FDU_SELFTEST_ONLY=png/Metadata` narrows it. The last run is in `docs/FEATURE-TEST.md`: 857 passed, 0 failed, 26 correct refusals (for example "No QR codes found" on a photo, or "has no subtitle tracks" on a video without any); AirDrop, Move and Terminal are skipped because they open system UI. Each segment has a 120-second watchdog (`FDU_SELFTEST_TIMEOUT` overrides it): a segment that hangs is reported as a failure and the run continues, so the report is always written. Camera RAW is exercised with a generated DNG (an uncompressed Bayer mosaic that ImageIO decodes as RAW).
 
 Bugs it found, now fixed:
 - Opening the Metadata window crashed the app. Tool windows and the main window sized themselves live to their content, and a height change after opening sent AppKit into an endless constraints loop. Windows now size from a measured ideal size.

@@ -1,8 +1,8 @@
 # Feature self-test
 
-2026-10-19, 10:26
+2026-10-19, 11:15
 
-**781 passed, 0 failed, 24 correctly refused (nothing to find in that input), 141 skipped (system UI), 285 disabled for the input (with the reason shown).**
+**857 passed, 0 failed, 26 correctly refused (nothing to find in that input), 150 skipped (system UI), 289 disabled for the input (with the reason shown).**
 
 | Input | Wheel | Segment | Result | Detail |
 |---|---|---|---|---|
@@ -348,6 +348,40 @@
 | hdr | Actions | Copy Path | PASS | path text copied |
 | hdr | Actions | Zip | PASS | sky.hdr.zip |
 | hdr | Actions | Terminal | skip | would open Terminal.app at the folder |
+| dng | Convert | PNG | PASS | camera.png |
+| dng | Convert | PDF | PASS | camera.pdf |
+| dng | Convert | JPEG | PASS | camera.jpg |
+| dng | Convert | HEIC | PASS | camera.heic |
+| dng | Convert | AVIF | PASS | camera.avif |
+| dng | Convert | TIFF | PASS | camera.tiff |
+| dng | Convert | BMP | PASS | camera.bmp |
+| dng | Convert | WebP | PASS | camera.webp |
+| dng | Convert | GIF | PASS | camera.gif |
+| dng | Convert | ICO | PASS | camera.ico |
+| dng | Convert | ICNS | PASS | camera.icns |
+| dng | Convert | JP2 | PASS | camera.jp2 |
+| dng | Convert | TGA | PASS | camera.tga |
+| dng | Convert | EXR | PASS | camera.exr |
+| dng | Tools | Compress | PASS | window "Compress"; saved: camera compressed.jpg |
+| dng | Tools | Metadata | PASS | window "Metadata"; saved: camera metadata.dng |
+| dng | Tools | Annotate | PASS | window "Edit camera.dng"; saved: camera edited.png |
+| dng | Tools | Redact | PASS | window "Edit camera.dng"; saved: camera edited.png |
+| dng | Tools | Crop | PASS | window "Edit camera.dng"; saved: camera edited.png |
+| dng | Tools | Add BG | refused | window "Background"; saved: camera.dng No clear subject was found in camera.dng. |
+| dng | Tools | Frame | PASS | window "Frame"; saved: camera framed.png |
+| dng | Tools | Collage | off | Two or more images |
+| dng | Tools | QR Code | refused | camera.dng No QR codes found. |
+| dng | Tools | Resize | PASS | window "Resize"; saved: camera resized.png |
+| dng | Tools | Grayscale | PASS | camera grayscale.png |
+| dng | Tools | Adjust | PASS | window "Edit camera.dng"; saved: camera edited.png |
+| dng | Actions | AirDrop | skip | AirDrop service available; sending needs a person |
+| dng | Actions | Float | PASS | Float with 1 file(s) shown, then closed |
+| dng | Actions | Add to Float | off | No Float is open |
+| dng | Actions | Copy | PASS | 1 file(s) on the pasteboard |
+| dng | Actions | Move | skip | opens a folder picker (FileActions.move is unit-tested) |
+| dng | Actions | Copy Path | PASS | path text copied |
+| dng | Actions | Zip | PASS | camera.dng.zip |
+| dng | Actions | Terminal | skip | would open Terminal.app at the folder |
 | images×2 | Convert | PNG | PASS | scene.png, scene (1).png |
 | images×2 | Convert | PDF | PASS | Images.pdf |
 | images×2 | Convert | JPEG | PASS | scene.jpg, scene (1).jpg |
@@ -467,13 +501,16 @@
 | subbed.mkv | Actions | Zip | PASS | subbed.mkv.zip |
 | subbed.mkv | Actions | Terminal | skip | would open Terminal.app at the folder |
 | wav | Convert | MP3 | PASS | voice.mp3 |
+| wav | Convert | WAV | PASS | voice.wav |
 | wav | Convert | M4A | PASS | voice.m4a |
 | wav | Convert | AAC | PASS | voice.aac |
-| wav | Convert | WAV | PASS | voice.wav |
-| wav | Convert | AIFF | PASS | voice.aiff |
 | wav | Convert | FLAC | PASS | voice.flac |
+| wav | Convert | AIFF | PASS | voice.aiff |
 | wav | Convert | OGG | PASS | voice.ogg |
 | wav | Convert | Opus | PASS | voice.opus |
+| wav | Convert | AMR | PASS | voice.amr |
+| wav | Convert | AMR-WB | PASS | voice.awb |
+| wav | Convert | APE | PASS | voice.ape |
 | wav | Tools | Trim | PASS | window "Edit voice.wav"; saved: voice edited.wav |
 | wav | Tools | Bleep | PASS | window "Edit voice.wav"; saved: voice edited.wav |
 | wav | Tools | Volume | PASS | window "Edit voice.wav"; saved: voice edited.wav |
@@ -488,13 +525,16 @@
 | wav | Actions | Zip | PASS | voice.wav.zip |
 | wav | Actions | Terminal | skip | would open Terminal.app at the folder |
 | audio×2 | Convert | MP3 | PASS | voice.mp3, song.mp3 |
+| audio×2 | Convert | WAV | PASS | voice.wav, song.wav |
 | audio×2 | Convert | M4A | PASS | voice.m4a, song.m4a |
 | audio×2 | Convert | AAC | PASS | voice.aac, song.aac |
-| audio×2 | Convert | WAV | PASS | voice.wav, song.wav |
-| audio×2 | Convert | AIFF | PASS | voice.aiff, song.aiff |
 | audio×2 | Convert | FLAC | PASS | voice.flac, song.flac |
+| audio×2 | Convert | AIFF | PASS | voice.aiff, song.aiff |
 | audio×2 | Convert | OGG | PASS | voice.ogg, song.ogg |
 | audio×2 | Convert | Opus | PASS | voice.opus, song.opus |
+| audio×2 | Convert | AMR | PASS | voice.amr, song.amr |
+| audio×2 | Convert | AMR-WB | PASS | voice.awb, song.awb |
+| audio×2 | Convert | APE | PASS | voice.ape, song.ape |
 | audio×2 | Tools | Trim | off | One file at a time |
 | audio×2 | Tools | Bleep | off | One file at a time |
 | audio×2 | Tools | Volume | off | One file at a time |
@@ -509,13 +549,16 @@
 | audio×2 | Actions | Zip | PASS | Archive.zip |
 | audio×2 | Actions | Terminal | skip | would open Terminal.app at the folder |
 | ac3 | Convert | MP3 | PASS | surround.mp3 |
+| ac3 | Convert | WAV | PASS | surround.wav |
 | ac3 | Convert | M4A | PASS | surround.m4a |
 | ac3 | Convert | AAC | PASS | surround.aac |
-| ac3 | Convert | WAV | PASS | surround.wav |
-| ac3 | Convert | AIFF | PASS | surround.aiff |
 | ac3 | Convert | FLAC | PASS | surround.flac |
+| ac3 | Convert | AIFF | PASS | surround.aiff |
 | ac3 | Convert | OGG | PASS | surround.ogg |
 | ac3 | Convert | Opus | PASS | surround.opus |
+| ac3 | Convert | AMR | PASS | surround.amr |
+| ac3 | Convert | AMR-WB | PASS | surround.awb |
+| ac3 | Convert | APE | PASS | surround.ape |
 | ac3 | Tools | Trim | PASS | window "Edit surround.ac3"; saved: surround edited.m4a |
 | ac3 | Tools | Bleep | PASS | window "Edit surround.ac3"; saved: surround edited.m4a |
 | ac3 | Tools | Volume | PASS | window "Edit surround.ac3"; saved: surround edited.m4a |
@@ -529,6 +572,54 @@
 | ac3 | Actions | Copy Path | PASS | path text copied |
 | ac3 | Actions | Zip | PASS | surround.ac3.zip |
 | ac3 | Actions | Terminal | skip | would open Terminal.app at the folder |
+| amr | Convert | MP3 | PASS | memo.mp3 |
+| amr | Convert | WAV | PASS | memo.wav |
+| amr | Convert | M4A | PASS | memo.m4a |
+| amr | Convert | AAC | PASS | memo.aac |
+| amr | Convert | FLAC | PASS | memo.flac |
+| amr | Convert | AIFF | PASS | memo.aiff |
+| amr | Convert | OGG | PASS | memo.ogg |
+| amr | Convert | Opus | PASS | memo.opus |
+| amr | Convert | AMR | PASS | memo.amr |
+| amr | Convert | AMR-WB | PASS | memo.awb |
+| amr | Convert | APE | PASS | memo.ape |
+| amr | Tools | Trim | PASS | window "Edit memo.amr"; saved: memo edited.amr |
+| amr | Tools | Bleep | PASS | window "Edit memo.amr"; saved: memo edited.amr |
+| amr | Tools | Volume | PASS | window "Edit memo.amr"; saved: memo edited.amr |
+| amr | Tools | Channels | PASS | window "Edit memo.amr"; saved: memo edited.amr |
+| amr | Tools | Visualizer | PASS | window "Visualizer"; saved: memo visualizer.mp4 |
+| amr | Actions | AirDrop | skip | AirDrop service available; sending needs a person |
+| amr | Actions | Float | PASS | Float with 1 file(s) shown, then closed |
+| amr | Actions | Add to Float | off | No Float is open |
+| amr | Actions | Copy | PASS | 1 file(s) on the pasteboard |
+| amr | Actions | Move | skip | opens a folder picker (FileActions.move is unit-tested) |
+| amr | Actions | Copy Path | PASS | path text copied |
+| amr | Actions | Zip | PASS | memo.amr.zip |
+| amr | Actions | Terminal | skip | would open Terminal.app at the folder |
+| ape | Convert | MP3 | PASS | album.mp3 |
+| ape | Convert | WAV | PASS | album.wav |
+| ape | Convert | M4A | PASS | album.m4a |
+| ape | Convert | AAC | PASS | album.aac |
+| ape | Convert | FLAC | PASS | album.flac |
+| ape | Convert | AIFF | PASS | album.aiff |
+| ape | Convert | OGG | PASS | album.ogg |
+| ape | Convert | Opus | PASS | album.opus |
+| ape | Convert | AMR | PASS | album.amr |
+| ape | Convert | AMR-WB | PASS | album.awb |
+| ape | Convert | APE | PASS | album.ape |
+| ape | Tools | Trim | PASS | window "Edit album.ape"; saved: album edited.ape |
+| ape | Tools | Bleep | PASS | window "Edit album.ape"; saved: album edited.ape |
+| ape | Tools | Volume | PASS | window "Edit album.ape"; saved: album edited.ape |
+| ape | Tools | Channels | PASS | window "Edit album.ape"; saved: album edited.ape |
+| ape | Tools | Visualizer | PASS | window "Visualizer"; saved: album visualizer.mp4 |
+| ape | Actions | AirDrop | skip | AirDrop service available; sending needs a person |
+| ape | Actions | Float | PASS | Float with 1 file(s) shown, then closed |
+| ape | Actions | Add to Float | off | No Float is open |
+| ape | Actions | Copy | PASS | 1 file(s) on the pasteboard |
+| ape | Actions | Move | skip | opens a folder picker (FileActions.move is unit-tested) |
+| ape | Actions | Copy Path | PASS | path text copied |
+| ape | Actions | Zip | PASS | album.ape.zip |
+| ape | Actions | Terminal | skip | would open Terminal.app at the folder |
 | pdf | Convert | PNG | PASS | deck page 1.png, deck page 2.png, deck page 3.png +1 |
 | pdf | Convert | JPEG | PASS | deck page 1.jpg, deck page 2.jpg, deck page 3.jpg +1 |
 | pdf | Convert | TIFF | PASS | deck.tiff |

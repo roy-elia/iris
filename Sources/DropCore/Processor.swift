@@ -84,7 +84,8 @@ public struct Processor: Sendable {
       }
     case .extractSubtitles:
       if !allVideos { return videosOnly(operation) }
-    case .convertAudio:
+    case .convertAudio(let output):
+      if let reason = output.unavailableReason { return "\(output.displayName): \(reason)." }
       if !allSound { return "\(operation.summary) works on audio and video files." }
     case .editAudio(let recipe):
       if !allAudio { return audioOnly(operation) }

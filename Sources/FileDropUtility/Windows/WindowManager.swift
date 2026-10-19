@@ -162,6 +162,7 @@ final class WindowManager {
     window.titlebarAppearsTransparent = true
     window.titleVisibility = .hidden
     window.isReleasedWhenClosed = false
+    window.animationBehavior = AppWindowAnimation.behavior
     let hosting = NSHostingController(rootView: AnyView(content))
     hosting.sizingOptions = []
     window.contentViewController = hosting
@@ -190,6 +191,15 @@ final class WindowManager {
     }
     observers.append(token)
   }
+}
+
+/// AppKit's open and close zoom effect runs on a GCD worker thread that it holds for the
+/// animation's length. When frames stop arriving (with the display asleep, for example) those
+/// threads are never returned; enough tool windows and toasts then exhaust GCD's 64 workers and
+/// stall anything that needs one, such as ImageIO's AVIF encoder. The app's windows and panels
+/// draw their own SwiftUI transitions, so the system effect is turned off.
+enum AppWindowAnimation {
+  static let behavior: NSWindow.AnimationBehavior = .none
 }
 
 extension NSWindow {
