@@ -175,6 +175,7 @@ import SwiftUI
       ("Onboarding-Files", CGSize(width: 820, height: 520)),
       ("Onboarding-Finish", CGSize(width: 820, height: 520)),
       ("Toast", CGSize(width: 460, height: 90)),
+      ("MenuBar-Icon", CGSize(width: 460, height: 120)),
       ("Editor", CGSize(width: 900, height: 640)),
       ("Float-Collapsed", CGSize(width: 140, height: 160)),
       ("Float-Expanded", CGSize(width: 280, height: 360)),
@@ -216,6 +217,17 @@ import SwiftUI
       case "Wheel-Tools": wheel(.tools, model)
       case "Wheel-Actions": wheel(.actions, model)
       case "Wheel-DropHover": dropHover(model)
+      case "MenuBar-Icon":
+        // Idle, just started, a third done and nearly done, enlarged so the ring is visible.
+        HStack(spacing: 28) {
+          ForEach([nil, 0, 0.35, 0.8] as [Double?], id: \.self) { progress in
+            Image(nsImage: MenuBarIcon.image(progress: progress))
+              .resizable()
+              .frame(width: 54, height: 54)
+          }
+        }
+        .padding(20)
+        .glassPanel()
       case "Onboarding-Welcome": OnboardingView(onFinish: {}, startPage: .welcome).environmentObject(model)
       case "Onboarding-Tools": OnboardingView(onFinish: {}, startPage: .tools).environmentObject(model)
       case "Onboarding-Files": OnboardingView(onFinish: {}, startPage: .fileTypes).environmentObject(model)

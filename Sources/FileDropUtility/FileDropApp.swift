@@ -14,9 +14,12 @@ struct FileDropApp: App {
   @StateObject private var model = AppModel.shared
 
   var body: some Scene {
-    MenuBarExtra("File Drop Utility", systemImage: "tray.and.arrow.down") {
+    MenuBarExtra {
       StatusMenu()
         .environmentObject(model)
+    } label: {
+      // Fills a ring around the tray while a task runs.
+      Image(nsImage: MenuBarIcon.image(progress: model.isRunning ? (model.progress ?? 0) : nil))
     }
     .menuBarExtraStyle(.menu)
   }
