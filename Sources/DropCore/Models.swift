@@ -93,6 +93,10 @@ public enum FileKind: Equatable, Sendable {
   case pdf
   case video(VideoFormat)
   case audio(AudioFormat)
+  case document(DocumentFormat)
+  case office(OfficeFormat)
+  case subtitle(SubtitleFormat)
+  case archive
   case unsupported
 
   public init(url: URL) {
@@ -103,6 +107,14 @@ public enum FileKind: Equatable, Sendable {
       self = .video(format)
     } else if let format = AudioFormat(fileExtension: ext) {
       self = .audio(format)
+    } else if let format = DocumentFormat(fileExtension: ext) {
+      self = .document(format)
+    } else if let format = OfficeFormat(fileExtension: ext) {
+      self = .office(format)
+    } else if let format = SubtitleFormat(rawValue: ext.lowercased()) {
+      self = .subtitle(format)
+    } else if ext.lowercased() == "zip" {
+      self = .archive
     } else if ext.lowercased() == "pdf" {
       self = .pdf
     } else {
@@ -123,6 +135,28 @@ public enum FileKind: Equatable, Sendable {
   public var isAudio: Bool {
     if case .audio = self { return true }
     return false
+  }
+
+  /// Text documents, PDFs and tables or presentations: anything `convertDocument` takes.
+  public var isDocumentLike: Bool {
+    switch self {
+    case .document, .office, .pdf: true
+    default: false
+    }
+  }
+
+  public var isSubtitle: Bool {
+    if case .subtitle = self { return true }
+    return false
+  }
+
+  /// Kinds that are often folders on disk (RTFD and iWork packages).
+  var mayBePackage: Bool {
+    switch self {
+    case .document(let f): f.mayBePackage
+    case .office(let f): f.mayBePackage
+    default: false
+    }
   }
 }
 
@@ -149,15 +183,21 @@ public struct DroppedFile: Identifiable, Equatable, Sendable {
     guard fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory) else {
       throw DropError.fileNotFound(url.lastPathComponent)
     }
-    guard !isDirectory.boolValue else {
-      throw DropError.unsupportedFile(url.lastPathComponent)
-    }
     let kind = FileKind(url: url)
-    guard kind != .unsupported else {
+    guard kind != .unsupported, !isDirectory.boolValue || kind.mayBePackage else {
       throw DropError.unsupportedFile(url.lastPathComponent)
     }
-    let attributes = try? fileManager.attributesOfItem(atPath: url.path)
-    let size = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
+    var size: Int64 = 0
+    if isDirectory.boolValue {
+      // A package: add up its files.
+      let files = fileManager.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey])
+      while let file = files?.nextObject() as? URL {
+        size += Int64((try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+      }
+    } else {
+      let attributes = try? fileManager.attributesOfItem(atPath: url.path)
+      size = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
+    }
     return DroppedFile(url: url, kind: kind, byteSize: size)
   }
 }
@@ -190,12 +230,18 @@ public enum FileOperation: Codable, Equatable, Sendable {
   case convertAudio(AudioOutput)
   case editAudio(AudioRecipe)
   case audioVisualizer(VisualizerRecipe)
+  case convertDocument(DocumentOutput)
+  /// Save each PDF page as an image.
+  case pdfToImages(ImageFormat)
+  case organizePDF(PDFPagePlan)
+  case convertSubtitles(SubtitleFormat)
+  case extractArchive
 
   /// Whether the operation is long-running media work.
   public var isMedia: Bool {
     switch self {
     case .convertVideo, .compressVideo, .editVideo, .splitVideo, .joinVideos, .videoSnapshots, .convertAudio,
-      .editAudio, .audioVisualizer:
+      .editAudio, .audioVisualizer, .convertDocument, .pdfToImages, .extractArchive:
       true
     default: false
     }
@@ -228,6 +274,11 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .convertAudio(let output): "Convert to \(output.displayName)"
     case .editAudio: "Edit audio"
     case .audioVisualizer: "Make visualizer video"
+    case .convertDocument(let output): "Convert to \(output.displayName)"
+    case .pdfToImages(let format): "Save pages as \(format.displayName)"
+    case .organizePDF: "Organize PDF"
+    case .convertSubtitles(let format): "Convert to \(format.displayName)"
+    case .extractArchive: "Extract archive"
     }
   }
 }

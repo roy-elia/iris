@@ -121,6 +121,44 @@ import SwiftUI
     }
   }
 
+  extension PreviewData {
+    /// Made-up page thumbnails: a title bar and lines of "text".
+    static func samplePages(_ count: Int) -> [NSImage] {
+      (0..<count).map { n in
+        NSImage(size: NSSize(width: 170, height: 220), flipped: true) { rect in
+          NSColor.white.setFill()
+          rect.fill()
+          NSColor(calibratedRed: 0.1, green: 0.4, blue: 0.55, alpha: 1).setFill()
+          NSRect(x: 16, y: 18, width: 90 + CGFloat(n % 3) * 14, height: 12).fill()
+          NSColor(white: 0.78, alpha: 1).setFill()
+          for line in 0..<12 {
+            let width = line % 4 == 3 ? 80 : 138
+            NSRect(x: 16, y: 44 + CGFloat(line) * 13, width: CGFloat(width), height: 5).fill()
+          }
+          return true
+        }
+      }
+    }
+
+    @MainActor
+    static func organizer() -> PDFOrganizerModel {
+      let model = PDFOrganizerModel(
+        previewURL: URL(fileURLWithPath: "/tmp/Proposal.pdf"), thumbnails: samplePages(7))
+      model.pages[2] = PDFPageRef(index: 2, rotation: 90)
+      model.pages.remove(at: 5)
+      model.selection = [2]
+      return model
+    }
+
+    static func documentFiles(_ names: [String]) -> [DroppedFile] {
+      names.map {
+        DroppedFile(
+          url: URL(fileURLWithPath: "/tmp/\($0)"), kind: FileKind(url: URL(fileURLWithPath: $0)),
+          byteSize: 1000)
+      }
+    }
+  }
+
   /// Each screen, by name, for previews and snapshots.
   @MainActor
   enum Screens {
@@ -156,6 +194,10 @@ import SwiftUI
       ("Audio-Bleep", CGSize(width: 960, height: 440)),
       ("Audio-Channels", CGSize(width: 960, height: 440)),
       ("Tool-Visualizer", CGSize(width: 424, height: 340)),
+      ("Wheel-DocConvert", CGSize(width: 420, height: 420)),
+      ("Wheel-PDFConvert", CGSize(width: 420, height: 420)),
+      ("Wheel-PDFTools", CGSize(width: 420, height: 420)),
+      ("PDF-Organizer", CGSize(width: 900, height: 600)),
     ]
 
     @ViewBuilder
@@ -211,6 +253,25 @@ import SwiftUI
       case "Audio-Bleep": AudioEditorView(model: PreviewData.audioEditor(.bleep)).environmentObject(model)
       case "Audio-Channels":
         AudioEditorView(model: PreviewData.audioEditor(.channels)).environmentObject(model)
+      case "Wheel-DocConvert":
+        RadialWheel(
+          kind: .convert, items: WheelKind.convert.items(for: PreviewData.documentFiles(["Notes.docx"])),
+          centerText: "48 KB", mode: .click
+        ) { _, _ in }
+        .padding(DesignTokens.Spacing.inset)
+      case "Wheel-PDFConvert":
+        RadialWheel(
+          kind: .convert, items: WheelKind.convert.items(for: PreviewData.documentFiles(["Deck.pdf"])),
+          centerText: "2.4 MB", mode: .click
+        ) { _, _ in }
+        .padding(DesignTokens.Spacing.inset)
+      case "Wheel-PDFTools":
+        RadialWheel(
+          kind: .tools, items: WheelKind.tools.items(for: PreviewData.documentFiles(["Deck.pdf"])),
+          centerText: "2.4 MB", mode: .click
+        ) { _, _ in }
+        .padding(DesignTokens.Spacing.inset)
+      case "PDF-Organizer": PDFOrganizerView(model: PreviewData.organizer()).environmentObject(model)
       case "Tool-Visualizer": VisualizerView(urls: [URL(fileURLWithPath: "/tmp/Episode 12.mp3")])
       case "Tool-QR": QRResultsView(codes: ["https://example.com/menu", "WIFI:S:Studio;T:WPA;P:example;;"])
       default:

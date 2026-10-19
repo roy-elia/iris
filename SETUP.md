@@ -62,6 +62,19 @@ A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the
   - every tool's settings go into one saved copy ("name edited.ext")
 - **Visualizer window:** wave, bars or spectrum, 16:9, 1:1 or 9:16, a wave colour, and a solid colour or image behind it. Saves "name visualizer.mp4".
 
+**Documents** (DOCX, DOC, ODT, RTF, RTFD, TXT, Markdown, HTML, EPUB, Pages, text clippings; CSV/TSV tables; Keynote, PowerPoint, Numbers, Excel and ODS):
+- **Convert wheel:** PDF, DOCX, RTF, Text, Markdown, HTML, EPUB, Pages. Presentations and spreadsheets convert to PDF.
+- Markdown is converted by a built-in parser (headings, emphasis, lists, quotes, code, tables, links). Remote images, scripts and stylesheets are stripped from HTML before it's read, so nothing is fetched.
+- EPUB out is reflowable EPUB 3, with a chapter at each top-level heading. EPUB in reads the spine in order, after checking the archive for unsafe paths and size.
+- Pages, Keynote and Numbers: exported by the app through AppleScript when it's installed; otherwise the document's saved preview, or a Quick Look rendering of the first page. Writing Pages documents needs Pages.
+
+**PDFs:**
+- **Convert wheel:** PNG or JPEG pages (144 dpi), DOCX, RTF, Text, Markdown, HTML, EPUB, and "EPUB Pages" (fixed layout, one image per page).
+- Pages without selectable text are read with Vision OCR.
+- **Tools wheel:** Organize, Compress, Merge. The organizer is a thumbnail grid: drag or use the arrows to reorder, turn pages, delete them (⌫), and optionally scale every page to the same width.
+
+**Subtitles:** SRT ↔ VTT. **Archives:** zip → a folder next to it (checked for unsafe paths, more than 20,000 files, or more than 2 GB unpacked).
+
 **Tool windows** (floating glass panels opened from the Tools wheel):
 - **Compress:** Smallest, Balanced or Best quality presets, or a target size in KB/MB. Each file is compressed to the target or below, separately. Dimensions shrink only when even the lowest quality is too big.
 - **Metadata:** edit Title, Description, Artist, Copyright, Keywords and Date taken; remove location; browse every field; or strip all. Uses the bundled ExifTool.
@@ -176,7 +189,7 @@ There are no API keys or network calls at runtime, so there is no `.env`.
 ```bash
 cd /Users/royelia/file-drop-utility
 scripts/fetch-tools.sh          # once: download, verify and build the helpers into Vendor/ (~5 min)
-scripts/test.sh                 # 158 tests (tool tests skip if Vendor/out is missing)
+scripts/test.sh                 # 180 tests (tool tests skip if Vendor/out is missing)
 scripts/lint.sh                 # swift-format --strict
 swift build
 scripts/bundle.sh               # dist/File Drop Utility.app (ad-hoc signed), helpers included
@@ -211,6 +224,7 @@ Confirmed by you by hand (2026-10-18): a real drag with the redrawn wheel looks 
 
 ## Known gaps
 
+- **Documents:** Pages, Keynote and Numbers aren't installed on this Mac, so the scripting paths (Pages output, iWork and Office → PDF through the apps) are untested; the preview and Quick Look fallbacks are tested. PDF output from text is laid out on US Letter pages. Images inside documents survive DOCX/RTF/PDF output but not Markdown, HTML or EPUB output.
 - **Audio:** OGG, Opus and WMA can't play in the editor (AVFoundation doesn't read them); the waveform and every edit still work. Ogg Vorbis and Opus use ffmpeg's own encoders, which are adequate rather than best-in-class (libvorbis and libopus aren't bundled). Normalize is single-pass loudnorm, accurate to about ±1 LU on typical material.
 
 - **WebP export:** macOS's ImageIO reads WebP but can't write it. WebP files work as inputs; the WebP segment is disabled with that reason. Export would need libwebp (BSD licence), which I'd add only with your OK.

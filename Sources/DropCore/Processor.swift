@@ -63,7 +63,7 @@ public struct Processor: Sendable {
     case .edit:
       if files.count != 1 || !files[0].kind.isImage { return "Edit works on one image at a time." }
     case .compress:
-      if files.contains(where: { $0.kind == .unsupported || $0.kind.isVideo || $0.kind.isAudio }) {
+      if files.contains(where: { !$0.kind.isImage && $0.kind != .pdf }) {
         return "Compress works on images and PDFs."
       }
     case .convertVideo(let output):
@@ -91,6 +91,26 @@ public struct Processor: Sendable {
       if let path = recipe.backgroundImage, !FileManager.default.fileExists(atPath: path) {
         return "Choose a background image."
       }
+    case .convertDocument(let output):
+      if let reason = output.unavailableReason { return "\(output.displayName): \(reason)." }
+      if !files.allSatisfy(\.kind.isDocumentLike) {
+        return "\(operation.summary) works on documents, PDFs, tables and presentations."
+      }
+      if let problem = files.lazy.compactMap({ DocumentOps.problem($0.kind, output: output) }).first {
+        return problem
+      }
+    case .pdfToImages(let format):
+      if files.contains(where: { $0.kind != .pdf }) { return "\(operation.summary) works on PDFs only." }
+      if !format.isWritable { return "\(format.displayName) can't be written on this Mac." }
+    case .organizePDF(let plan):
+      if files.count != 1 || files[0].kind != .pdf { return "Organize works on one PDF at a time." }
+      if plan.pages.isEmpty { return "Keep at least one page." }
+    case .convertSubtitles:
+      if !files.allSatisfy(\.kind.isSubtitle) {
+        return "\(operation.summary) works on SRT and VTT subtitles."
+      }
+    case .extractArchive:
+      if files.contains(where: { $0.kind != .archive }) { return "Extract works on zip archives." }
     case .joinVideos:
       if !allVideos { return videosOnly(operation) }
       if files.count < 2 { return "Select at least two videos to join." }
@@ -350,6 +370,50 @@ public struct Processor: Sendable {
           try await AudioOps.visualize(file.url, recipe: recipe, destination: out) { p in
             progress?((Double(i) + p) / Double(files.count))
           }
+        }
+      }
+
+    case .convertDocument(let output):
+      for (i, file) in files.enumerated() {
+        let out = target(file, suffix: "", ext: output.fileExtension)
+        await record(&result, file: file, output: out) {
+          try await DocumentOps.convert(file, to: output, destination: out)
+        }
+        progress?(Double(i + 1) / Double(files.count))
+      }
+
+    case .pdfToImages(let format):
+      for file in files {
+        do {
+          let outs = try PDFPageOps.images(file.url, format: format) { index in
+            target(file, suffix: "page \(index + 1)", ext: format.fileExtension)
+          }
+          result.outputs += outs
+        } catch {
+          result.failures.append(.init(file: file.name, message: Self.message(for: error)))
+        }
+      }
+
+    case .organizePDF(let plan):
+      let file = files[0]
+      let out = target(file, suffix: "organized", ext: "pdf")
+      await record(&result, file: file, output: out) {
+        try PDFPageOps.organize(file.url, plan: plan, destination: out)
+      }
+
+    case .convertSubtitles(let format):
+      for file in files {
+        let out = target(file, suffix: "", ext: format.rawValue)
+        await record(&result, file: file, output: out) {
+          try SubtitleOps.convert(file.url, to: format, destination: out)
+        }
+      }
+
+    case .extractArchive:
+      for file in files {
+        let folder = claim(outputDirectory(for: file.url).appendingPathComponent(base(file)))
+        await record(&result, file: file, output: folder) {
+          try await DocumentOps.extract(file.url, into: folder)
         }
       }
 

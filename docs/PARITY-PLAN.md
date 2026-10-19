@@ -24,15 +24,15 @@ Legend: ✅ have · 🟡 partial · ❌ missing · ⛔ excluded, needs your deci
 | Menu-bar agent, no Dock icon | `LSUIElement`; "Find the Tangerine icon near the clock" | ✅ |
 | Native status menu: ready/working line, modifier hints, Settings, Getting Started, About, Quit | screenshot; "Tangerine is ready", "Tangerine is working" | ✅ |
 | Three drag wheels: Convert, Tools, Actions | "Conversion wheel"; `ConversionFanMode` | ✅ |
-| **Configurable** modifier combination per wheel | `WheelModifierSettings`, `conversionWheelDragModifierMask`; "Tap the chosen modifier combination while dragging files." | 🟡 fixed ⇧ ⌘ ⌃ |
+| **Configurable** modifier combination per wheel | `WheelModifierSettings`, `conversionWheelDragModifierMask`; "Tap the chosen modifier combination while dragging files." | ✅ (Phase 0) |
 | Drag monitor polls button, modifiers, Escape and pasteboard | `DragGestureMonitor` fields | ✅ |
-| Wheel highlight sound and haptics, with a setting to turn them off | `FanHighlightSoundPlayer`; "Sound and haptic feedback" | 🟡 no toggle |
+| Wheel highlight sound and haptics, with a setting to turn them off | `FanHighlightSoundPlayer`; "Sound and haptic feedback" | ✅ (Phase 0) |
 | Wheel themes **(inferred: light/dark/tinted)** | `ConversionFanTheme`, `conversionFanThemeDidChange` | ❌ |
 | Batch drops of any size | "Batch drops of any size" | ✅ |
 | **Float:** a glass tab docked to a screen edge holding a stack of files, with a paper-clip visual | `FloatingTab*` (Edge, Placement, StackPreview, PaperClip), "Create a New Float", "Add Files to an Existing Float", "Remove from Float", "Close Float without deleting files"; "Drag to carry all files"; "Double-click to open" | 🟡 single-file card |
 | Home-folder or chosen-folder access, so results save beside originals | "Allow Home Folder Access", "Choose a folder where Tangerine may save results…", "No folders allowed yet." | ❌ (we're unsandboxed today, see 2.6) |
 | Launch at login (Login Items) | "Allow Tangerine in macOS Login Items…", "Open Login Items" | ✅ |
-| Choice of terminal app (Terminal, iTerm2, …) | `TerminalApplicationSettings`, `com.googlecode.iterm2` | 🟡 Terminal only |
+| Choice of terminal app (Terminal, iTerm2, …) | `TerminalApplicationSettings`, `com.googlecode.iterm2` | ✅ (Phase 0) |
 | Onboarding | "Welcome to Tangerine", "Step 1. Drag files." | ✅ |
 | Update notice | "Update available" | ❌ |
 | Results saved next to originals | "Results are saved next to the originals." | ✅ |
@@ -49,13 +49,13 @@ Formats found in the executable: `png jpg heic avif tiff bmp webp gif svg ai pdf
 | Images | png, jpg, heic, avif, tiff, bmp, webp, gif, svg/ai (vector artwork) → png, jpg, heic, avif, tiff, bmp, **webp**, **gif**, pdf | ✅ |
 | Video | mp4, mov, m4v, webm, mkv, avi → mp4, mov, webm, gif **(inferred)**, audio-only | ✅ |
 | Audio | mp3, wav, m4a, aac, flac, aiff, ogg, opus, wma → mp3, wav, m4a, aac, flac, aiff, ogg, opus; bit depth setting ("Choose an output bit depth") | ✅ |
-| Text documents | docx, pages, rtf, rtfd, txt, md, html, text clippings ↔ docx, pages ("Creates a native Pages document"), rtf, txt, md, html, pdf | ❌ |
-| EPUB | epub ↔ pdf, docx and others; reflowable or fixed-layout ("fixed layout book of page images") | ❌ |
-| PDF out | pdf → images, text, docx ("This PDF has no selectable text…") | 🟡 merge and images-to-PDF only |
-| Presentations | key, ppt, pptx → pdf, images ("Bundled PowerPoint converter") | ❌ |
-| Spreadsheets | numbers, xls, xlsx, ods, csv, tsv → pdf, csv ("Bundled spreadsheet converter") | ❌ |
-| Subtitles | srt ↔ vtt (`SubtitleConverter`, "No valid subtitle cues") | ❌ |
-| Archives | zip → extracted folder ("Extracting archive") | ❌ |
+| Text documents | docx, pages, rtf, rtfd, txt, md, html, text clippings ↔ docx, pages ("Creates a native Pages document"), rtf, txt, md, html, pdf | ✅ |
+| EPUB | epub ↔ pdf, docx and others; reflowable or fixed-layout ("fixed layout book of page images") | ✅ |
+| PDF out | pdf → images, text, docx ("This PDF has no selectable text…") | ✅ (plus OCR) |
+| Presentations | key, ppt, pptx → pdf, images ("Bundled PowerPoint converter") | 🟡 PDF only: Keynote scripting, else Quick Look first slide |
+| Spreadsheets | numbers, xls, xlsx, ods, csv, tsv → pdf, csv ("Bundled spreadsheet converter") | 🟡 PDF (Numbers scripting, else Quick Look); csv/tsv fully |
+| Subtitles | srt ↔ vtt (`SubtitleConverter`, "No valid subtitle cues") | ✅ |
+| Archives | zip → extracted folder ("Extracting archive") | ✅ |
 | Per-format settings | "Conversion defaults are configured on the output format you choose"; Preserve metadata; Keep original dimensions; Maximum video height | 🟡 images done (quality, metadata); video and audio options come with phases 2–3 |
 
 ### 1.3 Tools wheel
@@ -80,7 +80,7 @@ Formats found in the executable: `png jpg heic avif tiff bmp webp gif svg ai pdf
 | Audio | **Bleep** ranges or the whole file (`AudioBleepTimeline`, "Save Bleeped Copy") | ✅ |
 | Audio | **Normalize volume** · **Channels:** mono or stereo with L/R balance (`AudioChannelsEditor`, "Left volume") | ✅ |
 | Audio | **Visualizer:** waveform video over a still image, with styles (`AudioVisualizerEditor`, "Create Visualization") | ✅ |
-| PDF | **Organize:** reorder, rotate and delete pages (`PDFOrganizerEditor`, "Save Organized PDF") · **Merge** · **Compress** ("macOS PDF compression filter") · equal page widths | 🟡 merge, compress |
+| PDF | **Organize:** reorder, rotate and delete pages (`PDFOrganizerEditor`, "Save Organized PDF") · **Merge** · **Compress** ("macOS PDF compression filter") · equal page widths | ✅ |
 
 ### 1.4 Actions wheel
 
@@ -268,6 +268,15 @@ public struct VideoRecipe: Codable, Sendable {
   - Visualizer: wave, bars or spectrum over a colour or image, three aspect ratios
   - all ffmpeg (silencedetect, loudnorm, pan, sine + amix, showwaves/showfreqs/showspectrum), rather than AVAudioFile as planned in 2.3, so every input format works the same way
   - 19 new tests on generated tones
+- **Phase 4:** done (2026-10-18):
+  - text family: DOCX, DOC, ODT, RTF, RTFD, TXT, Markdown, HTML, text clippings, CSV/TSV → PDF, DOCX, RTF, TXT, Markdown, HTML, EPUB, Pages
+  - EPUB in and out, reflowable or fixed layout (page images from PDFs)
+  - PDF → PNG/JPEG pages, text, DOCX and the rest, with Vision OCR for scanned pages
+  - PDF organizer: reorder, rotate, delete, equal widths
+  - SRT ↔ VTT, zip extraction with safety checks
+  - Pages/Keynote/Numbers and Office files via AppleScript when the app is installed, else saved preview or Quick Look
+  - Markdown uses a built-in parser rather than swift-markdown, to avoid a new dependency
+  - 21 new tests
 - **Open from Phase 2:**
   - WebM output: added after Phase 2 with libvpx 1.17.0 (VP9) and ffmpeg's Opus encoder.
   - Timeline handles for redaction ranges are buttons ("Set Start/End"), not draggable edges.

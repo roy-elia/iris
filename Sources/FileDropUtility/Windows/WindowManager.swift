@@ -48,6 +48,7 @@ final class WindowManager {
 
   private var videoEditors: [URL: NSWindow] = [:]
   private var audioEditors: [URL: NSWindow] = [:]
+  private var organizers: [URL: NSWindow] = [:]
 
   func openVideoEditor(for url: URL, tool: VideoTool) {
     if let window = videoEditors[url] {
@@ -78,6 +79,21 @@ final class WindowManager {
     window.minSize = NSSize(width: 780, height: 380)
     track(window) { [weak self] in self?.audioEditors[url] = nil }
     audioEditors[url] = window
+    show(window)
+  }
+
+  func openPDFOrganizer(for url: URL) {
+    if let window = organizers[url] {
+      window.makeKeyAndOrderFront(nil)
+      NSApp.activate()
+      return
+    }
+    let view = PDFOrganizerView(model: PDFOrganizerModel(url: url)).environmentObject(AppModel.shared)
+    let window = makeWindow(
+      content: view, size: NSSize(width: 900, height: 640), title: "Organize \(url.lastPathComponent)")
+    window.minSize = NSSize(width: 620, height: 420)
+    track(window) { [weak self] in self?.organizers[url] = nil }
+    organizers[url] = window
     show(window)
   }
 

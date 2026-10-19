@@ -102,6 +102,11 @@ enum WheelCommand: Equatable {
   case convertAudio(AudioOutput)
   case audioEditor(AudioTool)
   case visualizer
+  case convertDocument(DocumentOutput)
+  case pdfToImages(ImageFormat)
+  case organizePDF
+  case convertSubtitles(SubtitleFormat)
+  case extractArchive
   case airDrop
   case float
   case copy
@@ -180,6 +185,43 @@ extension WheelKind {
     }
   }
 
+  /// Segments when every dropped file is a document, PDF, table or presentation.
+  func documentItems(for files: [DroppedFile]) -> [WheelItem] {
+    let allPDFs = files.allSatisfy { $0.kind == .pdf }
+    func convert(_ output: DocumentOutput) -> WheelItem {
+      let problem = files.lazy.compactMap { DocumentOps.problem($0.kind, output: output) }.first
+      return WheelItem(
+        id: "d-\(output.rawValue)", title: output == .epubFixed ? "EPUB Pages" : output.displayName,
+        systemImage: nil, command: .convertDocument(output),
+        disabledReason: output.unavailableReason ?? problem)
+    }
+    let merge = WheelItem(
+      id: "d-merge", title: "Merge", systemImage: "doc.on.doc", command: .toPDF,
+      disabledReason: files.count >= 2 ? nil : "Two or more PDFs")
+    switch self {
+    case .convert:
+      if allPDFs {
+        return [
+          WheelItem(id: "d-png", title: "PNG", systemImage: nil, command: .pdfToImages(.png)),
+          WheelItem(id: "d-jpeg", title: "JPEG", systemImage: nil, command: .pdfToImages(.jpeg)),
+        ] + [DocumentOutput.docx, .rtf, .txt, .md, .html, .epub, .epubFixed].map(convert)
+      }
+      return [DocumentOutput.pdf, .docx, .rtf, .txt, .md, .html, .epub, .pages].map(convert)
+    case .tools:
+      return [
+        WheelItem(
+          id: "d-organize", title: "Organize", systemImage: "square.grid.3x3.square", command: .organizePDF,
+          disabledReason: files.count == 1 ? nil : "One PDF at a time"),
+        WheelItem(
+          id: "d-compress", title: "Compress", systemImage: "arrow.down.right.and.arrow.up.left",
+          command: .compress),
+        merge,
+      ]
+    case .actions:
+      return items(for: [DroppedFile]())
+    }
+  }
+
   /// Segments for this wheel, enabled or not depending on what's being dropped.
   /// `files` may be empty while dragging, when the kinds aren't known yet.
   func items(for files: [DroppedFile]) -> [WheelItem] {
@@ -190,6 +232,20 @@ extension WheelKind {
     let allVideos = known && files.allSatisfy(\.kind.isVideo)
     if allVideos { return videoItems(count: files.count) }
     if known && files.allSatisfy(\.kind.isAudio) { return audioItems(count: files.count) }
+    if known && files.allSatisfy(\.kind.isDocumentLike) && (self == .convert || (self == .tools && allPDFs)) {
+      return documentItems(for: files)
+    }
+    if known && files.allSatisfy(\.kind.isSubtitle) && self == .convert {
+      return SubtitleFormat.allCases.map {
+        WheelItem(
+          id: "s-\($0.rawValue)", title: $0.displayName, systemImage: nil, command: .convertSubtitles($0))
+      }
+    }
+    if known && files.allSatisfy({ $0.kind == .archive }) && self != .actions {
+      return [
+        WheelItem(id: "z-extract", title: "Extract", systemImage: "archivebox", command: .extractArchive)
+      ]
+    }
     let oneImage: String? = known && !(files.count == 1 && allImages) ? "One image at a time" : nil
 
     switch self {
@@ -208,7 +264,7 @@ extension WheelKind {
       return items
     case .tools:
       let compressReason: String? =
-        known && files.contains { $0.kind == .unsupported } ? "Images and PDFs only" : nil
+        known && files.contains { !$0.kind.isImage && $0.kind != .pdf } ? "Images and PDFs only" : nil
       let collageReason: String? = known && !(allImages && files.count >= 2) ? "Two or more images" : nil
       return [
         WheelItem(

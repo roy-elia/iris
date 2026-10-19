@@ -81,8 +81,8 @@ import Testing
   @Test("A7: unsupported or broken files give a message, not a crash")
   func a7Errors() async throws {
     let dir = try TempDir()
-    let doc = try dir.touch("report.docx")
-    #expect(throws: DropError.unsupportedFile("report.docx")) { try DroppedFile.load(doc) }
+    let doc = try dir.touch("report.xyz")
+    #expect(throws: DropError.unsupportedFile("report.xyz")) { try DroppedFile.load(doc) }
 
     let broken = try dir.touch("broken.png", contents: "not really")
     let result = await AppSettings().processor.run(.convert(.jpeg, quality: 0.8), on: try drop([broken]))

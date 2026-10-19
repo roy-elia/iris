@@ -28,7 +28,7 @@ import Testing
   @Test func classifiesByExtension() {
     #expect(FileKind(url: URL(fileURLWithPath: "/a/b.jpg")) == .image(.jpeg))
     #expect(FileKind(url: URL(fileURLWithPath: "/a/b.PDF")) == .pdf)
-    #expect(FileKind(url: URL(fileURLWithPath: "/a/b.docx")) == .unsupported)
+    #expect(FileKind(url: URL(fileURLWithPath: "/a/b.xyz")) == .unsupported)
     #expect(FileKind(url: URL(fileURLWithPath: "/a/noext")) == .unsupported)
   }
 }
@@ -52,8 +52,8 @@ import Testing
 
   @Test func rejectsUnsupportedTypeAndFolders() throws {
     let dir = try TempDir()
-    let doc = try dir.touch("notes.docx")
-    #expect(throws: DropError.unsupportedFile("notes.docx")) { try DroppedFile.load(doc) }
+    let doc = try dir.touch("notes.xyz")
+    #expect(throws: DropError.unsupportedFile("notes.xyz")) { try DroppedFile.load(doc) }
 
     let folder = dir.file("folder.png")
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
