@@ -45,10 +45,9 @@ struct OnboardingView: View {
 
   private var welcome: some View {
     VStack(spacing: 18) {
-      Image(systemName: "tray.and.arrow.down.fill")
-        .font(.system(size: 54, weight: .medium))
+      AppGlyphView()
+        .frame(width: 64, height: 64)
         .foregroundStyle(Color.accentColor)
-        .accessibilityHidden(true)
       Text("Welcome to").font(.title2).foregroundStyle(Color.secondary)
       Text("File Drop Utility").font(.system(.largeTitle, design: .rounded).weight(.bold))
       Text("Convert, fix and send files without opening another app.")
@@ -189,7 +188,8 @@ struct OnboardingView: View {
       VStack(spacing: 10) {
         HStack(spacing: 14) {
           Image(systemName: "wifi").foregroundStyle(Color.secondary)
-          Image(systemName: "tray.and.arrow.down")
+          AppGlyphView()
+            .frame(width: 18, height: 18)
             .padding(8)
             .background(
               .tint.opacity(0.3),

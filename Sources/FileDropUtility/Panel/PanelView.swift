@@ -7,14 +7,6 @@ enum PanelTab: String, CaseIterable, Identifiable {
   case history = "History"
   case settings = "Settings"
   var id: String { rawValue }
-
-  var systemImage: String {
-    switch self {
-    case .files: "tray.and.arrow.down"
-    case .history: "clock"
-    case .settings: "gearshape"
-    }
-  }
 }
 
 /// The main window: Files, History and Settings, switched with a segmented control in the

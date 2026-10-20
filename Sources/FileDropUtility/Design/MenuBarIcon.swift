@@ -1,6 +1,6 @@
 import AppKit
 
-/// The menu-bar icon. Idle, it's the tray symbol; while a task runs, a smaller tray sits inside
+/// The menu-bar icon. Idle, it's the app glyph; while a task runs, a smaller glyph sits inside
 /// a ring that fills clockwise from the top. It's a template image, so the menu bar colours it
 /// for light, dark and Increase Contrast.
 enum MenuBarIcon {
@@ -15,7 +15,7 @@ enum MenuBarIcon {
     let progress = quantised(progress)
     let image = NSImage(size: size, flipped: false) { rect in
       guard let progress else {
-        draw(symbolPointSize: 14, in: rect)
+        AppGlyph.draw(in: rect)
         return true
       }
       let ring = rect.insetBy(dx: 1.25, dy: 1.25)
@@ -33,23 +33,12 @@ enum MenuBarIcon {
       arc.lineCapStyle = .round
       NSColor.black.setStroke()
       arc.stroke()
-      draw(symbolPointSize: 8.5, in: rect)
+      AppGlyph.draw(in: rect.insetBy(dx: 4, dy: 4))
       return true
     }
     image.isTemplate = true
     image.accessibilityDescription =
       progress.map { "File Drop Utility, \(Int(($0 * 100).rounded()))% done" } ?? "File Drop Utility"
     return image
-  }
-
-  private static func draw(symbolPointSize: CGFloat, in rect: NSRect) {
-    let config = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .regular)
-    guard
-      let symbol = NSImage(systemSymbolName: "tray.and.arrow.down", accessibilityDescription: nil)?
-        .withSymbolConfiguration(config)
-    else { return }
-    let s = symbol.size
-    symbol.draw(
-      in: NSRect(x: rect.midX - s.width / 2, y: rect.midY - s.height / 2, width: s.width, height: s.height))
   }
 }
