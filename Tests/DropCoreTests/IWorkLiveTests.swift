@@ -14,6 +14,14 @@ private func osascript(_ lines: [String], _ args: [String]) async throws {
   try await SystemProcess.run("/usr/bin/osascript", lines.flatMap { ["-e", $0] } + args, timeout: 180)
 }
 
+@Suite struct IWorkAppTests {
+  @Test func acceptsBothBundleIDEditions() {
+    #expect(IWorkApp.keynote.bundleIDs == ["com.apple.Keynote", "com.apple.iWork.Keynote"])
+    #expect(IWorkApp.numbers.bundleIDs == ["com.apple.Numbers", "com.apple.iWork.Numbers"])
+    #expect(IWorkApp.pages.bundleIDs.contains(IWorkApp.pages.bundleID))
+  }
+}
+
 @Suite(.serialized) struct IWorkLiveTests {
   /// A three-slide deck made by Keynote, saved as PDF and as one PNG per slide.
   @Test(.enabled(if: liveIWork && IWorkApp.keynote.isInstalled)) func keynoteExportsEverySlide() async throws

@@ -127,17 +127,21 @@ public enum IWorkApp: String, Sendable {
   case keynote = "Keynote"
   case numbers = "Numbers"
 
-  public var bundleID: String {
-    switch self {
-    case .pages: "com.apple.iWork.Pages"
-    case .keynote: "com.apple.iWork.Keynote"
-    case .numbers: "com.apple.iWork.Numbers"
-    }
+  /// Bundle IDs, newest first: the Creator Studio editions ("Keynote Creator Studio")
+  /// dropped the "iWork" part of the ID.
+  public var bundleIDs: [String] {
+    ["com.apple.\(rawValue)", "com.apple.iWork.\(rawValue)"]
   }
 
-  /// Whether the app is installed (looked up by bundle ID).
+  /// The ID of the installed edition, else the classic one.
+  public var bundleID: String {
+    bundleIDs.first { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil }
+      ?? bundleIDs[1]
+  }
+
+  /// Whether any edition is installed (looked up by bundle ID).
   public var isInstalled: Bool {
-    NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
+    bundleIDs.contains { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil }
   }
 }
 
