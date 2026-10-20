@@ -93,6 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       DragWatcher.shared.start()
       FloatManager.shared.restore()
       AppModel.shared.scheduleUpdateChecks()
+      AppModel.shared.startWatching()
       if !AppModel.shared.settings.hasCompletedOnboarding {
         WindowManager.shared.openOnboarding()
       }

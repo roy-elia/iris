@@ -697,19 +697,33 @@ struct CollageView: View {
 
 // MARK: QR results
 
+/// Text read from files: QR codes, or alt text written for images.
 struct QRResultsView: View {
+  enum Kind {
+    case qr, altText
+  }
+
   let codes: [String]
+  var kind: Kind = .qr
   @Environment(\.dismissToolWindow) private var dismiss
+
+  private var heading: String {
+    switch kind {
+    case .qr: codes.count == 1 ? "QR Code" : "\(codes.count) QR Codes"
+    case .altText: codes.count == 1 ? "Alt Text (copied)" : "Alt Text for \(codes.count) Images"
+    }
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text(codes.count == 1 ? "QR Code" : "\(codes.count) QR Codes").font(.title3.weight(.semibold))
+      Text(heading).font(.title3.weight(.semibold))
       ForEach(Array(codes.enumerated()), id: \.offset) { _, code in
         HStack(alignment: .top, spacing: 10) {
-          Image(systemName: "qrcode").foregroundStyle(Color.accentColor).accessibilityHidden(
-            true)
+          Image(systemName: kind == .qr ? "qrcode" : "text.below.photo").foregroundStyle(Color.accentColor)
+            .accessibilityHidden(
+              true)
           Text(code).font(.callout).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-          if let url = URL(string: code), url.scheme?.hasPrefix("http") == true {
+          if kind == .qr, let url = URL(string: code), url.scheme?.hasPrefix("http") == true {
             Button("Open") { NSWorkspace.shared.open(url) }.buttonStyle(.glass)
           }
           Button("Copy") {

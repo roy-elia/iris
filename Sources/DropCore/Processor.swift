@@ -7,6 +7,18 @@ public struct OperationResult: Equatable, Sendable {
   public var failures: [Failure] = []
   /// Text results that aren't files, such as QR code contents.
   public var notes: [String] = []
+  /// Files renamed in place, so the rename can be undone.
+  public var renames: [Rename] = []
+
+  public struct Rename: Equatable, Sendable {
+    public let from: URL
+    public let to: URL
+
+    public init(from: URL, to: URL) {
+      self.from = from
+      self.to = to
+    }
+  }
 
   public struct Failure: Equatable, Sendable {
     public let file: String
@@ -136,6 +148,25 @@ public struct Processor: Sendable {
       }
     case .zipFiles:
       break
+    case .transcribe:
+      if !files.allSatisfy({ $0.kind.isAudio || $0.kind.isVideo }) {
+        return "Transcribe works on audio and video."
+      }
+    case .summarize:
+      if !files.allSatisfy({ $0.kind.isAudio || $0.kind.isVideo || $0.kind.hasReadableText }) {
+        return "Summarize works on documents, PDFs, audio and video."
+      }
+      if let problem = AIOps.languageModelProblem { return problem }
+    case .altText:
+      if !allImages { return imagesOnly(operation) }
+    case .renameByContent:
+      if !files.allSatisfy({
+        $0.kind.isImage || $0.kind.isAudio || $0.kind.isVideo || $0.kind.hasReadableText
+      }
+      ) {
+        return "Rename from content works on images, documents, PDFs, audio and video."
+      }
+      if let problem = AIOps.languageModelProblem { return problem }
     case .joinVideos:
       if !allVideos { return videosOnly(operation) }
       if files.count < 2 { return "Select at least two videos to join." }
@@ -536,6 +567,54 @@ public struct Processor: Sendable {
         await record(&result, file: file, output: folder) {
           try await DocumentOps.extract(file.url, into: folder)
         }
+      }
+
+    case .transcribe(let format):
+      for (i, file) in files.enumerated() {
+        let out = target(file, suffix: "", ext: format.rawValue)
+        await record(&result, file: file, output: out) {
+          let cues = try await AIOps.transcribe(file.url)
+          try SubtitleOps.write(cues, as: format).write(to: out, atomically: true, encoding: .utf8)
+        }
+        progress?(Double(i + 1) / Double(files.count))
+      }
+
+    case .summarize:
+      for (i, file) in files.enumerated() {
+        let out = target(file, suffix: "summary", ext: "md")
+        await record(&result, file: file, output: out) {
+          let text: String =
+            file.kind.isAudio || file.kind.isVideo
+            ? try await AIOps.transcribe(file.url).map(\.text).joined(separator: " ")
+            : try await RichText.load(file.url, kind: file.kind).string
+          let summary = try await AIOps.summarize(text, title: file.name)
+          try summary.write(to: out, atomically: true, encoding: .utf8)
+        }
+        progress?(Double(i + 1) / Double(files.count))
+      }
+
+    case .altText:
+      for (i, file) in files.enumerated() {
+        do {
+          let text = try await AIOps.altText(file.url)
+          result.notes.append(files.count == 1 ? text : "\(file.name): \(text)")
+        } catch {
+          result.failures.append(.init(file: file.name, message: Self.message(for: error)))
+        }
+        progress?(Double(i + 1) / Double(files.count))
+      }
+
+    case .renameByContent:
+      for (i, file) in files.enumerated() {
+        do {
+          let stem = try await AIOps.suggestedName(for: file)
+          let renamed = try AIOps.rename(file.url, to: stem)
+          result.outputs.append(renamed)
+          result.renames.append(.init(from: file.url, to: renamed))
+        } catch {
+          result.failures.append(.init(file: file.name, message: Self.message(for: error)))
+        }
+        progress?(Double(i + 1) / Double(files.count))
       }
 
     case .zipFiles:

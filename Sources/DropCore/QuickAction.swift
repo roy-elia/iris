@@ -13,6 +13,12 @@ public enum QuickAction: Equatable, Hashable, Sendable {
   case resize(ResizeSpec)
   /// One PDF from images, or one merged PDF from PDFs.
   case makePDF
+  /// Speech to SRT subtitles, on this Mac.
+  case transcribe
+  /// A Markdown summary (Apple Intelligence).
+  case summarize
+  /// A name from the file's content (Apple Intelligence).
+  case renameByContent
 
   /// Parses a spec such as `convert-image:png`, `resize:50%`, `resize:1920`,
   /// `compress` or `make-pdf`. Returns nil for anything else.
@@ -23,6 +29,9 @@ public enum QuickAction: Equatable, Hashable, Sendable {
     switch (verb, option) {
     case ("compress", nil): self = .compress
     case ("make-pdf", nil): self = .makePDF
+    case ("transcribe", nil): self = .transcribe
+    case ("summarize", nil), ("summarise", nil): self = .summarize
+    case ("rename-by-content", nil): self = .renameByContent
     case ("convert-image", let id?):
       guard let format = ImageFormat(rawValue: id), format.isWritable else { return nil }
       self = .convertImage(format)
@@ -62,6 +71,9 @@ public enum QuickAction: Equatable, Hashable, Sendable {
     case .resize(.percent(let p)): "resize:\(p.formatted(.number.precision(.fractionLength(0...2))))%"
     case .resize(.maxEdge(let edge)): "resize:\(edge)"
     case .makePDF: "make-pdf"
+    case .transcribe: "transcribe"
+    case .summarize: "summarize"
+    case .renameByContent: "rename-by-content"
     }
   }
 
@@ -75,6 +87,9 @@ public enum QuickAction: Equatable, Hashable, Sendable {
     case .compress: "Compress"
     case .resize(let spec): "Resize to \(spec.summary)"
     case .makePDF: "Make PDF"
+    case .transcribe: "Transcribe"
+    case .summarize: "Summarize"
+    case .renameByContent: "Rename from Content"
     }
   }
 
@@ -88,6 +103,9 @@ public enum QuickAction: Equatable, Hashable, Sendable {
     "compress",
     "resize:<percent>% | resize:<longest edge in px>",
     "make-pdf",
+    "transcribe",
+    "summarize",
+    "rename-by-content",
   ]
 
   /// One operation on a group of the inputs.
@@ -109,6 +127,9 @@ public enum QuickAction: Equatable, Hashable, Sendable {
     case .convertVideo(let output): single = .convertVideo(output)
     case .convertDocument(let output): single = .convertDocument(output)
     case .resize(let spec): single = .resize(spec)
+    case .transcribe: single = .transcribe(.srt)
+    case .summarize: single = .summarize
+    case .renameByContent: single = .renameByContent
     case .makePDF:
       let allPDFs = !files.isEmpty && files.allSatisfy { $0.kind == .pdf }
       single = allPDFs ? .mergePDFs : .imagesToPDF

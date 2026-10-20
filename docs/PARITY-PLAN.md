@@ -357,3 +357,15 @@ Filee (MIT, C#) converts 244 formats. These are the ones macOS or the already-bu
 Not covered here, because they need an engine the app doesn't bundle: office formats beyond what macOS reads (LibreOffice), Pandoc-only markup, e-book formats beyond EPUB (calibre), PostScript/EPS (Ghostscript) and HWP.
 
 Added afterwards (with your OK, 2026-10-19): AMR, AMR-WB and APE output. opencore-amr and vo-amrwbenc (Apache 2.0) are built into ffmpeg; APE is written by Monkey's Audio's `mac` tool (3-Clause BSD), bundled as a fifth helper.
+
+## 8. Beyond Tangerine: on-device AI and watch folders
+
+Added 2026-10-19. Tangerine has neither; both run entirely on the Mac.
+
+| Feature | Where | How |
+|---|---|---|
+| Transcribe to subtitles | Audio and video Tools wheels; `transcribe` spec; recipe step | ffmpeg → 16 kHz WAV, Speech's `SpeechAnalyzer` + `SpeechTranscriber` with word time ranges, grouped into ≤ 2×42-character, ≤ 7 s cues |
+| Summarize | Audio, video and document Tools wheels; `summarize` | FoundationModels `LanguageModelSession`; text over ~6,000 characters is summarised per chunk, then combined (the context window is 4,096 tokens) |
+| Alt text | Image Tools wheel | Vision classification, OCR, faces and animals, put into one sentence by the language model; falls back to the detected labels |
+| Rename from content | Image and document Tools wheels; `rename-by-content` | The language model names the file from its text, transcript or image facts; renames in place with Undo |
+| Watch folders | Settings › Watch Folders | `FolderWatcher`: a directory dispatch source plus a 2 s poll; files must hold their size for 1.5 s; results go to "Converted" through `RecipeRunner` |

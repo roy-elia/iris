@@ -175,6 +175,8 @@
           // Inputs that rightly have nothing to find get a clear message instead of output.
           let refusals = [
             "No QR codes found", "No clear subject", "already as small as it gets", "has no subtitle tracks",
+            "No speech was found", "declined to work with this content", "has no audio track",
+            "isn't enough text", "No name could be worked out",
           ]
           if result.failures.allSatisfy({ f in refusals.contains { f.message.contains($0) } }) {
             return ("refused", text)
@@ -233,6 +235,28 @@
       case .convertData(let f): return await check(.convertData(f))
       case .sheetsToCSV: return await check(.sheetsToCSV)
       case .zip: return await check(.zipFiles)
+      case .transcribe: return await check(.transcribe(.srt))
+      case .summarize: return await check(.summarize)
+      case .altText: return await check(.altText)
+      case .renameByContent:
+        // Renames in place, so work on copies and put the names back afterwards.
+        var copies: [DroppedFile] = []
+        for file in files {
+          let copy = out.appendingPathComponent("rename-\(file.url.lastPathComponent)")
+          try? fm.copyItem(at: file.url, to: copy)
+          if let loaded = try? DroppedFile.load(copy) { copies.append(loaded) }
+        }
+        let result = await processor.run(.renameByContent, on: copies)
+        let problems = AIOps.undo(result.renames)
+        if let failure = result.failures.first {
+          let refused = [
+            "declined to work with this content", "No name could be worked out", "No speech was found",
+          ]
+          let status = refused.contains { failure.message.contains($0) } ? "refused" : "FAIL"
+          return (status, "\(failure.file) \(failure.message)")
+        }
+        let names = result.outputs.map(\.lastPathComponent).joined(separator: ", ")
+        return problems.isEmpty ? ("PASS", "renamed to \(names), then undone") : ("FAIL", problems.joined())
 
       case .compress:
         if first.kind.isVideo { return await window("Compress", then: .compressVideo(.strength(.medium))) }

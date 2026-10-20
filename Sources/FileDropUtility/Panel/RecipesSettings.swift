@@ -118,6 +118,7 @@ struct RecipeEditor: View {
 /// The kinds of step the editor offers, each with a sensible starting value.
 enum StepKind: String, CaseIterable, Identifiable {
   case convertImage, convertAudio, convertVideo, convertDocument, compress, resize, makePDF, rename
+  case transcribe, summarize, renameByContent
 
   var id: String { rawValue }
 
@@ -131,6 +132,9 @@ enum StepKind: String, CaseIterable, Identifiable {
     case .resize: "Resize"
     case .makePDF: "Make PDF"
     case .rename: "Rename"
+    case .transcribe: "Transcribe to Subtitles"
+    case .summarize: "Summarize"
+    case .renameByContent: "Rename from Content"
     }
   }
 
@@ -144,6 +148,9 @@ enum StepKind: String, CaseIterable, Identifiable {
     case .resize: .action(.resize(.maxEdge(1600)))
     case .makePDF: .action(.makePDF)
     case .rename: .rename("{name}-{n}")
+    case .transcribe: .action(.transcribe)
+    case .summarize: .action(.summarize)
+    case .renameByContent: .action(.renameByContent)
     }
   }
 
@@ -157,6 +164,9 @@ enum StepKind: String, CaseIterable, Identifiable {
     case .action(.resize): self = .resize
     case .action(.makePDF): self = .makePDF
     case .rename: self = .rename
+    case .action(.transcribe): self = .transcribe
+    case .action(.summarize): self = .summarize
+    case .action(.renameByContent): self = .renameByContent
     }
   }
 }
@@ -247,6 +257,15 @@ struct RecipeStepRow: View {
         .font(.caption).foregroundStyle(.secondary)
     case .action(.makePDF):
       Text("One PDF from images, or one merged PDF from PDFs.")
+        .font(.caption).foregroundStyle(.secondary)
+    case .action(.transcribe):
+      Text("Speech in audio and video becomes SRT subtitles, transcribed on this Mac.")
+        .font(.caption).foregroundStyle(.secondary)
+    case .action(.summarize):
+      Text("A Markdown summary of documents, PDFs and recordings, by Apple Intelligence.")
+        .font(.caption).foregroundStyle(.secondary)
+    case .action(.renameByContent):
+      Text("A descriptive name from what's in each file, by Apple Intelligence.")
         .font(.caption).foregroundStyle(.secondary)
     }
   }

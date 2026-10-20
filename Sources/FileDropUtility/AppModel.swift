@@ -23,10 +23,20 @@ final class AppModel: ObservableObject {
   @Published var history: [HistoryEntry]
   @Published var settings: AppSettings {
     didSet {
+      if oldValue.recipes != settings.recipes {
+        // Watch folders keep a copy of their recipe; follow edits to the saved one.
+        for i in settings.watchFolders.indices {
+          if let saved = settings.recipes.first(where: { $0.id == settings.watchFolders[i].recipe.id }) {
+            settings.watchFolders[i].recipe = saved
+          }
+        }
+      }
       saveSettings()
       WheelKind.savedRecipes = settings.recipes
       if oldValue.appearance != settings.appearance { applyAppearance() }
       if oldValue.checkForUpdates != settings.checkForUpdates { scheduleUpdateChecks() }
+      settingsSnapshot.value = settings
+      if oldValue.watchFolders != settings.watchFolders { folderWatcher?.update(settings.watchFolders) }
     }
   }
   @Published var settingsError: String?
@@ -34,6 +44,10 @@ final class AppModel: ObservableObject {
   /// The outcome of the last manual check, shown in Settings.
   @Published var updateStatus: String?
   private var updateTimer: Timer?
+  /// Runs each watch folder's recipe on files that land in it.
+  private var folderWatcher: FolderWatcher?
+  /// The settings, readable from the watcher's queue.
+  private let settingsSnapshot = LockedValue(AppSettings())
 
   private let settingsStore: SettingsStore
   private let historyStore: HistoryStore
@@ -89,6 +103,41 @@ final class AppModel: ObservableObject {
         if manual { updateStatus = Self.message(for: error, fallback: "The check failed.") }
       }
     }
+  }
+
+  // MARK: Watch folders
+
+  /// Starts watching the folders in Settings (called at launch).
+  func startWatching() {
+    let snapshot = settingsSnapshot
+    snapshot.value = settings
+    let watcher = FolderWatcher(
+      settings: { snapshot.value },
+      report: { folder, _, result in
+        Task { @MainActor in
+          AppModel.shared.finish(
+            result, operation: "\(folder.recipe.displayName) (\(folder.name))", origin: .overlay,
+            inputCount: 1)
+        }
+      })
+    folderWatcher = watcher
+    watcher.update(settings.watchFolders)
+  }
+
+  /// Asks for a folder and adds it to the watch list with `recipe`.
+  func addWatchFolder() {
+    let panel = NSOpenPanel()
+    panel.canChooseFiles = false
+    panel.canChooseDirectories = true
+    panel.canCreateDirectories = true
+    panel.prompt = "Watch Folder"
+    NSApp.activate()
+    guard panel.runModal() == .OK, let url = panel.url else { return }
+    guard !settings.watchFolders.contains(where: { $0.url.standardizedFileURL == url.standardizedFileURL })
+    else {
+      return
+    }
+    settings.watchFolders.append(WatchFolder(path: url.path, recipe: WatchFolder.presets[0]))
   }
 
   // MARK: Queue
@@ -249,6 +298,14 @@ final class AppModel: ObservableObject {
       break  // Handled above, before the files are loaded.
     case .recipe(let id):
       runRecipe(id, on: fileURLs, origin: origin)
+    case .transcribe:
+      run(.transcribe(.srt), on: targets, origin: origin)
+    case .summarize:
+      run(.summarize, on: targets, origin: origin)
+    case .altText:
+      run(.altText, on: targets, origin: origin)
+    case .renameByContent:
+      run(.renameByContent, on: targets, origin: origin)
     }
   }
 
@@ -356,17 +413,58 @@ final class AppModel: ObservableObject {
   }
 
   private func finish(_ result: OperationResult, operation: String, origin: Origin, inputCount: Int = 0) {
+    retarget(result.renames)
     lastResult = result
     lastOperation = operation
     let entry = HistoryEntry(
       operation: operation, inputCount: inputCount, outputs: result.outputs.map(\.lastPathComponent),
       errors: result.failures.map { $0.file.isEmpty ? $0.message : "\($0.file): \($0.message)" })
     if let entries = try? historyStore.append(entry) { history = entries }
-    if !result.notes.isEmpty {
+    if !result.notes.isEmpty, operation == FileOperation.altText.summary {
+      let notes = result.notes
+      // One description goes straight to the clipboard, ready to paste.
+      if notes.count == 1 {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(notes[0], forType: .string)
+      }
+      WindowManager.shared.openTool("alt-text", title: "Alt Text") {
+        QRResultsView(codes: notes, kind: .altText)
+      }
+    } else if !result.notes.isEmpty {
       let codes = result.notes
       WindowManager.shared.openTool("qr", title: "QR Codes") { QRResultsView(codes: codes) }
     } else if origin == .overlay {
-      Toast.show(result: result, operation: operation)
+      var undo: (@MainActor () -> Void)?
+      if !result.renames.isEmpty { undo = { AppModel.shared.undoRenames() } }
+      Toast.show(result: result, operation: operation, undo: undo)
+    }
+  }
+
+  /// Puts files renamed by the last action back, and says so.
+  func undoRenames() {
+    guard let result = lastResult, !result.renames.isEmpty else { return }
+    let problems = AIOps.undo(result.renames)
+    retarget(result.renames.map { .init(from: $0.to, to: $0.from) })
+    var undone = result
+    undone.outputs = result.outputs.filter { out in !result.renames.contains { $0.to == out } }
+    undone.renames = []
+    lastResult = undone
+    if problems.isEmpty {
+      Toast.show("Restored \(result.renames.count) name\(result.renames.count == 1 ? "" : "s")", outputs: [])
+    } else {
+      Toast.show(problems.joined(separator: "; "), outputs: [], isError: true)
+    }
+  }
+
+  /// Keeps queued files pointing at their new names.
+  private func retarget(_ renames: [OperationResult.Rename]) {
+    for rename in renames {
+      if let index = files.firstIndex(where: { $0.url.standardizedFileURL == rename.from.standardizedFileURL }
+      ),
+        let reloaded = try? DroppedFile.load(rename.to)
+      {
+        files[index] = reloaded
+      }
     }
   }
 
@@ -458,5 +556,18 @@ final class AppModel: ObservableObject {
 
   nonisolated static func message(for error: Error, fallback: String) -> String {
     (error as? LocalizedError)?.errorDescription ?? fallback
+  }
+}
+
+/// A value guarded by a lock, for state read off the main thread.
+final class LockedValue<Value: Sendable>: @unchecked Sendable {
+  private let lock = NSLock()
+  private var stored: Value
+
+  init(_ value: Value) { stored = value }
+
+  var value: Value {
+    get { lock.withLock { stored } }
+    set { lock.withLock { stored = newValue } }
   }
 }

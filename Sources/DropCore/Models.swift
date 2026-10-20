@@ -243,6 +243,16 @@ public enum FileKind: Equatable, Sendable {
     }
   }
 
+  /// Documents whose text the app reads itself: text documents, PDFs and CSV/TSV tables
+  /// (not spreadsheets or slide decks, which are only rendered to PDF).
+  public var hasReadableText: Bool {
+    switch self {
+    case .document, .pdf: true
+    case .office(let format): format.isTable
+    default: false
+    }
+  }
+
   public var isDocumentLike: Bool {
     switch self {
     case .document, .office, .pdf: true
@@ -365,6 +375,14 @@ public enum FileOperation: Codable, Equatable, Sendable {
   case extractArchive
   /// Compress all the files into one zip.
   case zipFiles
+  /// Speech in audio or video as a subtitle file (on-device transcription).
+  case transcribe(SubtitleFormat)
+  /// A Markdown summary of a document, PDF or recording (Apple Intelligence).
+  case summarize
+  /// Alt text for images, shown and copied (Apple Intelligence plus Vision).
+  case altText
+  /// Rename each file from what's in it (Apple Intelligence). Contents are untouched.
+  case renameByContent
 
   /// Whether the operation is long-running media work.
   public var isMedia: Bool {
@@ -373,7 +391,8 @@ public enum FileOperation: Codable, Equatable, Sendable {
       .extractSubtitles,
       .convertAudio,
       .editAudio, .audioVisualizer, .convertDocument, .pdfToImages, .pdfToTIFF,
-      .pdfToCBZ, .sheetsToCSV, .extractArchive, .zipFiles:
+      .pdfToCBZ, .sheetsToCSV, .extractArchive, .zipFiles, .transcribe, .summarize, .altText,
+      .renameByContent:
       true
     default: false
     }
@@ -420,6 +439,10 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .sheetsToCSV: "Save sheets as CSV"
     case .extractArchive: "Extract archive"
     case .zipFiles: "Zip"
+    case .transcribe(let format): "Transcribe to \(format.displayName)"
+    case .summarize: "Summarize"
+    case .altText: "Write alt text"
+    case .renameByContent: "Rename from content"
     }
   }
 }
@@ -596,6 +619,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
   public var checkForUpdates: Bool
   /// Saved chains of steps, offered on the Actions wheel.
   public var recipes: [Recipe]
+  /// Folders whose new files are processed automatically.
+  public var watchFolders: [WatchFolder]
 
   public static let defaultTerminal = "com.apple.Terminal"
 
@@ -622,7 +647,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     formatSettings: [String: FormatSettings] = [:],
     wheelTheme: WheelTheme = .dark,
     checkForUpdates: Bool = false,
-    recipes: [Recipe] = []
+    recipes: [Recipe] = [],
+    watchFolders: [WatchFolder] = []
   ) {
     self.defaultFormat = defaultFormat.isWritable ? defaultFormat : .png
     self.quality = Self.clampQuality(quality)
@@ -638,6 +664,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     self.wheelTheme = wheelTheme
     self.checkForUpdates = checkForUpdates
     self.recipes = recipes
+    self.watchFolders = watchFolders
   }
 
   public static func clampQuality(_ value: Double) -> Double {
@@ -668,6 +695,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     wheelTheme = (try? c.decode(WheelTheme.self, forKey: .wheelTheme)) ?? defaults.wheelTheme
     checkForUpdates = (try? c.decode(Bool.self, forKey: .checkForUpdates)) ?? defaults.checkForUpdates
     recipes = (try? c.decode([Recipe].self, forKey: .recipes)) ?? defaults.recipes
+    watchFolders = (try? c.decode([WatchFolder].self, forKey: .watchFolders)) ?? []
   }
 }
 

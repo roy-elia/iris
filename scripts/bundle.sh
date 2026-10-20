@@ -27,6 +27,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>LSUIElement</key><true/>
   <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
   <key>NSHighResolutionCapable</key><true/>
+  <key>NSSpeechRecognitionUsageDescription</key><string>Transcribe turns speech in your audio and video into subtitles, on this Mac.</string>
 </dict>
 </plist>
 PLIST

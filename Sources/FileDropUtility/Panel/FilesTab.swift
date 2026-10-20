@@ -169,7 +169,7 @@ struct ResultCard: View {
     VStack(alignment: .leading, spacing: 6) {
       if !result.outputs.isEmpty {
         Label(
-          "\(operation): saved \(result.outputs.count) file\(result.outputs.count == 1 ? "" : "s")",
+          "\(operation): \(result.renames.isEmpty ? "saved" : "renamed") \(result.outputs.count) file\(result.outputs.count == 1 ? "" : "s")",
           systemImage: "checkmark.circle.fill"
         )
         .foregroundStyle(Color.accentColor)
@@ -185,6 +185,11 @@ struct ResultCard: View {
             .buttonStyle(.glass)
             .accessibilityIdentifier("airdrop")
           ShareButton(items: result.outputs).fixedSize()
+          if !result.renames.isEmpty {
+            Button("Undo Rename") { model.undoRenames() }
+              .buttonStyle(.glass)
+              .accessibilityIdentifier("undoRename")
+          }
         }
       }
       ForEach(Array(result.failures.enumerated()), id: \.offset) { _, failure in

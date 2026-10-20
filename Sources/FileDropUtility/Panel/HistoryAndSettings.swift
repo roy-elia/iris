@@ -105,6 +105,7 @@ struct SettingsTab: View {
       }
 
       RecipesSection()
+      WatchFoldersSection()
       Section("Wheels") {
         Toggle("Wheels while dragging", isOn: $model.settings.wheelTriggerEnabled)
           .accessibilityIdentifier("wheelTrigger")

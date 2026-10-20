@@ -124,6 +124,11 @@ enum WheelCommand: Equatable {
   case zip
   case move
   case terminal
+  /// On-device AI: subtitles from speech, a written summary, alt text, a name from the content.
+  case transcribe
+  case summarize
+  case altText
+  case renameByContent
   /// A saved recipe, by id.
   case recipe(UUID)
 }
@@ -140,6 +145,28 @@ struct WheelItem: Identifiable, Equatable {
 }
 
 extension WheelKind {
+  /// Why the language-model segments can't run (Apple Intelligence off, model downloading…).
+  static var aiReason: String? { AIOps.languageModelProblem }
+
+  static func transcribeItem(_ prefix: String) -> WheelItem {
+    WheelItem(
+      id: "\(prefix)-transcribe", title: "Transcribe", systemImage: "captions.bubble.fill",
+      command: .transcribe)
+  }
+
+  static func summarizeItem(_ prefix: String, reason: String? = nil) -> WheelItem {
+    WheelItem(
+      id: "\(prefix)-summarize", title: "Summarize", systemImage: "text.badge.star", command: .summarize,
+      disabledReason: reason ?? aiReason)
+  }
+
+  static func renameItem(_ prefix: String, reason: String? = nil) -> WheelItem {
+    WheelItem(
+      id: "\(prefix)-rename", title: "Rename", systemImage: "character.cursor.ibeam",
+      command: .renameByContent,
+      disabledReason: reason ?? aiReason)
+  }
+
   /// Segments when every dropped file is a video.
   func videoItems(count: Int) -> [WheelItem] {
     let oneVideo: String? = count == 1 ? nil : "One video at a time"
@@ -169,6 +196,7 @@ extension WheelKind {
         tool(.speed, oneVideo), tool(.frames, oneVideo), tool(.crop, oneVideo), tool(.redact, oneVideo),
         WheelItem(
           id: "v-subtitles", title: "Subtitles", systemImage: "captions.bubble", command: .extractSubtitles),
+        Self.transcribeItem("v"), Self.summarizeItem("v"),
       ]
     case .actions:
       return items(for: [])
@@ -192,7 +220,8 @@ extension WheelKind {
           command: .audioEditor(tool),
           disabledReason: oneFile)
       } + [
-        WheelItem(id: "a-visualizer", title: "Visualizer", systemImage: "waveform", command: .visualizer)
+        WheelItem(id: "a-visualizer", title: "Visualizer", systemImage: "waveform", command: .visualizer),
+        Self.transcribeItem("a"), Self.summarizeItem("a"),
       ]
     case .actions:
       return items(for: [])
@@ -209,9 +238,11 @@ extension WheelKind {
         systemImage: nil, command: .convertDocument(output),
         disabledReason: output.unavailableReason ?? problem)
     }
+    let pdfsOnly: String? = allPDFs ? nil : "PDFs only"
+    let readable: String? = files.allSatisfy(\.kind.hasReadableText) ? nil : "Not for spreadsheets or slides"
     let merge = WheelItem(
       id: "d-merge", title: "Merge", systemImage: "doc.on.doc", command: .toPDF,
-      disabledReason: files.count >= 2 ? nil : "Two or more PDFs")
+      disabledReason: pdfsOnly ?? (files.count >= 2 ? nil : "Two or more PDFs"))
     switch self {
     case .convert:
       if allPDFs {
@@ -248,13 +279,15 @@ extension WheelKind {
       return [
         WheelItem(
           id: "d-organize", title: "Organize", systemImage: "square.grid.3x3.square", command: .organizePDF,
-          disabledReason: files.count == 1 ? nil : "One PDF at a time"),
+          disabledReason: pdfsOnly ?? (files.count == 1 ? nil : "One PDF at a time")),
         WheelItem(
-          id: "d-split", title: "Split", systemImage: "rectangle.split.3x1", command: .splitPDF),
+          id: "d-split", title: "Split", systemImage: "rectangle.split.3x1", command: .splitPDF,
+          disabledReason: pdfsOnly),
         WheelItem(
           id: "d-compress", title: "Compress", systemImage: "arrow.down.right.and.arrow.up.left",
-          command: .compress),
+          command: .compress, disabledReason: pdfsOnly),
         merge,
+        Self.summarizeItem("d", reason: readable), Self.renameItem("d", reason: readable),
       ]
     case .actions:
       return items(for: [DroppedFile]())
@@ -281,7 +314,7 @@ extension WheelKind {
     let allVideos = known && files.allSatisfy(\.kind.isVideo)
     if allVideos { return videoItems(count: files.count) }
     if known && files.allSatisfy(\.kind.isAudio) { return audioItems(count: files.count) }
-    if known && files.allSatisfy(\.kind.isDocumentLike) && (self == .convert || (self == .tools && allPDFs)) {
+    if known && files.allSatisfy(\.kind.isDocumentLike) && self != .actions {
       return documentItems(for: files)
     }
     if known && self == .convert && files.allSatisfy({ if case .data = $0.kind { true } else { false } }) {
@@ -359,6 +392,10 @@ extension WheelKind {
         WheelItem(
           id: "edit", title: "Adjust", systemImage: EditorTool.adjust.systemImage, command: .edit(.adjust),
           disabledReason: oneImage),
+        WheelItem(
+          id: "alttext", title: "Alt Text", systemImage: "text.below.photo", command: .altText,
+          disabledReason: imagesOnly),
+        Self.renameItem("i", reason: imagesOnly),
       ]
     case .actions:
       return [

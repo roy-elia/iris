@@ -196,7 +196,7 @@ enum Toast {
   private static var panel: NSPanel?
   private static var hideWork: DispatchWorkItem?
 
-  static func show(result: OperationResult, operation: String) {
+  static func show(result: OperationResult, operation: String, undo: (@MainActor () -> Void)? = nil) {
     if result.outputs.isEmpty, let failure = result.failures.first {
       show(
         failure.file.isEmpty ? failure.message : "\(failure.file): \(failure.message)", outputs: [],
@@ -204,12 +204,17 @@ enum Toast {
     } else {
       let count = result.outputs.count
       let extra = result.failures.isEmpty ? "" : " · \(result.failures.count) failed"
-      show("\(operation): saved \(count) file\(count == 1 ? "" : "s")\(extra)", outputs: result.outputs)
+      let verb = result.renames.isEmpty ? "saved" : "renamed"
+      show(
+        "\(operation): \(verb) \(count) file\(count == 1 ? "" : "s")\(extra)", outputs: result.outputs,
+        undo: undo)
     }
   }
 
-  static func show(_ message: String, outputs: [URL], isError: Bool = false) {
-    let view = ToastView(message: message, outputs: outputs, isError: isError)
+  static func show(
+    _ message: String, outputs: [URL], isError: Bool = false, undo: (@MainActor () -> Void)? = nil
+  ) {
+    let view = ToastView(message: message, outputs: outputs, isError: isError, undo: undo)
       .padding(DesignTokens.Spacing.inset)
     let host = NSHostingView(rootView: view)
     let size = host.fittingSize
@@ -240,7 +245,8 @@ enum Toast {
     hideWork?.cancel()
     let work = DispatchWorkItem { MainActor.assumeIsolated { panel.orderOut(nil) } }
     hideWork = work
-    DispatchQueue.main.asyncAfter(deadline: .now() + 3.5, execute: work)
+    // Longer when there's something to undo, so there's time to reach the button.
+    DispatchQueue.main.asyncAfter(deadline: .now() + (undo == nil ? 3.5 : 8), execute: work)
   }
 }
 
@@ -248,6 +254,7 @@ private struct ToastView: View {
   let message: String
   let outputs: [URL]
   let isError: Bool
+  let undo: (@MainActor () -> Void)?
 
   var body: some View {
     HStack(spacing: 10) {
@@ -261,6 +268,11 @@ private struct ToastView: View {
           .buttonStyle(.borderless)
           .fontWeight(.semibold)
           .accessibilityLabel("Show in Finder")
+      }
+      if let undo {
+        Button("Undo") { undo() }
+          .buttonStyle(.borderless)
+          .fontWeight(.semibold)
       }
     }
     .padding(.horizontal, 16)

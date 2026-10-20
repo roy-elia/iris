@@ -6,3 +6,4 @@ dist/
 .env
 samples/
 Vendor/
+test-drop/
