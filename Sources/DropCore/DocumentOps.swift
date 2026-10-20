@@ -832,6 +832,33 @@ public enum IWorkOps {
       "\(url.lastPathComponent) has no saved preview. Opening it needs Pages, Keynote or Numbers.")
   }
 
+  /// Whether an iWork file holds the document itself, not only a saved preview. Keynote
+  /// stalls on a preview-only package (its open times out after two minutes behind an
+  /// Open dialog), so those skip the app. Other formats (pptx, xlsx, …) are always handed
+  /// to the app.
+  static func hasDocumentData(_ url: URL) -> Bool {
+    guard ["key", "numbers", "pages"].contains(url.pathExtension.lowercased()) else { return true }
+    let markers = ["Index.zip", "Index", "index.apxl", "index.apxl.gz", "index.xml", "index.xml.gz"]
+    var isDir: ObjCBool = false
+    guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else { return false }
+    if isDir.boolValue {
+      return markers.contains { FileManager.default.fileExists(atPath: url.appendingPathComponent($0).path) }
+    }
+    // A single-file document is a zip; look for its Index entries.
+    let p = Process()
+    p.executableURL = URL(fileURLWithPath: "/usr/bin/zipinfo")
+    p.arguments = ["-1", url.path]
+    let pipe = Pipe()
+    p.standardOutput = pipe
+    p.standardError = FileHandle.nullDevice
+    guard (try? p.run()) != nil else { return false }
+    let names = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+    p.waitUntilExit()
+    return names.split(separator: "\n").contains { line in
+      markers.contains { line == $0 || line.hasPrefix("\($0)/") }
+    }
+  }
+
   /// AppleScript that opens argv[1] in `app` and exports it to argv[2] as PDF.
   static func exportScript(_ app: IWorkApp) -> [String] {
     [
@@ -854,14 +881,25 @@ public enum IWorkOps {
   public static func exportPDF(
     _ source: URL, app: IWorkApp?, powerPoint: Bool = false, destination: URL
   ) async throws {
-    if let app, app.isInstalled {
+    // An app that can't open the file (damaged, or only a saved preview) falls through to
+    // the next way, and its name is kept for the error if none works.
+    var refusedBy: String?
+    if let app, app.isInstalled, hasDocumentData(source) {
       let args = exportScript(app).flatMap { ["-e", $0] } + [source.path, destination.path]
-      try await SystemProcess.run("/usr/bin/osascript", args)
-      return
+      do {
+        try await SystemProcess.run("/usr/bin/osascript", args)
+        return
+      } catch {
+        refusedBy = app.rawValue
+      }
     }
     if powerPoint && PowerPoint.isInstalled {
-      try await PowerPoint.exportPDF(source, destination: destination)
-      return
+      do {
+        try await PowerPoint.exportPDF(source, destination: destination)
+        return
+      } catch {
+        refusedBy = refusedBy ?? "PowerPoint"
+      }
     }
     if let preview = try? previewPDF(of: source), preview.write(to: destination) { return }
     // Quick Look renders the first page or sheet.
@@ -872,6 +910,9 @@ public enum IWorkOps {
       "/usr/bin/qlmanage", ["-t", "-s", "2000", "-o", dir.path, source.path], timeout: quickLookTimeout)
     let pngs = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
     guard let png = pngs.first(where: { $0.pathExtension == "png" }) else {
+      if let refusedBy {
+        throw DropError.wrongInput("\(refusedBy) couldn't open \(source.lastPathComponent).")
+      }
       let needed = app?.rawValue ?? "Pages"
       throw DropError.wrongInput("\(source.lastPathComponent) needs \(needed) to convert.")
     }

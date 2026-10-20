@@ -393,7 +393,30 @@ enum DocFixtures {
     }
   }
 
-  @Test(.enabled(if: !IWorkApp.keynote.isInstalled)) func savesPresentationSlidesAsImages() async throws {
+  @Test func tellsDocumentsFromPreviewOnlyPackages() async throws {
+    let dir = try TempDir()
+    let previewOnly = dir.file("Preview.key")
+    try FileManager.default.createDirectory(
+      at: previewOnly.appendingPathComponent("QuickLook"), withIntermediateDirectories: true)
+    #expect(!IWorkOps.hasDocumentData(previewOnly))
+    let package = dir.file("Real.key")
+    try FileManager.default.createDirectory(
+      at: package.appendingPathComponent("Index"), withIntermediateDirectories: true)
+    #expect(IWorkOps.hasDocumentData(package))
+    // A single-file document is a zip holding Index/…
+    let src = dir.file("src")
+    try FileManager.default.createDirectory(
+      at: src.appendingPathComponent("Index"), withIntermediateDirectories: true)
+    try Data("x".utf8).write(to: src.appendingPathComponent("Index/Document.iwa"))
+    let zipped = dir.file("Flat.numbers")
+    try await SystemProcess.run("/usr/bin/zip", ["-qr", zipped.path, "Index"], in: src)
+    #expect(IWorkOps.hasDocumentData(zipped))
+    #expect(IWorkOps.hasDocumentData(dir.file("Deck.pptx")))
+  }
+
+  /// The package holds only a saved preview, so this also covers Keynote refusing it
+  /// (when installed) and the fallback to that preview.
+  @Test func savesPresentationSlidesAsImages() async throws {
     let dir = try TempDir()
     let deck = dir.file("Deck.key")
     try FileManager.default.createDirectory(
