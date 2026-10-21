@@ -55,23 +55,23 @@ struct StatusMenu: View {
       Button(floats.stacks.count == 1 ? "Close Float" : "Close All Floats") { floats.closeAll() }
     }
     Divider()
-    Button("Open File Drop Utility") { WindowManager.shared.openMain() }
+    Button("Open Iris") { WindowManager.shared.openMain() }
     Button("Settings…") { WindowManager.shared.openSettings() }
       .keyboardShortcut(",")
     Button("Getting Started…") { WindowManager.shared.openOnboarding() }
-    Button("About File Drop Utility") {
+    Button("About Iris") {
       NSApp.activate()
       NSApp.orderFrontStandardAboutPanel(nil)
     }
     Divider()
-    Button("Quit File Drop Utility") { NSApp.terminate(nil) }
+    Button("Quit Iris") { NSApp.terminate(nil) }
       .keyboardShortcut("q")
   }
 
   private var statusText: String {
-    guard model.isRunning else { return "File Drop Utility is ready" }
-    guard let progress = model.progress, progress > 0 else { return "File Drop Utility is working…" }
-    return "File Drop Utility is working · \(Int(progress * 100))%"
+    guard model.isRunning else { return "Iris is ready" }
+    guard let progress = model.progress, progress > 0 else { return "Iris is working…" }
+    return "Iris is working · \(Int(progress * 100))%"
   }
 }
 

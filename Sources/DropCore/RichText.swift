@@ -75,6 +75,7 @@ public enum RichText {
         let pdf = try IWorkOps.previewPDF(of: url)
         return try PDFText.attributed(pdf, name: name)
       case .textClipping: return try ClippingOps.read(url)
+      case .link: return plain(QROps.payload(for: url) ?? "")
       case .docx, .doc, .odt, .rtf, .rtfd:
         do {
           return try NSAttributedString(url: url, options: [:], documentAttributes: nil)

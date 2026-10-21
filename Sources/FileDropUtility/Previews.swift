@@ -166,12 +166,14 @@ import SwiftUI
       ("Panel-Files", CGSize(width: 424, height: 700)),
       ("Panel-History", CGSize(width: 424, height: 520)),
       ("Panel-Settings", CGSize(width: 460, height: 680)),
-      ("Wheel-Convert", CGSize(width: 420, height: 420)),
-      ("Wheel-Tools", CGSize(width: 420, height: 420)),
-      ("Wheel-Actions", CGSize(width: 420, height: 420)),
-      ("Wheel-Recipes", CGSize(width: 420, height: 420)),
+      ("Wheel-Convert", CGSize(width: 274, height: 274)),
+      ("Wheel-Tools", CGSize(width: 274, height: 274)),
+      ("Wheel-Actions", CGSize(width: 274, height: 274)),
+      ("Wheel-Recipes", CGSize(width: 274, height: 274)),
       ("Recipe-Editor", CGSize(width: 460, height: 480)),
-      ("Wheel-DropHover", CGSize(width: 420, height: 420)),
+      ("Wheel-DropHover", CGSize(width: 274, height: 274)),
+      ("Wheel-HoverCopyPath", CGSize(width: 274, height: 274)),
+      ("Wheel-HoverMarkdown", CGSize(width: 274, height: 274)),
       ("Onboarding-Welcome", CGSize(width: 820, height: 520)),
       ("Onboarding-Demo", CGSize(width: 820, height: 520)),
       ("Onboarding-Tools", CGSize(width: 820, height: 520)),
@@ -187,29 +189,29 @@ import SwiftUI
       ("Tool-Metadata", CGSize(width: 464, height: 520)),
       ("Tool-Background", CGSize(width: 404, height: 230)),
       ("Tool-Frame", CGSize(width: 464, height: 560)),
-      ("Tool-Collage", CGSize(width: 484, height: 600)),
+      ("Tool-Collage", CGSize(width: 484, height: 484)),
       ("Tool-QR", CGSize(width: 444, height: 230)),
       ("Tool-Join", CGSize(width: 444, height: 300)),
       ("Tool-Resize", CGSize(width: 424, height: 300)),
       ("Tool-SplitPDF", CGSize(width: 424, height: 300)),
-      ("Wheel-VideoTools", CGSize(width: 420, height: 420)),
-      ("Wheel-VideoConvert", CGSize(width: 420, height: 420)),
+      ("Wheel-VideoTools", CGSize(width: 274, height: 274)),
+      ("Wheel-VideoConvert", CGSize(width: 274, height: 274)),
       ("Video-Trim", CGSize(width: 1000, height: 640)),
       ("Video-Split", CGSize(width: 1000, height: 640)),
       ("Video-Redact", CGSize(width: 1000, height: 640)),
-      ("Wheel-AudioConvert", CGSize(width: 420, height: 420)),
-      ("Wheel-AudioTools", CGSize(width: 420, height: 420)),
+      ("Wheel-AudioConvert", CGSize(width: 274, height: 274)),
+      ("Wheel-AudioTools", CGSize(width: 274, height: 274)),
       ("Audio-Trim", CGSize(width: 960, height: 440)),
       ("Audio-Bleep", CGSize(width: 960, height: 440)),
       ("Audio-Channels", CGSize(width: 960, height: 440)),
       ("Tool-Visualizer", CGSize(width: 424, height: 340)),
-      ("Wheel-DocConvert", CGSize(width: 420, height: 420)),
-      ("Wheel-ThemeLight", CGSize(width: 420, height: 420)),
-      ("Wheel-ToolsOnScreen", CGSize(width: 484, height: 484)),
-      ("Wheel-ThemeTinted", CGSize(width: 420, height: 420)),
-      ("Wheel-PDFConvert", CGSize(width: 420, height: 420)),
-      ("Wheel-PDFTools", CGSize(width: 420, height: 420)),
-      ("PDF-Organizer", CGSize(width: 900, height: 600)),
+      ("Wheel-DocConvert", CGSize(width: 274, height: 274)),
+      ("Wheel-ThemeLight", CGSize(width: 274, height: 274)),
+      ("Wheel-ToolsOnScreen", CGSize(width: 340, height: 340)),
+      ("Wheel-ThemeTinted", CGSize(width: 274, height: 274)),
+      ("Wheel-PDFConvert", CGSize(width: 274, height: 274)),
+      ("Wheel-PDFTools", CGSize(width: 274, height: 274)),
+      ("PDF-Organizer", CGSize(width: 900, height: 484)),
     ]
 
     @ViewBuilder
@@ -225,6 +227,9 @@ import SwiftUI
       case "Recipe-Editor":
         RecipeEditor(recipe: sampleRecipes[0], onSave: { _ in }, onCancel: {})
       case "Wheel-DropHover": dropHover(model)
+      case "Wheel-HoverCopyPath": hovered(.actions, model.files, title: "Copy Path")
+      case "Wheel-HoverMarkdown":
+        hovered(.convert, PreviewData.documentFiles(["Notes.docx"]), title: "Markdown")
       case "MenuBar-Icon":
         // Idle, just started, a third done and nearly done, enlarged so the ring is visible.
         HStack(spacing: 28) {
@@ -378,7 +383,7 @@ import SwiftUI
     static let sampleRecipes = [
       Recipe(
         name: "Web-ready images",
-        steps: [.action(.resize(.maxEdge(1600))), .action(.convertImage(.jpeg)), .rename("{name}-web")]),
+        steps: [.action(.resize(.maxEdge(1484))), .action(.convertImage(.jpeg)), .rename("{name}-web")]),
       Recipe(name: "Shrink for email", steps: [.action(.resize(.percent(50))), .action(.compress)]),
     ]
 
@@ -407,6 +412,16 @@ import SwiftUI
       ) {
         _, _ in
       }
+      .padding(DesignTokens.Spacing.inset)
+    }
+
+    /// A wheel with the petal titled `title` lit, so the centre pill shows a long name.
+    private static func hovered(_ kind: WheelKind, _ files: [DroppedFile], title: String) -> some View {
+      let items = kind.items(for: files)
+      return RadialWheel(
+        kind: kind, items: items, centerText: "", mode: .drop,
+        hotID: items.first { $0.title == title }?.id
+      ) { _, _ in }
       .padding(DesignTokens.Spacing.inset)
     }
   }

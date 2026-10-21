@@ -100,6 +100,10 @@ public struct Processor: Sendable {
       {
         return "Choose a background image."
       }
+    case .makeQRCode:
+      if !files.allSatisfy({ QROps.canMake(from: $0.kind) }) {
+        return "QR codes are made from text and link files."
+      }
     case .edit:
       if files.count != 1 || !files[0].kind.isImage { return "Edit works on one image at a time." }
     case .compress:
@@ -407,6 +411,22 @@ public struct Processor: Sendable {
       let out = claim(outputDirectory(for: files[0].url, in: &result).appendingPathComponent("Collage.png"))
       await record(&result, file: nil, output: out) {
         try ImageOps.write(CollageOps.render(files.map(\.url), recipe: recipe), as: .png, quality: 1, to: out)
+      }
+
+    case .makeQRCode:
+      for file in files {
+        guard QROps.canMake(from: file.kind), let text = QROps.payload(for: file.url) else {
+          result.failures.append(
+            .init(
+              file: file.name,
+              message: "Only text and link files shorter than \(QROps.maxPayloadLength) characters become QR codes."
+            ))
+          continue
+        }
+        let out = target(file, suffix: "QR", ext: "png")
+        await record(&result, file: file, output: out) {
+          try ImageOps.write(QROps.make(text), as: .png, quality: 1, to: out)
+        }
       }
 
     case .readQRCodes:

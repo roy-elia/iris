@@ -76,11 +76,12 @@ struct GlassToolPicker<Tool: Hashable & Identifiable & Sendable>: View {
   let systemImage: (Tool) -> String
   var identifier: (Tool) -> String? = { _ in nil }
 
-  @Namespace private var namespace
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
-    GlassEffectContainer(spacing: 0) {
+    // No shared GlassEffectContainer: inside one, neighbouring capsules melt together at
+    // their edges. Each tool is its own capsule, and the selection change still animates.
+    Group {
       HStack(spacing: DesignTokens.Spacing.tight) {
         ForEach(tools) { tool in
           let selected = tool == selection
@@ -102,7 +103,6 @@ struct GlassToolPicker<Tool: Hashable & Identifiable & Sendable>: View {
               ? Glass.regular.tint(DesignTokens.Palette.teal).interactive() : Glass.regular.interactive(),
             in: Capsule()
           )
-          .glassEffectID(tool, in: namespace)
           .accessibilityAddTraits(selected ? .isSelected : [])
           .accessibilityIdentifier(identifier(tool) ?? title(tool))
         }

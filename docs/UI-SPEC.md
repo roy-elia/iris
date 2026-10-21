@@ -1,6 +1,6 @@
 # UI design specification: bubbly Liquid Glass
 
-How every surface of File Drop Utility looks and behaves. It covers three requirements:
+How every surface of Iris looks and behaves. It covers three requirements:
 - Apple's menus are used exactly as Apple ships them.
 - The interface is bubbly.
 - The interface is transparent, reflective and liquid.
@@ -21,7 +21,7 @@ The "[FILL: Apple menu design guidelines]" input is filled by Apple's Human Inte
 
 | Where | Component | Contents |
 |---|---|---|
-| Menu-bar icon | `MenuBarExtra("File Drop Utility", systemImage:) { … }.menuBarExtraStyle(.menu)` | Status line (disabled, SF Symbol), modifier hints (disabled), separator, Settings… ⌘,, Getting Started…, About, separator, Quit ⌘Q. While a job runs, the status line reads "Working · 42%". |
+| Menu-bar icon | `MenuBarExtra("Iris", systemImage:) { … }.menuBarExtraStyle(.menu)` | Status line (disabled, SF Symbol), modifier hints (disabled), separator, Settings… ⌘,, Getting Started…, About, separator, Quit ⌘Q. While a job runs, the status line reads "Working · 42%". |
 | File rows, Float items, history rows | `.contextMenu { … }` | Open, Show in Finder, Copy, Copy Path, Share ▸ (`ShareLink`), Remove. |
 | Choices in Settings and editors (format, preset, terminal app, wheel theme) | `Picker(…).pickerStyle(.menu)` | System pop-up button with a native menu. |
 | Overflow actions in a window | `Menu { … } label: { Image(systemName: "ellipsis") }` with `.menuStyle(.button)` and `.buttonStyle(.glass)` | Native pull-down from a round glass button. |

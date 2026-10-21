@@ -8,6 +8,8 @@ import Foundation
 /// - A drag starts when the drag pasteboard changes while the button is held.
 /// - While a drag is active, holding a wheel's modifier opens that wheel at the pointer;
 ///   switching modifiers switches the wheel in place.
+/// - Pressing the open wheel's own modifier a second time (let go, then press again) flips
+///   to its next page.
 /// - Letting go of the modifier closes the wheel after a short grace period, unless the
 ///   drag is over the wheel (so you can release the key once you're on a segment).
 /// - Escape closes the wheel for the rest of that drag.
@@ -43,6 +45,8 @@ public struct DragTrigger<Kind: Equatable>: Sendable where Kind: Sendable {
     /// Open the wheel at the pointer, or switch the open one to this kind.
     case show(Kind)
     case hide
+    /// The wheel's modifier was let go and pressed again: show the wheel's next page.
+    case nextPage
     /// The button was released: close once the drop has had time to land.
     case hideAfterDrop
   }
@@ -55,6 +59,8 @@ public struct DragTrigger<Kind: Equatable>: Sendable where Kind: Sendable {
   private var wasButtonDown = false
   private var wasEscapeDown = false
   private var escapedThisDrag = false
+  /// The open wheel's modifier has been let go since it opened or last flipped.
+  private var modifierReleased = false
   private var changeCountAtMouseDown: Int?
   private var lastTriggerTime: TimeInterval = 0
 
@@ -87,6 +93,7 @@ public struct DragTrigger<Kind: Equatable>: Sendable where Kind: Sendable {
       escapedThisDrag = false
       if shownKind != nil {
         shownKind = nil
+        modifierReleased = false
         return .hideAfterDrop
       }
       return .none
@@ -110,12 +117,18 @@ public struct DragTrigger<Kind: Equatable>: Sendable where Kind: Sendable {
       lastTriggerTime = s.time
       if kind != shownKind {
         shownKind = kind
+        modifierReleased = false
         return .show(kind)
+      }
+      if modifierReleased {
+        modifierReleased = false
+        return .nextPage
       }
       return .none
     }
 
     if shownKind != nil {
+      modifierReleased = true
       if s.dragInsideWheel {
         lastTriggerTime = s.time
       } else if s.time - lastTriggerTime > graceInterval {

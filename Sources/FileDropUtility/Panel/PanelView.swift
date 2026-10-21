@@ -73,12 +73,12 @@ struct MoreMenu: View {
     Menu {
       Button("Settings…") { WindowManager.shared.openSettings() }.keyboardShortcut(",")
       Button("Getting Started…") { WindowManager.shared.openOnboarding() }
-      Button("About File Drop Utility") {
+      Button("About Iris") {
         NSApp.activate()
         NSApp.orderFrontStandardAboutPanel(nil)
       }
       Divider()
-      Button("Quit File Drop Utility") { NSApp.terminate(nil) }.keyboardShortcut("q")
+      Button("Quit Iris") { NSApp.terminate(nil) }.keyboardShortcut("q")
     } label: {
       Label("More", systemImage: "ellipsis")
     }

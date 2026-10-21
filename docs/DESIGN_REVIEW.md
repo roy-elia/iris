@@ -1,4 +1,4 @@
-# Design review: File Drop Utility
+# Design review: Iris
 
 Reviewed 2026-10-20 against Apple's Human Interface Guidelines (apple-design skill), covering all
 44 screens rendered by `FileDropUtility --snapshot` in light, dark and both Increase Contrast
@@ -60,7 +60,7 @@ below the macOS minimum) and four High ones; what's left is Medium or below.
   Fix: Settings… (⌘,) in the menu-bar menu and the panel's More menu now opens a Settings
   window (`WindowManager.openSettings`, `SettingsWindow`). Minimise and zoom are dimmed, as
   `settings.md` advises. The main window keeps Files and History, and the menu-bar menu has a
-  new Open File Drop Utility item, so the old Settings… item no longer opens a window that isn't
+  new Open Iris item, so the old Settings… item no longer opens a window that isn't
   Settings.
 - **Medium (fixed): the busiest wheels were crowded.** The Tools wheel has 14 petals, and at
   10pt neighbouring labels (Compress / Metadata, QR Code / Collage) nearly touched.

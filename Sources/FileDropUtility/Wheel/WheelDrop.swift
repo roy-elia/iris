@@ -67,10 +67,19 @@ final class WheelDropState: ObservableObject {
   /// The pointer relative to the wheel's centre, y-down, while the drag is over it.
   @Published var pointer: CGPoint?
   @Published var introRevision = 0
+  /// The open wheel was swapped for another kind, so the new one skips its opening animation.
+  var switching = false
   /// The drag is over the wheel, so letting go of the modifier keeps it open.
   var isDragInside = false
 
-  var items: [WheelItem] { kind.items(for: files) }
+  /// Which page of the wheel is showing; modifier taps turn it.
+  @Published var page = 0
+
+  var pages: [[WheelItem]] { WheelPaging.pages(kind.items(for: files)) }
+  var items: [WheelItem] {
+    let all = pages
+    return all[min(page, all.count - 1)]
+  }
   var centerText: String {
     guard !files.isEmpty else { return "Drop" }
     return ByteCountFormatter.string(fromByteCount: files.reduce(0) { $0 + $1.byteSize }, countStyle: .file)
@@ -78,6 +87,7 @@ final class WheelDropState: ObservableObject {
 
   func reset() {
     files = []
+    page = 0
     hotID = nil
     pointer = nil
     isDragInside = false
@@ -93,8 +103,11 @@ struct DropWheelHost: View {
   var body: some View {
     RadialWheel(
       kind: state.kind, items: state.items, centerText: state.centerText, mode: .drop, hotID: state.hotID,
-      pointer: state.pointer, introRevision: state.introRevision
+      pointer: state.pointer, introRevision: state.introRevision, playsIntro: !state.switching,
+      pageIndex: min(state.page, state.pages.count - 1), pageCount: state.pages.count
     ) { _, _ in }
+    .id("\(state.kind.rawValue)-\(state.page)")
+    .transition(.opacity.combined(with: .scale(scale: 0.94)))
     .frame(width: diameter, height: diameter)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
@@ -155,8 +168,51 @@ final class WheelDropView: NSView {
     return id == nil ? [] : .copy
   }
 
+  /// What each dragged item looked like before the wheel shrank it, to restore on exit.
+  private var originalPreviews: [(frame: NSRect, components: [NSDraggingImageComponent])] = []
+
+  /// The source app (Finder) draws the file's icon and full name at the pointer, and the name
+  /// runs across the wheel's centre and petals. While the drag is over the wheel it shows a
+  /// compact icon-only chip instead, so the labels stay readable.
+  private func compactPreview(_ sender: NSDraggingInfo) {
+    originalPreviews = []
+    let side: CGFloat = 36
+    let location = convert(sender.draggingLocation, from: nil)
+    sender.draggingFormation = .none
+    sender.enumerateDraggingItems(
+      options: [], for: self, classes: [NSURL.self], searchOptions: [.urlReadingFileURLsOnly: true]
+    ) { [weak self] item, _, _ in
+      guard let self else { return }
+      self.originalPreviews.append((item.draggingFrame, item.imageComponents ?? []))
+      let icon: NSImage =
+        (item.item as? URL).map { NSWorkspace.shared.icon(forFile: $0.path) }
+        ?? NSWorkspace.shared.icon(for: .data)
+      let component = NSDraggingImageComponent(key: .icon)
+      component.contents = icon
+      component.frame = NSRect(x: 0, y: 0, width: side, height: side)
+      item.draggingFrame = NSRect(x: location.x - side / 2, y: location.y - side / 2, width: side, height: side)
+      item.imageComponentsProvider = { [component] }
+    }
+  }
+
+  private func restorePreview(_ sender: NSDraggingInfo?) {
+    guard let sender, !originalPreviews.isEmpty else { return }
+    var index = 0
+    sender.enumerateDraggingItems(
+      options: [], for: self, classes: [NSURL.self], searchOptions: [.urlReadingFileURLsOnly: true]
+    ) { [weak self] item, _, _ in
+      guard let self, index < self.originalPreviews.count else { return }
+      let original = self.originalPreviews[index]
+      index += 1
+      item.draggingFrame = original.frame
+      item.imageComponentsProvider = { original.components }
+    }
+    originalPreviews = []
+  }
+
   override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
     state.isDragInside = true
+    compactPreview(sender)
     // As the drop target, the pasteboard is readable now: show the files' size and
     // enable only the segments that fit them.
     if state.files.isEmpty {
@@ -169,6 +225,7 @@ final class WheelDropView: NSView {
   override func wantsPeriodicDraggingUpdates() -> Bool { false }
 
   override func draggingExited(_ sender: NSDraggingInfo?) {
+    restorePreview(sender)
     state.isDragInside = false
     state.hotID = nil
     state.pointer = nil

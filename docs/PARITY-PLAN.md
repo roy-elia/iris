@@ -1,6 +1,6 @@
-# Feature parity plan: File Drop Utility ↔ Tangerine 2.0.2
+# Feature parity plan: Iris ↔ Tangerine 2.0.2
 
-How File Drop Utility reaches the same capabilities as Tangerine, written from scratch.
+How Iris reaches the same capabilities as Tangerine, written from scratch.
 
 ## Where the feature list comes from
 
@@ -130,7 +130,7 @@ flowchart LR
 Principles:
 - **Native first, bundled tool as fallback.** Each op tries Apple frameworks first (AVFoundation, ImageIO, PDFKit, `NSAttributedString`, Vision). A bundled CLI is used only where macOS can't do the job: WebP encoding, Ogg/Opus/FLAC/WMA/WebM/MKV, MP3 encoding, rich metadata editing.
 - **Every tool is a recipe.** As `EditRecipe` does today, each editor produces a `Codable` recipe and DropCore renders it. That keeps the UI thin and makes everything testable without a window.
-- **One job engine.** Jobs report progress, can be cancelled and run concurrently, two at a time for media. Results land in history and the toast. Long media jobs show progress in the status-menu line ("File Drop Utility is working · 42%").
+- **One job engine.** Jobs report progress, can be cancelled and run concurrently, two at a time for media. Results land in history and the toast. Long media jobs show progress in the status-menu line ("Iris is working · 42%").
 
 ### 2.1 Job engine
 

@@ -95,6 +95,7 @@ enum WheelCommand: Equatable {
   case frame
   case collage
   case readQR
+  case makeQR
   case resize
   case grayscale
   case edit(EditorTool)
@@ -331,6 +332,12 @@ extension WheelKind {
     let allVideos = known && files.allSatisfy(\.kind.isVideo)
     if allVideos { return videoItems(count: files.count, files: files) }
     if known && files.allSatisfy(\.kind.isAudio) { return audioItems(count: files.count, files: files) }
+    if known && self != .actions && files.allSatisfy({ $0.kind == .document(.link) }) {
+      // A link has one conversion: into a QR code.
+      return [
+        WheelItem(id: "link-qr", title: "QR Code", systemImage: "qrcode", command: .makeQR)
+      ]
+    }
     if known && files.allSatisfy(\.kind.isDocumentLike) && self != .actions {
       return documentItems(for: files)
     }
@@ -430,6 +437,11 @@ extension WheelKind {
         WheelItem(id: "copypath", title: "Copy Path", systemImage: "doc.text", command: .copyPath),
         WheelItem(id: "zip", title: "Zip", systemImage: "doc.zipper", command: .zip),
         WheelItem(id: "terminal", title: "Terminal", systemImage: "terminal", command: .terminal),
+        // Text and links become a QR code image.
+        WheelItem(
+          id: "makeqr", title: "QR Code", systemImage: "qrcode", command: .makeQR,
+          disabledReason: known && !files.allSatisfy({ QROps.canMake(from: $0.kind) })
+            ? "Text and links only" : nil),
       ] + recipeItems
     }
   }

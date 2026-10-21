@@ -247,6 +247,8 @@ final class AppModel: ObservableObject {
       WindowManager.shared.openTool("collage", title: "Collage") { CollageView(urls: fileURLs) }
     case .readQR:
       run(.readQRCodes, on: targets, origin: origin)
+    case .makeQR:
+      run(.makeQRCode, on: targets, origin: origin)
     case .resize:
       WindowManager.shared.openTool("resize", title: "Resize") { ResizeView(urls: fileURLs) }
     case .grayscale:
@@ -335,7 +337,7 @@ final class AppModel: ObservableObject {
       return
     }
     guard !isRunning else {
-      Toast.show("File Drop Utility is busy. Try again when it finishes.", outputs: [], isError: true)
+      Toast.show("Iris is busy. Try again when it finishes.", outputs: [], isError: true)
       return
     }
     isRunning = true

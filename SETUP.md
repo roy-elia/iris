@@ -1,4 +1,4 @@
-# File Drop Utility: setup and status
+# Iris: setup and status
 
 A from-scratch macOS menu-bar file utility with a Liquid Glass interface. The layout takes
 structural cues from screenshots you supplied: an onboarding carousel, radial action wheels,
@@ -18,7 +18,7 @@ wording, code or bundled tools.
 
 ## Features
 
-**Menu-bar menu:** a native macOS menu with the status line ("File Drop Utility is ready"), the ⇧ ⌘ ⌃ hints, Settings… (⌘,), Getting Started…, About and Quit (⌘Q).
+**Menu-bar menu:** a native macOS menu with the status line ("Iris is ready"), the ⇧ ⌘ ⌃ hints, Settings… (⌘,), Getting Started…, About and Quit (⌘Q).
 
 **Main window** (from Settings…): a status header, a floating glass tab bar (Files, History, Settings), and floating glass cards.
 - **Files:** drop zone and Choose Files, the queued list with sizes, three wheel launchers, and the last result with Show in Finder, AirDrop and Share.
@@ -122,7 +122,7 @@ A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the
 - **Finder Quick Actions / Services** (right-click › Quick Actions or Services): Convert Image to PNG, Convert Image to JPEG, Convert Video to MP4, Convert to MP3, Convert Document to PDF, Compress Images, PDFs and Videos, Resize Image to 50%, and Make PDF from Files. They are NSServices entries written by `scripts/bundle.sh`; macOS launches the app if it isn't running, and the result shows as the usual toast and history entry. If an item is missing, turn it on in System Settings › Keyboard › Keyboard Shortcuts › Services › Files and Folders.
 - **Command line, for Shortcuts:** `FileDropUtility --run <action> [--out <folder>] <file>…` runs the same actions without the menu-bar app, prints each output path on its own line and exits non-zero if anything failed. `--list-actions` prints the action forms (`convert-image:png`, `convert-audio:mp3`, `convert-video:mp4`, `convert-document:pdf`, `compress`, `resize:50%` or `resize:1920`, `make-pdf`). In Shortcuts, add **Run Shell Script** with input passed as arguments:
   ```sh
-  "/Applications/File Drop Utility.app/Contents/MacOS/FileDropUtility" --run convert-image:png "$@"
+  "/Applications/Iris.app/Contents/MacOS/FileDropUtility" --run convert-image:png "$@"
   ```
   Both routes go through DropCore's `QuickAction` and `QuickActionRunner`, which submit the existing `Processor` operations to the `JobEngine`.
 
@@ -226,8 +226,8 @@ scripts/fetch-tools.sh          # once: download, verify and build the helpers i
 scripts/test.sh                 # 189 tests (tool tests skip if Vendor/out is missing)
 scripts/lint.sh                 # swift-format --strict
 swift build
-scripts/bundle.sh               # dist/File Drop Utility.app (ad-hoc signed), helpers included
-open "dist/File Drop Utility.app"
+scripts/bundle.sh               # dist/Iris.app (ad-hoc signed), helpers included
+open "dist/Iris.app"
 .build/debug/FileDropUtility --snapshot /tmp/fdu-snaps          # all screens × 5 appearances
 .build/debug/FileDropUtility --snapshot /tmp/fdu-snaps --only Editor
 ```

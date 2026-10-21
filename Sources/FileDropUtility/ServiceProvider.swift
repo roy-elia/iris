@@ -12,7 +12,7 @@ final class ServiceProvider: NSObject {
     _ pasteboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>
   ) {
     guard let spec = userData, let action = QuickAction(spec: spec) else {
-      error.pointee = "File Drop Utility doesn't know this action." as NSString
+      error.pointee = "Iris doesn't know this action." as NSString
       return
     }
     let urls =

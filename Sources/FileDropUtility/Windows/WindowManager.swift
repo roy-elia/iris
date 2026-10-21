@@ -12,7 +12,7 @@ final class WindowManager {
   private var settings: NSWindow?
 
   /// The main window: Files and History on floating glass, opened from the menu's
-  /// Open File Drop Utility item.
+  /// Open Iris item.
   func openMain() {
     if let main {
       main.makeKeyAndOrderFront(nil)
@@ -28,7 +28,7 @@ final class WindowManager {
         DispatchQueue.main.async { holder?.fitContent(size) }
       }
     let window = makeWindow(
-      content: view, size: NSSize(width: 424, height: 560), title: "File Drop Utility", toolbar: true)
+      content: view, size: NSSize(width: 424, height: 560), title: "Iris", toolbar: true)
     holder = window
     window.styleMask.remove(.resizable)
     window.isMovableByWindowBackground = true

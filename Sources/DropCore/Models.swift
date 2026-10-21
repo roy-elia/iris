@@ -352,6 +352,8 @@ public enum FileOperation: Codable, Equatable, Sendable {
   case frame(FrameRecipe)
   case collage(CollageRecipe)
   case readQRCodes
+  /// A QR code image for each text or link file.
+  case makeQRCode
   case resize(ResizeSpec)
   case grayscale
   case convertVideo(VideoOutput)
@@ -426,6 +428,7 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .frame: "Frame image"
     case .collage: "Create collage"
     case .readQRCodes: "Read QR codes"
+    case .makeQRCode: "Make QR code"
     case .resize(let spec): "Resize to \(spec.summary)"
     case .grayscale: "Grayscale"
     case .convertVideo(let output):

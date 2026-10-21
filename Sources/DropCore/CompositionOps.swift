@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreImage
 import Foundation
 import ImageIO
 import Vision
@@ -279,5 +280,65 @@ public enum QROps {
     try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
     let results = (request.results ?? []).sorted { $0.boundingBox.maxY > $1.boundingBox.maxY }
     return results.compactMap(\.payloadStringValue)
+  }
+
+  /// The longest text a QR code made here carries; longer text stays scannable only at sizes
+  /// phones can't read.
+  public static let maxPayloadLength = 1_200
+
+  /// Whether a file's text or link can become a QR code.
+  public static func canMake(from kind: FileKind) -> Bool {
+    switch kind {
+    case .document(let format): format == .link || format == .txt || format == .md
+    default: false
+    }
+  }
+
+  /// The text a QR code for this file carries: the link inside a shortcut, or the text of a
+  /// plain-text or Markdown file. Nil when the file has nothing usable or is too long.
+  public static func payload(for url: URL) -> String? {
+    guard let data = try? Data(contentsOf: url), data.count < 1_000_000 else { return nil }
+    let ext = url.pathExtension.lowercased()
+    var text: String?
+    switch ext {
+    case "webloc", "inetloc":
+      let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+      text = plist?["URL"] as? String
+    case "url":
+      let lines = String(decoding: data, as: UTF8.self).split(whereSeparator: \.isNewline)
+      text = lines.first { $0.uppercased().hasPrefix("URL=") }.map { String($0.dropFirst(4)) }
+    default:
+      text = String(data: data, encoding: .utf8)
+    }
+    let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    guard !trimmed.isEmpty, trimmed.count <= maxPayloadLength else { return nil }
+    return trimmed
+  }
+
+  /// A QR code for `text`, `side` pixels square with a white quiet zone, drawn as crisp
+  /// black modules.
+  public static func make(_ text: String, side: Int = 1024) throws -> CGImage {
+    guard let filter = CIFilter(name: "CIQRCodeGenerator") else { throw DropError.writeFailed("QR code") }
+    filter.setValue(Data(text.utf8), forKey: "inputMessage")
+    filter.setValue("M", forKey: "inputCorrectionLevel")
+    guard let output = filter.outputImage else { throw DropError.writeFailed("QR code") }
+    // The generator emits one pixel per module; scale by a whole number so edges stay sharp.
+    let modules = Int(output.extent.width)
+    let margin = 4
+    let scale = max(1, side / (modules + 2 * margin))
+    let pixels = (modules + 2 * margin) * scale
+    let scaled = output.transformed(by: CGAffineTransform(scaleX: CGFloat(scale), y: CGFloat(scale)), highQualityDownsample: false)
+      .samplingNearest()
+    guard let cg = CIContext().createCGImage(scaled, from: scaled.extent),
+      let context = CGContext(
+        data: nil, width: pixels, height: pixels, bitsPerComponent: 8, bytesPerRow: 0,
+        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+    else { throw DropError.writeFailed("QR code") }
+    context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: pixels, height: pixels))
+    context.interpolationQuality = .none
+    context.draw(cg, in: CGRect(x: margin * scale, y: margin * scale, width: modules * scale, height: modules * scale))
+    guard let image = context.makeImage() else { throw DropError.writeFailed("QR code") }
+    return image
   }
 }

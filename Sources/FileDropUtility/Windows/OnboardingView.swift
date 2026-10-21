@@ -50,7 +50,7 @@ struct OnboardingView: View {
         .frame(width: 64, height: 64)
         .foregroundStyle(DesignTokens.Palette.tealInk)
       Text("Welcome to").font(.title2).foregroundStyle(Color.secondary)
-      Text("File Drop Utility").font(.system(.largeTitle, design: .rounded).weight(.bold))
+      Text("Iris").font(.largeTitle.weight(.bold))
       Text("Convert, fix and send files without opening another app.")
         .font(.title3)
         .foregroundStyle(Color.secondary)

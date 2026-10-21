@@ -69,7 +69,7 @@ Each sheet shows light, dark, light + Increase Contrast, dark + Increase Contras
   - separator
   - Settings… ⌘,
   - Getting Started…
-  - About File Drop Utility
+  - About Iris
   - separator
   - Quit ⌘Q
 - **Left out:** the free-uses line and Unlock, since there's no licensing.

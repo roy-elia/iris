@@ -109,10 +109,10 @@
 
     /// The windows the menu opens.
     private static func shellChecks() async {
-      for name in ["Open File Drop Utility", "Settings…", "Getting Started…"] {
+      for name in ["Open Iris", "Settings…", "Getting Started…"] {
         let before = Set(NSApp.windows.map(ObjectIdentifier.init))
         switch name {
-        case "Open File Drop Utility": WindowManager.shared.openMain()
+        case "Open Iris": WindowManager.shared.openMain()
         case "Settings…": WindowManager.shared.openSettings()
         default: WindowManager.shared.openOnboarding()
         }
@@ -220,6 +220,7 @@
       case .convert(let format): return await check(.convert(format, quality: 0.8))
       case .toPDF: return await check(files.allSatisfy { $0.kind == .pdf } ? .mergePDFs : .imagesToPDF)
       case .readQR: return await check(.readQRCodes)
+      case .makeQR: return await check(.makeQRCode)
       case .grayscale: return await check(.grayscale)
       case .resize: return await window("Resize", then: .resize(.percent(50)))
       case .convertVideo(let o): return await check(.convertVideo(o))

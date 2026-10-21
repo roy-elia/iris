@@ -38,7 +38,7 @@ enum MenuBarIcon {
     }
     image.isTemplate = true
     image.accessibilityDescription =
-      progress.map { "File Drop Utility, \(Int(($0 * 100).rounded()))% done" } ?? "File Drop Utility"
+      progress.map { "Iris, \(Int(($0 * 100).rounded()))% done" } ?? "Iris"
     return image
   }
 }

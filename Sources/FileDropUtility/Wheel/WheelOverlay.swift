@@ -21,7 +21,7 @@ final class DragWatcher {
   private var timer: Timer?
   private var isPollingActively = false
   private var monitors: [Any] = []
-  private var trigger = DragTrigger<WheelKind>()
+  private var trigger = DragTrigger<WheelKind>(graceInterval: 0.45)
   private let dragPasteboard = NSPasteboard(name: .drag)
   private let overlay = WheelOverlayController()
   private var hideWork: DispatchWorkItem?
@@ -99,6 +99,8 @@ final class DragWatcher {
       overlay.show(kind, at: NSEvent.mouseLocation)
     case .hide:
       overlay.hide()
+    case .nextPage:
+      overlay.nextPage()
     case .hideAfterDrop:
       // performDragOperation runs on release; give it a moment before the panel goes.
       let work = DispatchWorkItem { [overlay] in MainActor.assumeIsolated { overlay.hide() } }
@@ -115,7 +117,7 @@ final class WheelOverlayController {
   private var panel: NSPanel?
   /// Room around the largest wheel for the lit petal to swell into and for the shadow. Each
   /// wheel sizes itself inside this from its petal count.
-  private let size = NSSize(width: 484, height: 484)
+  private let size = NSSize(width: 340, height: 340)
   private let dropState = WheelDropState()
   private var isShowing = false
 
@@ -128,18 +130,35 @@ final class WheelOverlayController {
     self.panel = panel
     if isShowing {
       guard dropState.kind != kind else { return }
-      dropState.kind = kind
-      dropState.hotID = nil
-      dropState.introRevision += 1
+      // Switch in place: the new wheel crossfades over the old one instead of reopening.
+      dropState.switching = true
+      withAnimation(.smooth(duration: 0.22)) {
+        dropState.kind = kind
+        dropState.page = 0
+        dropState.hotID = nil
+      }
       return
     }
     isShowing = true
     dropState.reset()
+    dropState.switching = false
     dropState.kind = kind
     dropState.introRevision += 1
     panel.setFrameOrigin(NSPoint(x: point.x - size.width / 2, y: point.y - size.height / 2))
     panel.alphaValue = 1
     panel.orderFrontRegardless()
+  }
+
+  /// Turns to the wheel's next page, wrapping to the first, as a crossfade in place.
+  func nextPage() {
+    guard isShowing else { return }
+    let count = dropState.pages.count
+    guard count > 1 else { return }
+    dropState.switching = true
+    withAnimation(.smooth(duration: 0.22)) {
+      dropState.page = (dropState.page + 1) % count
+      dropState.hotID = nil
+    }
   }
 
   func hide() {

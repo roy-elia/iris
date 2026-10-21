@@ -4,6 +4,8 @@ import Foundation
 /// Text documents the app reads.
 public enum DocumentFormat: String, CaseIterable, Codable, Sendable {
   case docx, doc, odt, rtf, rtfd, txt, md, html, epub, pages, textClipping
+  /// An internet shortcut (.webloc, .url, .inetloc): one link, which can become a QR code.
+  case link
 
   public init?(fileExtension ext: String) {
     switch ext.lowercased() {
@@ -18,6 +20,7 @@ public enum DocumentFormat: String, CaseIterable, Codable, Sendable {
     case "epub": self = .epub
     case "pages": self = .pages
     case "textclipping": self = .textClipping
+    case "webloc", "url", "inetloc": self = .link
     default: return nil
     }
   }
@@ -29,6 +32,7 @@ public enum DocumentFormat: String, CaseIterable, Codable, Sendable {
     case .epub: "EPUB"
     case .pages: "Pages"
     case .textClipping: "Text Clipping"
+    case .link: "Web Link"
     default: rawValue.uppercased()
     }
   }

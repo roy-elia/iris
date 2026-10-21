@@ -1,4 +1,4 @@
-# File Drop Utility
+# Iris
 
 A macOS menu-bar utility: drop files on its panel to convert images, strip image metadata,
 build PDFs, and share the results.
@@ -9,8 +9,8 @@ Requires macOS 14+ and Swift 6 (Xcode or the Command Line Tools).
 
 ```bash
 swift build
-scripts/bundle.sh        # builds dist/File Drop Utility.app
-open "dist/File Drop Utility.app"
+scripts/bundle.sh        # builds dist/Iris.app
+open "dist/Iris.app"
 ```
 
 ## Test and lint
