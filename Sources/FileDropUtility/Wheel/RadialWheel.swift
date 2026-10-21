@@ -227,7 +227,14 @@ struct RadialWheel: View {
       startAngle: start - widen, endAngle: start + .degrees(step) + widen, innerRadius: inner,
       outerRadius: outer, gap: 7 * s, cornerRadius: (isHot ? 28 : 15) * s)
     let mid = Angle(degrees: start.degrees + step / 2)
-    let labelRadius = (inner + outer) / 2
+    // Labels sit at the sector's centroid, which is further out than its mid-radius, so they
+    // look centred in the petal. Their box is as wide as the petal is, measured along the
+    // text's horizontal axis: the arc at the top and bottom, the radial depth at the sides.
+    let labelRadius = (2.0 / 3.0) * (pow(outer, 3) - pow(inner, 3)) / (outer * outer - inner * inner)
+    let arc = labelRadius * CGFloat(step * .pi / 180)
+    let depth = outer - inner
+    let horizontal = CGFloat(cos(mid.radians) * cos(mid.radians))
+    let labelWidth = max(30 * s, min(64 * s, depth * horizontal + arc * (1 - horizontal) - 12 * s))
     let labelOffset = CGSize(width: cos(mid.radians) * labelRadius, height: sin(mid.radians) * labelRadius)
     let lean = isHot ? leanOffset(toward: pointer, from: labelOffset, limit: 7 * s) : .zero
 
@@ -256,8 +263,8 @@ struct RadialWheel: View {
           .tracking(0.4 * s)
           .textCase(.uppercase)
           .multilineTextAlignment(.center)
-          .lineLimit(2)
-          .minimumScaleFactor(0.75)
+          .lineLimit(1)
+          .minimumScaleFactor(0.6)
       }
       .foregroundStyle(
         isHot
@@ -265,7 +272,7 @@ struct RadialWheel: View {
             ? AnyShapeStyle(WheelTeal.color) : AnyShapeStyle(Color.white))
           : (item.isEnabled ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
       )
-      .frame(width: 64 * s)
+      .frame(width: labelWidth)
       .offset(labelOffset)
       .opacity(labelsShown ? 1 : 0)
       .allowsHitTesting(false)

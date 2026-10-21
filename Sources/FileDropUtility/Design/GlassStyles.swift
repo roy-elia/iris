@@ -80,8 +80,9 @@ struct GlassToolPicker<Tool: Hashable & Identifiable & Sendable>: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
+    // The gap is wider than the container's blend distance, so each capsule stays its own shape.
     GlassEffectContainer(spacing: 4) {
-      HStack(spacing: 0) {
+      HStack(spacing: 8) {
         ForEach(tools) { tool in
           let selected = tool == selection
           Button {
