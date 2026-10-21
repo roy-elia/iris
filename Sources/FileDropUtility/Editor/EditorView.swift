@@ -48,27 +48,27 @@ struct EditorView: View {
       } label: {
         Image(systemName: "rotate.left")
       }
-      .buttonStyle(.glass)
+      .buttonStyle(.glass).tint(nil)
       .accessibilityLabel("Rotate left")
       Button {
         model.rotate(clockwise: true)
       } label: {
         Image(systemName: "rotate.right")
       }
-      .buttonStyle(.glass)
+      .buttonStyle(.glass).tint(nil)
       .accessibilityLabel("Rotate right")
       Button {
         model.undo()
       } label: {
         Image(systemName: "arrow.uturn.backward")
       }
-      .buttonStyle(.glass)
+      .buttonStyle(.glass).tint(nil)
       .disabled(!model.canUndo)
       .keyboardShortcut("z")
       .accessibilityLabel("Undo")
       Spacer()
       Button("Save Copy") { model.save() }
-        .buttonStyle(.glassProminent)
+        .primaryActionStyle()
         .disabled(model.recipe.isIdentity)
         .keyboardShortcut("s")
         .accessibilityIdentifier("saveEdit")
@@ -86,7 +86,7 @@ struct EditorView: View {
         slider("Brightness", value: binding(\.brightness), range: EditRecipe.brightnessRange)
         slider("Contrast", value: binding(\.contrast), range: EditRecipe.contrastRange)
         slider("Saturation", value: binding(\.saturation), range: EditRecipe.saturationRange)
-        Button("Reset") { model.resetAdjustments() }.buttonStyle(.glass)
+        Button("Reset") { model.resetAdjustments() }.buttonStyle(.glass).tint(nil)
       case .crop:
         Text("Drag over the image to choose the area to keep.").font(.callout).foregroundStyle(
           Color.secondary)
@@ -98,7 +98,7 @@ struct EditorView: View {
           .font(.callout)
         }
         if model.recipe.crop != nil {
-          Button("Clear Crop") { model.commit { $0.crop = nil } }.buttonStyle(.glass)
+          Button("Clear Crop") { model.commit { $0.crop = nil } }.buttonStyle(.glass).tint(nil)
         }
       case .annotate:
         annotateInspector
@@ -120,7 +120,7 @@ struct EditorView: View {
             .font(.caption).foregroundStyle(Color.orange)
         }
         if !model.recipe.redactions.isEmpty {
-          Button("Clear Redactions") { model.commit { $0.redactions = [] } }.buttonStyle(.glass)
+          Button("Clear Redactions") { model.commit { $0.redactions = [] } }.buttonStyle(.glass).tint(nil)
         }
       }
       Spacer(minLength: 0)
@@ -149,7 +149,7 @@ struct EditorView: View {
             )
             .background(
               model.annotateKind == kind
-                ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.clear),
+                ? AnyShapeStyle(DesignTokens.Palette.teal) : AnyShapeStyle(.clear),
               in: RoundedRectangle(cornerRadius: DesignTokens.Radius.chip, style: .continuous)
             )
             .contentShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.chip, style: .continuous))
@@ -178,7 +178,7 @@ struct EditorView: View {
         slider("Zoom", value: $model.magnifierZoom, range: 1.5...6)
       case .sticker:
         Button(model.stickerPath == nil ? "Choose Image…" : "Change Image…") { model.chooseSticker() }
-          .buttonStyle(.glass)
+          .buttonStyle(.glass).tint(nil)
         if let path = model.stickerPath {
           Text(URL(fileURLWithPath: path).lastPathComponent).font(.caption).lineLimit(1).truncationMode(
             .middle)
@@ -193,7 +193,7 @@ struct EditorView: View {
             $0.marks = []
           }
         }
-        .buttonStyle(.glass)
+        .buttonStyle(.glass).tint(nil)
       }
     }
   }

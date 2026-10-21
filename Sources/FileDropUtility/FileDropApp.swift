@@ -38,8 +38,11 @@ struct StatusMenu: View {
       Label(statusText, systemImage: model.isRunning ? "hourglass" : "checkmark.circle")
     }
     .disabled(true)
-    Button(hints) {}
-      .disabled(true)
+    // One grey line per wheel, so each shortcut reads on its own.
+    ForEach(WheelKind.allCases, id: \.self) { kind in
+      Button("\(kind.combo(in: model.settings.wheelModifiers).symbols)  \(kind.title)") {}
+        .disabled(true)
+    }
     if model.isRunning {
       Button("Stop Current Task") { model.cancelCurrentJob() }
     }
@@ -52,7 +55,8 @@ struct StatusMenu: View {
       Button(floats.stacks.count == 1 ? "Close Float" : "Close All Floats") { floats.closeAll() }
     }
     Divider()
-    Button("Settings…") { WindowManager.shared.openMain() }
+    Button("Open File Drop Utility") { WindowManager.shared.openMain() }
+    Button("Settings…") { WindowManager.shared.openSettings() }
       .keyboardShortcut(",")
     Button("Getting Started…") { WindowManager.shared.openOnboarding() }
     Button("About File Drop Utility") {
@@ -69,12 +73,6 @@ struct StatusMenu: View {
     guard let progress = model.progress, progress > 0 else { return "File Drop Utility is working…" }
     return "File Drop Utility is working · \(Int(progress * 100))%"
   }
-
-  /// "⇧: Convert · ⌘: Tools · ⌃: Actions", from the wheel settings.
-  private var hints: String {
-    WheelKind.allCases.map { "\($0.combo(in: model.settings.wheelModifiers).symbols): \($0.title)" }
-      .joined(separator: " · ")
-  }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -86,7 +84,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if SnapshotRunner.runIfRequested() { return }
         if SelfTestRunner.runIfRequested() { return }
       #endif
-      AppModel.shared.applyAppearance()
       // Finder's Quick Actions / Services menu (see NSServices in scripts/bundle.sh).
       NSApp.servicesProvider = ServiceProvider.shared
       NSUpdateDynamicServices()

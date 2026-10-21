@@ -29,13 +29,13 @@ struct ToolPanel<Content: View>: View {
       HStack {
         Spacer()
         Button("Cancel") { dismiss() }
-          .buttonStyle(.glass)
+          .buttonStyle(.glass).tint(nil)
           .keyboardShortcut(.cancelAction)
         Button(primaryTitle) {
           onPrimary()
           dismiss()
         }
-        .buttonStyle(.glassProminent)
+        .primaryActionStyle()
         .disabled(primaryDisabled)
         .keyboardShortcut(.defaultAction)
       }
@@ -264,10 +264,14 @@ struct MetadataView: View {
   @State private var values: [String: String] = [:]
   @State private var original: [String: String] = [:]
   @State private var removeLocation = false
+  @AppStorage("stripEverything") private var stripEverything = true
   @State private var loading = true
   @State private var showAll = false
 
   private var canEdit: Bool { ToolLocator.isAvailable(.exiftool) }
+  /// The editable fields and the gentler strip are photo metadata; PDFs, audio and video get
+  /// the full listing, Strip All and Copy From.
+  private var allImages: Bool { urls.allSatisfy { FileKind(url: $0).isImage } }
   private var hasLocation: Bool {
     fields.contains { $0.group.hasPrefix("GPS") || $0.group == "Composite" && $0.tag.hasPrefix("GPS") }
   }
@@ -287,23 +291,7 @@ struct MetadataView: View {
       if loading {
         LoadingLabel("Loading file details").frame(maxWidth: .infinity)
       } else {
-        Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 8) {
-          ForEach(EditableField.all) { field in
-            GridRow {
-              Text(field.label).font(.callout)
-              TextField(field.label, text: binding(field.tag))
-                .textFieldStyle(.roundedBorder)
-                .disabled(!canEdit)
-                .accessibilityLabel(field.label)
-            }
-          }
-        }
-        Toggle("Remove location", isOn: $removeLocation)
-          .disabled(!hasLocation || !canEdit)
-        if urls.count > 1 {
-          Text("Changes apply to all \(urls.count) files. Values shown are from the first.")
-            .font(.caption).foregroundStyle(Color.secondary)
-        }
+        if allImages { editableFields }
         DisclosureGroup("All metadata (\(fields.count) fields)", isExpanded: $showAll) {
           ScrollView {
             LazyVStack(alignment: .leading, spacing: 4) {
@@ -320,14 +308,58 @@ struct MetadataView: View {
           .frame(height: 180)
         }
         .font(.callout)
-        Button("Strip All Metadata") {
-          runTool(.stripMetadata, on: urls)
+        if allImages {
+          Toggle("Remove everything (colour profile and file attributes too)", isOn: $stripEverything)
+            .help("Leaves no metadata at all. Colours are converted to sRGB so the copy looks the same.")
         }
-        .buttonStyle(.glass)
+        HStack {
+          Button("Strip All Metadata") {
+            runTool(allImages && !stripEverything ? .stripMetadata : .stripAllMetadata, on: urls)
+          }
+          .help(
+            allImages
+              ? "Saves a copy without metadata."
+              : "Saves a copy with no tags, chapters, cover art or document info.")
+          Button("Copy From…", action: copyFromFile)
+            .disabled(!canEdit)
+            .help(
+              "Replaces this metadata with an exact copy of another file’s: every tag, the colour profile, "
+                + "Finder tags and comments, and the created and modified dates.")
+        }
+        .buttonStyle(.glass).tint(nil)
       }
     }
     .frame(width: 440)
     .task { await load() }
+  }
+
+  private func copyFromFile() {
+    let panel = NSOpenPanel()
+    panel.message = "Choose the file whose metadata to copy."
+    panel.prompt = "Copy Metadata"
+    NSApp.activate()
+    guard panel.runModal() == .OK, let source = panel.url else { return }
+    runTool(.copyMetadata(from: source.path), on: urls)
+  }
+
+  @ViewBuilder private var editableFields: some View {
+    Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 8) {
+      ForEach(EditableField.all) { field in
+        GridRow {
+          Text(field.label).font(.callout)
+          TextField(field.label, text: binding(field.tag))
+            .textFieldStyle(.roundedBorder)
+            .disabled(!canEdit)
+            .accessibilityLabel(field.label)
+        }
+      }
+    }
+    Toggle("Remove location", isOn: $removeLocation)
+      .disabled(!hasLocation || !canEdit)
+    if urls.count > 1 {
+      Text("Changes apply to all \(urls.count) files. Values shown are from the first.")
+        .font(.caption).foregroundStyle(Color.secondary)
+    }
   }
 
   private func binding(_ tag: String) -> Binding<String> {
@@ -338,6 +370,7 @@ struct MetadataView: View {
     guard let first = urls.first else { return }
     let read = (try? await MetadataOps.read(first)) ?? []
     fields = read
+    showAll = !allImages
     for field in EditableField.all {
       let value = MetadataOps.value(of: field, in: read) ?? ""
       values[field.tag] = value
@@ -390,6 +423,7 @@ struct BackgroundView: View {
       case .image:
         HStack {
           Button(imagePath == nil ? "Choose Image…" : "Change Image…") { chooseImage() }.buttonStyle(.glass)
+            .tint(nil)
           if let imagePath {
             Text(URL(fileURLWithPath: imagePath).lastPathComponent).font(.callout).lineLimit(1)
               .truncationMode(.middle)
@@ -437,7 +471,7 @@ struct FrameView: View {
                       Image(systemName: "checkmark.circle.fill").font(.body)
                         .symbolRenderingMode(.palette)
                         .foregroundStyle(
-                          Color(nsColor: .alternateSelectedControlTextColor), Color.accentColor)
+                          Color(nsColor: .alternateSelectedControlTextColor), DesignTokens.Palette.teal)
                     }
                   }
                 Text(preset.name).font(.caption2)
@@ -719,18 +753,20 @@ struct QRResultsView: View {
       Text(heading).font(.title3.weight(.semibold))
       ForEach(Array(codes.enumerated()), id: \.offset) { _, code in
         HStack(alignment: .top, spacing: 10) {
-          Image(systemName: kind == .qr ? "qrcode" : "text.below.photo").foregroundStyle(Color.accentColor)
-            .accessibilityHidden(
-              true)
+          Image(systemName: kind == .qr ? "qrcode" : "text.below.photo").foregroundStyle(
+            DesignTokens.Palette.tealInk
+          )
+          .accessibilityHidden(
+            true)
           Text(code).font(.callout).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
           if kind == .qr, let url = URL(string: code), url.scheme?.hasPrefix("http") == true {
-            Button("Open") { NSWorkspace.shared.open(url) }.buttonStyle(.glass)
+            Button("Open") { NSWorkspace.shared.open(url) }.buttonStyle(.glass).tint(nil)
           }
           Button("Copy") {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(code, forType: .string)
           }
-          .buttonStyle(.glass)
+          .buttonStyle(.glass).tint(nil)
         }
         .padding(10)
         .background(
@@ -739,7 +775,7 @@ struct QRResultsView: View {
       }
       HStack {
         Spacer()
-        Button("Done") { dismiss() }.buttonStyle(.glassProminent)
+        Button("Done") { dismiss() }.primaryActionStyle()
           .keyboardShortcut(.defaultAction)
       }
     }
@@ -765,11 +801,12 @@ struct JoinView: View {
     } content: {
       Text("Plays in this order. Different sizes are fitted to the first video's frame.")
         .font(.callout).foregroundStyle(Color.secondary)
+        .fixedSize(horizontal: false, vertical: true)
       VStack(spacing: 6) {
         ForEach(Array(urls.enumerated()), id: \.element) { index, url in
           HStack(spacing: 10) {
             Text("\(index + 1)").font(.callout.monospacedDigit().weight(.semibold)).frame(width: 18)
-            Image(systemName: "film").foregroundStyle(Color.accentColor).accessibilityHidden(
+            Image(systemName: "film").foregroundStyle(DesignTokens.Palette.tealInk).accessibilityHidden(
               true)
             Text(url.lastPathComponent).font(.callout).lineLimit(1).truncationMode(.middle)
             Spacer()
@@ -863,6 +900,7 @@ struct VisualizerView: View {
       case .image:
         HStack {
           Button(imagePath == nil ? "Choose Image…" : "Change Image…") { chooseImage() }.buttonStyle(.glass)
+            .tint(nil)
           if let imagePath {
             Text(URL(fileURLWithPath: imagePath).lastPathComponent).font(.callout).lineLimit(1)
               .truncationMode(.middle)

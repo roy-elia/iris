@@ -67,7 +67,7 @@
         styleMask: windowed ? [.titled, .fullSizeContentView] : [.borderless], backing: .buffered,
         defer: false)
       window.appearance = NSAppearance(named: variant.appearance)
-      let hosting = NSHostingController(rootView: content)
+      let hosting = NSHostingController(rootView: content.brandTint())
       if windowed {
         hosting.sceneBridgingOptions = [.toolbars]
         window.titleVisibility = .hidden

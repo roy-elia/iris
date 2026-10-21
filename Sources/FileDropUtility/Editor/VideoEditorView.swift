@@ -52,7 +52,7 @@ struct VideoEditorView: View {
       } label: {
         Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
       }
-      .buttonStyle(.glass)
+      .buttonStyle(.glass).tint(nil)
       .disabled(!model.canPlay)
       .help(
         model.canPlay
@@ -65,7 +65,7 @@ struct VideoEditorView: View {
         .foregroundStyle(Color.secondary)
       Spacer()
       Button(model.saveTitle) { model.save() }
-        .buttonStyle(.glassProminent)
+        .primaryActionStyle()
         .disabled(!model.canSave)
         .keyboardShortcut("s")
         .accessibilityIdentifier("saveVideo")
@@ -135,7 +135,7 @@ struct VideoEditorView: View {
         .overlay {
           if model.tool == .redact && model.selectedRedaction == index {
             RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(
-              Color.accentColor, lineWidth: 2)
+              DesignTokens.Palette.teal, lineWidth: 2)
           }
         }
         .frame(width: box.width, height: box.height)
@@ -160,13 +160,13 @@ struct VideoEditorView: View {
         LabeledContent("Start", value: formatTime(model.trimStart)).monospacedDigit()
         LabeledContent("End", value: formatTime(model.trimEnd)).monospacedDigit()
         HStack {
-          Button("Set Start") { model.setTrimStartToPlayhead() }.buttonStyle(.glass)
-          Button("Set End") { model.setTrimEndToPlayhead() }.buttonStyle(.glass)
+          Button("Set Start") { model.setTrimStartToPlayhead() }.buttonStyle(.glass).tint(nil)
+          Button("Set End") { model.setTrimEndToPlayhead() }.buttonStyle(.glass).tint(nil)
         }
         LabeledContent("Length", value: formatTime(model.trimEnd - model.trimStart)).monospacedDigit()
       case .split:
         hint("Add split points, then click a clip in the timeline to remove it.")
-        Button("Add Split at Playhead") { model.addSplitAtPlayhead() }.buttonStyle(.glass)
+        Button("Add Split at Playhead") { model.addSplitAtPlayhead() }.buttonStyle(.glass).tint(nil)
         ForEach(Array(model.clips.enumerated()), id: \.offset) { index, clip in
           Toggle(
             isOn: Binding(get: { !model.removedClips.contains(index) }, set: { _ in model.toggleClip(index) })
@@ -181,7 +181,7 @@ struct VideoEditorView: View {
             model.splitPoints = []
             model.removedClips = []
           }
-          .buttonStyle(.glass)
+          .buttonStyle(.glass).tint(nil)
         }
       case .speed:
         HStack {
@@ -190,14 +190,14 @@ struct VideoEditorView: View {
         }
         HStack {
           ForEach([0.5, 1, 1.5, 2], id: \.self) { s in
-            Button(String(format: "%g×", s)) { model.speed = s }.buttonStyle(.glass)
+            Button(String(format: "%g×", s)) { model.speed = s }.buttonStyle(.glass).tint(nil)
           }
         }
         LabeledContent("New length", value: formatTime((model.trimEnd - model.trimStart) / model.speed))
           .monospacedDigit()
       case .frames:
         hint("Scrub to a moment and add it. Each frame is saved as a PNG.")
-        Button("Add Frame at Playhead") { model.addFrameAtPlayhead() }.buttonStyle(.glass)
+        Button("Add Frame at Playhead") { model.addFrameAtPlayhead() }.buttonStyle(.glass).tint(nil)
         ForEach(model.frameTimes, id: \.self) { t in
           HStack {
             Text(formatTime(t)).monospacedDigit()
@@ -214,11 +214,11 @@ struct VideoEditorView: View {
       case .crop:
         hint("Drag over the video to choose the area to keep.")
         if model.crop != nil {
-          Button("Clear Crop") { model.crop = nil }.buttonStyle(.glass)
+          Button("Clear Crop") { model.crop = nil }.buttonStyle(.glass).tint(nil)
         }
       case .redact:
         hint("Draw a rectangle over the area to hide. It shows for the time range below.")
-        Button("Add Redaction at Playhead") { model.addRedactionAtPlayhead() }.buttonStyle(.glass)
+        Button("Add Redaction at Playhead") { model.addRedactionAtPlayhead() }.buttonStyle(.glass).tint(nil)
         Picker("Style", selection: $model.redactStyle) {
           Text("Solid").tag(RedactStyle.blackout)
           Text("Pixelate").tag(RedactStyle.pixelate)
@@ -235,9 +235,11 @@ struct VideoEditorView: View {
           LabeledContent("To", value: formatTime(r.end)).monospacedDigit()
           HStack {
             Button("Set Start") { model.updateSelected { $0.start = min(model.time, $0.end) } }.buttonStyle(
-              .glass)
+              .glass
+            ).tint(nil)
             Button("Set End") { model.updateSelected { $0.end = max(model.time, $0.start) } }.buttonStyle(
-              .glass)
+              .glass
+            ).tint(nil)
           }
           HStack {
             Button("Entire Video") {
@@ -246,8 +248,9 @@ struct VideoEditorView: View {
                 $0.end = model.duration
               }
             }
-            .buttonStyle(.glass)
-            Button("Delete", role: .destructive) { model.deleteSelectedRedaction() }.buttonStyle(.glass)
+            .buttonStyle(.glass).tint(nil)
+            Button("Delete", role: .destructive) { model.deleteSelectedRedaction() }.buttonStyle(.glass).tint(
+              nil)
           }
         }
       }
@@ -322,7 +325,10 @@ struct VideoTimeline: View {
               .contentShape(Rectangle())
               .onTapGesture { model.toggleClip(index) }
               .accessibilityLabel(
-                "Clip \(index + 1), \(model.removedClips.contains(index) ? "removed" : "kept")")
+                "Clip \(index + 1), \(model.removedClips.contains(index) ? "removed" : "kept")"
+              )
+              .accessibilityAddTraits(.isButton)
+              .accessibilityAction { model.toggleClip(index) }
           }
           ForEach(model.splitPoints, id: \.self) { p in
             Capsule().fill(.white).frame(width: 3, height: h + 8).offset(x: x(p) - 1.5, y: -4).shadow(
@@ -333,17 +339,21 @@ struct VideoTimeline: View {
         case .frames:
           ForEach(model.frameTimes, id: \.self) { t in
             Image(systemName: "camera.fill").font(.caption2).foregroundStyle(.white).padding(3)
-              .background(Color.accentColor, in: Circle())
+              .background(DesignTokens.Palette.teal, in: Circle())
               .offset(x: x(t) - 9, y: h - 20).allowsHitTesting(false)
           }
         case .redact:
           ForEach(Array(model.redactions.enumerated()), id: \.offset) { index, r in
             Capsule(style: .continuous)
-              .fill(Color.accentColor.opacity(model.selectedRedaction == index ? 0.95 : 0.55))
+              .fill(DesignTokens.Palette.teal.opacity(model.selectedRedaction == index ? 0.95 : 0.55))
               .frame(width: max(x(r.end) - x(r.start), 6), height: 12)
               .offset(x: x(r.start), y: h - 16)
               .onTapGesture { model.selectedRedaction = index }
               .accessibilityLabel("Redaction \(index + 1)")
+              .accessibilityAddTraits(
+                model.selectedRedaction == index ? [.isButton, .isSelected] : .isButton
+              )
+              .accessibilityAction { model.selectedRedaction = index }
           }
         case .crop:
           EmptyView()

@@ -66,9 +66,9 @@ struct Keycap: View {
   }
 }
 
-/// A row of tool buttons in one Liquid Glass bar. Each button is its own glass capsule inside a
-/// shared container, so neighbours blend into a single bar and the selected one carries the
-/// accent tint; changing the selection morphs the tint across.
+/// A row of tool buttons, each its own Liquid Glass capsule with a small gap between them; the
+/// selected one carries the teal tint. The shared container's merge distance (0) is smaller
+/// than the gap, so neighbouring capsules never flow into each other.
 struct GlassToolPicker<Tool: Hashable & Identifiable & Sendable>: View {
   let tools: [Tool]
   @Binding var selection: Tool
@@ -80,8 +80,8 @@ struct GlassToolPicker<Tool: Hashable & Identifiable & Sendable>: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
-    GlassEffectContainer(spacing: 4) {
-      HStack(spacing: 0) {
+    GlassEffectContainer(spacing: 0) {
+      HStack(spacing: DesignTokens.Spacing.tight) {
         ForEach(tools) { tool in
           let selected = tool == selection
           Button {
@@ -98,7 +98,8 @@ struct GlassToolPicker<Tool: Hashable & Identifiable & Sendable>: View {
           }
           .buttonStyle(.plain)
           .glassEffect(
-            selected ? Glass.regular.tint(.accentColor).interactive() : Glass.regular.interactive(),
+            selected
+              ? Glass.regular.tint(DesignTokens.Palette.teal).interactive() : Glass.regular.interactive(),
             in: Capsule()
           )
           .glassEffectID(tool, in: namespace)

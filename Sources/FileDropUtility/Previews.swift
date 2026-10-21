@@ -165,7 +165,7 @@ import SwiftUI
     static let all: [(name: String, size: CGSize)] = [
       ("Panel-Files", CGSize(width: 424, height: 700)),
       ("Panel-History", CGSize(width: 424, height: 520)),
-      ("Panel-Settings", CGSize(width: 424, height: 720)),
+      ("Panel-Settings", CGSize(width: 460, height: 680)),
       ("Wheel-Convert", CGSize(width: 420, height: 420)),
       ("Wheel-Tools", CGSize(width: 420, height: 420)),
       ("Wheel-Actions", CGSize(width: 420, height: 420)),
@@ -173,10 +173,12 @@ import SwiftUI
       ("Recipe-Editor", CGSize(width: 460, height: 480)),
       ("Wheel-DropHover", CGSize(width: 420, height: 420)),
       ("Onboarding-Welcome", CGSize(width: 820, height: 520)),
+      ("Onboarding-Demo", CGSize(width: 820, height: 520)),
       ("Onboarding-Tools", CGSize(width: 820, height: 520)),
       ("Onboarding-Files", CGSize(width: 820, height: 520)),
       ("Onboarding-Finish", CGSize(width: 820, height: 520)),
       ("Toast", CGSize(width: 460, height: 90)),
+      ("Progress-Capsule", CGSize(width: 380, height: 300)),
       ("MenuBar-Icon", CGSize(width: 460, height: 120)),
       ("Editor", CGSize(width: 900, height: 640)),
       ("Float-Collapsed", CGSize(width: 140, height: 160)),
@@ -203,6 +205,7 @@ import SwiftUI
       ("Tool-Visualizer", CGSize(width: 424, height: 340)),
       ("Wheel-DocConvert", CGSize(width: 420, height: 420)),
       ("Wheel-ThemeLight", CGSize(width: 420, height: 420)),
+      ("Wheel-ToolsOnScreen", CGSize(width: 484, height: 484)),
       ("Wheel-ThemeTinted", CGSize(width: 420, height: 420)),
       ("Wheel-PDFConvert", CGSize(width: 420, height: 420)),
       ("Wheel-PDFTools", CGSize(width: 420, height: 420)),
@@ -214,7 +217,7 @@ import SwiftUI
       switch name {
       case "Panel-Files": PanelView(initialTab: .files).environmentObject(model)
       case "Panel-History": PanelView(initialTab: .history).environmentObject(model)
-      case "Panel-Settings": PanelView(initialTab: .settings).environmentObject(model)
+      case "Panel-Settings": SettingsWindow().environmentObject(model)
       case "Wheel-Convert": wheel(.convert, model)
       case "Wheel-Tools": wheel(.tools, model)
       case "Wheel-Actions": wheel(.actions, model)
@@ -234,6 +237,18 @@ import SwiftUI
         .padding(20)
         .glassPanel()
       case "Onboarding-Welcome": OnboardingView(onFinish: {}, startPage: .welcome).environmentObject(model)
+      case "Progress-Capsule":
+        let _ = {
+          var batch = BatchProgress(
+            title: "Convert to WebP", names: ["IMG_0412.png", "Beach.heic", "Receipt.png", "Logo.tiff", "Scan 3.png"])
+          batch.items[0].state = .done
+          batch.items[1].state = .failed("Can't read")
+          batch.items[2].state = .working
+          model.batch = batch
+          model.progress = 0.4
+        }()
+        ProgressCapsulePreview(model: model).padding(20)
+      case "Onboarding-Demo": OnboardingView(onFinish: {}, startPage: .demo).environmentObject(model)
       case "Onboarding-Tools": OnboardingView(onFinish: {}, startPage: .tools).environmentObject(model)
       case "Onboarding-Files": OnboardingView(onFinish: {}, startPage: .fileTypes).environmentObject(model)
       case "Onboarding-Finish": OnboardingView(onFinish: {}, startPage: .finish).environmentObject(model)
@@ -287,6 +302,15 @@ import SwiftUI
         ) { _, _ in }
         .environment(\.wheelTheme, .light)
         .padding(DesignTokens.Spacing.inset)
+      case "Wheel-ToolsOnScreen":
+        // The Tools wheel at the size the drag-and-hold overlay opens it.
+        let items = WheelKind.tools.items(for: [])
+        RadialWheel(
+          kind: .tools, items: items, centerText: "2.4 MB", mode: .drop, hotID: "crop"
+        ) { _, _ in }
+        .frame(
+          width: WheelGeometry.diameter(forItemCount: items.count),
+          height: WheelGeometry.diameter(forItemCount: items.count))
       case "Wheel-ThemeTinted":
         RadialWheel(
           kind: .tools, items: WheelKind.tools.items(for: []), centerText: "2.4 MB", mode: .drop,
@@ -390,7 +414,7 @@ import SwiftUI
   struct ToastPreview: View {
     var body: some View {
       HStack(spacing: 10) {
-        Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.accentColor)
+        Image(systemName: "checkmark.circle.fill").foregroundStyle(DesignTokens.Palette.tealInk)
         Text("Convert to JPEG: saved 2 files").font(.callout)
         Button("Show") {}.buttonStyle(.borderless).fontWeight(.semibold)
       }

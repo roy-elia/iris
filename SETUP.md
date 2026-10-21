@@ -34,14 +34,14 @@ wording, code or bundled tools.
 
 | Wheel | Key | Segments |
 |---|---|---|
-| Convert | ⇧ Shift (configurable) | PNG, PDF, JPEG, HEIC, AVIF, TIFF, BMP, WebP (bundled cwebp), GIF (animations keep every frame), ICO (16–256 px), ICNS (16–1024 px), JPEG 2000, TGA, OpenEXR. Inputs also include SVG, camera RAW (CR2, CR3, NEF, ARW, DNG, RAF, ORF and the other RAWs ImageIO reads), PSD, PPM/PGM/PBM and Radiance HDR. |
+| Convert | ⇧ Shift (configurable) | PNG, PDF, JPEG, HEIC, AVIF, TIFF, BMP, WebP (bundled cwebp), GIF (animations keep every frame), ICO (16–256 px), ICNS (16–1024 px), JPEG 2000, TGA, OpenEXR, and Text (the words in the picture, read with on-device OCR). Inputs also include SVG, camera RAW (CR2, CR3, NEF, ARW, DNG, RAF, ORF and the other RAWs ImageIO reads), PSD, PPM/PGM/PBM and Radiance HDR. |
 | Tools | ⌘ Command (configurable) | Compress (presets or a target size), Metadata (view, edit, remove location, strip), Annotate, Redact, Crop (one or many images), Add BG (remove, colour or image), Frame, Collage, QR Code, Resize (longest side in px, or %), Grayscale, Adjust |
 | Actions | ⌃ Control | AirDrop, Float, Copy, Move, Copy Path, Zip (any files or folders into one archive), Terminal |
 
 A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the queued files don't fit it. Press the modifier any time during the drag, even with the pointer still. Switching modifiers switches the wheel. Letting go of the key closes the wheel unless you're over it, and Escape closes it. While dragging over the overlay wheel, the segment under the pointer lights up in the accent colour with a soft glow, the centre pill shows its name, and a soft tick plays (with a trackpad tap). A drop plays a pop, runs the command, and reports the result in a glass toast at the top of the screen.
 
 **Video** (when every dropped file is a video: MP4, MOV, M4V, WebM, MKV, AVI, WMV/ASF, FLV, MPEG, TS, M2TS/MTS, 3GP, OGV, VOB):
-- **Convert wheel:** MP4, HEVC (H.265 MP4 from the hardware encoder, saved as "name HEVC.mp4"), 720p (H.264 MP4 at most 720 px high, "name 720p.mp4"), MOV, M4V, MKV, AVI, WebM (VP9 + Opus), GIF (palette-optimised, 15 fps), and MP3 or M4A audio.
+- **Convert wheel:** MP4, HEVC (H.265 MP4 from the hardware encoder, saved as "name HEVC.mp4"), 720p (H.264 MP4 at most 720 px high, "name 720p.mp4"), MOV, M4V, MKV, AVI, WebM (VP9 + Opus), GIF (palette-optimised, 15 fps), and MP3 or M4A audio. The soundtrack can also be saved as WAV or FLAC.
 - **Tools wheel:** Compress (Light, Medium or Strong, or a target size), Trim, Split, Join, Speed, Frames, Crop, Redact, Subtitles (each text subtitle track saved as SRT, named by language when there are several).
 - **Video editor:**
   - the picture fills the window, with a glass timeline of thumbnails under it
@@ -63,7 +63,10 @@ A segment is disabled, with the reason as a tooltip and VoiceOver hint, when the
 - **Visualizer window:** wave, bars or spectrum, 16:9, 1:1 or 9:16, a wave colour, and a solid colour or image behind it. Saves "name visualizer.mp4".
 
 **Documents** (DOCX, DOC, ODT, RTF, RTFD, TXT, Markdown, HTML, EPUB, Pages, text clippings; CSV/TSV tables; Keynote, PowerPoint, Numbers, Excel and ODS):
-- **Convert wheel:** PDF, DOCX, RTF, Text, Markdown, HTML, EPUB, Pages. Presentations and spreadsheets convert to PDF.
+- **Convert wheel:** PDF, DOCX, RTF, Text, Markdown, HTML, EPUB, Pages. CSV and TSV tables also convert to JSON and vCard.
+- **Presentations** (Keynote, PowerPoint): PDF, PNG or JPEG slides, and Text, Markdown, HTML, DOCX or RTF with a "Slide N" heading per slide. PowerPoint (.pptx) text is read from the file itself; Keynote and .ppt decks are exported to PDF first and read from that.
+- **Spreadsheets** (Excel, Numbers, ODS): PDF, CSV and JSON (one file per sheet), and HTML, Markdown, Text, DOCX or RTF tables. .xlsx and .ods are read directly; .xls and .numbers go through Numbers, or LibreOffice (headless, with a private profile) when Numbers isn't installed or can't export.
+- HTML and Markdown to PDF are laid out by WebKit, so CSS, tables and local images are kept. JavaScript is off and a content rule blocks every network request, on top of the stripping below.
 - Markdown is converted by a built-in parser (headings, emphasis, lists, quotes, code, tables, links). Remote images, scripts and stylesheets are stripped from HTML before it's read, so nothing is fetched.
 - EPUB out is reflowable EPUB 3, with a chapter at each top-level heading. EPUB in reads the spine in order, after checking the archive for unsafe paths and size.
 - Pages, Keynote and Numbers: exported by the app through AppleScript when it's installed; otherwise the document's saved preview, or a Quick Look rendering of the first page. Writing Pages documents needs Pages.
@@ -269,7 +272,7 @@ Bugs it found, now fixed:
 - **Documents:** Pages, Keynote and Numbers aren't installed on this Mac, so the scripting paths (Pages output, iWork and Office → PDF through the apps) are untested; the preview and Quick Look fallbacks are tested. PDF output from text is laid out on US Letter pages. Images inside documents survive DOCX/RTF/PDF output but not Markdown, HTML or EPUB output.
 - **Audio:** OGG, Opus and WMA can't play in the editor (AVFoundation doesn't read them); the waveform and every edit still work. Ogg Vorbis and Opus use ffmpeg's own encoders, which are adequate rather than best-in-class (libvorbis and libopus aren't bundled). Normalize is single-pass loudnorm, accurate to about ±1 LU on typical material.
 
-- **WebP export:** macOS's ImageIO reads WebP but can't write it. WebP files work as inputs; the WebP segment is disabled with that reason. Export would need libwebp (BSD licence), which I'd add only with your OK.
+- **WebP export:** works through the bundled `cwebp` (libwebp, BSD-3). ImageIO alone can't write WebP, so the segment is disabled only if the helper is missing.
 - **Dynamic Type:** SwiftUI text styles on macOS don't respond to `dynamicTypeSize`. The Largest Text snapshots look the same as normal. Views use text styles throughout, so they'll scale wherever the OS scales them, but macOS 26 offers no system-wide Dynamic Type to test.
 - **Increase Contrast and Reduce Motion:** checked by simulation (high-contrast appearances, the contrast override, and a code audit of all animations), not by toggling the system settings.
 - **Launch at login:** not exercised, because it registers a real login item.
@@ -284,8 +287,10 @@ Bugs it found, now fixed:
 3. Optional: toggle Launch at login and check System Settings › General › Login Items.
 4. Optional: revoke the Accessibility and Screen Recording permissions you gave Claude, in System Settings › Privacy & Security.
 
+## Batch progress and undo
+
+Wheel drops show a glass progress capsule near the top of the screen: the operation name, a bar, "n of N", Cancel, and a per-file checklist (waiting, working, done, failed). The toast that follows has Show (reveal in Finder) and Undo; Undo moves the new files to the Trash (renames are put back instead). Per-file rows come from `Processor.fileEvents`; Finder service and recipe runs show the bar only.
+
 ## Suggestions (not built)
 
-- WebP export via libwebp.
 - Lossless JPEG metadata stripping.
-- Per-file progress for large batches.

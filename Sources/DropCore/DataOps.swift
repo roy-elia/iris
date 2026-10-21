@@ -37,7 +37,8 @@ public enum DataFormat: String, CaseIterable, Codable, Sendable {
 
   /// The data format of `url`, CSV included.
   public static func of(_ url: URL) -> DataFormat? {
-    url.pathExtension.lowercased() == "csv" ? .csv : DataFormat(fileExtension: url.pathExtension)
+    ["csv", "tsv"].contains(url.pathExtension.lowercased())
+      ? .csv : DataFormat(fileExtension: url.pathExtension)
   }
 }
 
@@ -48,7 +49,11 @@ public enum DataOps {
     guard let input = DataFormat.of(source), input.outputs.contains(output) else {
       throw DropError.wrongInput("\(name) can't be converted to \(output.displayName).")
     }
-    let data = try Data(contentsOf: source)
+    var data = try Data(contentsOf: source)
+    if source.pathExtension.lowercased() == "tsv" {
+      // Tab-separated tables are read as CSV.
+      data = Data(csv(TableOps.parse(try text(data, name: name), separator: "\t")).utf8)
+    }
     let result: Data
     switch (input, output) {
     case (.json, .csv): result = Data(try jsonToCSV(data, name: name).utf8)

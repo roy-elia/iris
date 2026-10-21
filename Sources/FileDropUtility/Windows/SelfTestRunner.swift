@@ -109,12 +109,12 @@
 
     /// The windows the menu opens.
     private static func shellChecks() async {
-      for name in ["Settings…", "Getting Started…"] {
+      for name in ["Open File Drop Utility", "Settings…", "Getting Started…"] {
         let before = Set(NSApp.windows.map(ObjectIdentifier.init))
-        if name == "Settings…" {
-          WindowManager.shared.openMain()
-        } else {
-          WindowManager.shared.openOnboarding()
+        switch name {
+        case "Open File Drop Utility": WindowManager.shared.openMain()
+        case "Settings…": WindowManager.shared.openSettings()
+        default: WindowManager.shared.openOnboarding()
         }
         try? await Task.sleep(for: .milliseconds(1200))
         let opened = NSApp.windows.filter { !before.contains(ObjectIdentifier($0)) && $0.isVisible }
@@ -330,11 +330,14 @@
         return text.contains(first.url.lastPathComponent)
           ? ("PASS", "path text copied") : ("FAIL", "pasteboard: \(text)")
       case .float:
-        let before = FloatManager.shared.stacks.count
+        FloatManager.shared.closeAll()
         AppModel.shared.perform(command, urls: urls, origin: .overlay)
+        AppModel.shared.perform(command, urls: [fixtures.extra], origin: .overlay)
         let made = FloatManager.shared.stacks.last
-        guard FloatManager.shared.stacks.count == before + 1, let made, made.urls.count == urls.count else {
-          return ("FAIL", "no Float made")
+        // The extra file may already be one of `urls` (the md group); it's then not added twice.
+        let expected = Set((urls + [fixtures.extra]).map(\.standardizedFileURL)).count
+        guard FloatManager.shared.stacks.count == 1, let made, made.urls.count == expected else {
+          return ("FAIL", "second Float didn't stack onto the first")
         }
         let visible = NSApp.windows.contains { $0 is NSPanel && $0.isVisible }
         FloatManager.shared.close(made.id)

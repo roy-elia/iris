@@ -967,6 +967,20 @@ public enum DocumentOps {
         file.url, app: IWorkApp.pages.isInstalled ? .pages : nil, destination: destination)
     case (.pdf, .epubFixed):
       try EPUBOps.writeFixed(pdf: file.url, title: title, to: destination)
+    case (.document(let format), .pdf) where format == .html || format == .md:
+      // WebKit keeps the page's layout; plain text layout is the fallback.
+      let source = try RichText.readPlainText(file.url)
+      let html =
+        format == .md
+        ? Markdown.page(source, title: title).replacingOccurrences(
+          of: "</head>", with: "<style>\(WebPDF.markdownStyle)</style></head>")
+        : source
+      do {
+        try await WebPDF.render(html: html, baseURL: file.url.deletingLastPathComponent(), to: destination)
+      } catch {
+        let text = try await RichText.load(file.url, kind: file.kind)
+        try await RichText.write(text, as: output, title: title, to: destination)
+      }
     case (.document(.md), .html):
       let page = Markdown.page(try RichText.readPlainText(file.url), title: title)
       try page.write(to: destination, atomically: true, encoding: .utf8)
@@ -995,10 +1009,18 @@ public enum DocumentOps {
     case .pdf:
       if output == .pdf { return "It's already a PDF." }
     case .office(let format):
-      if !format.isTable && output != .pdf { return "Presentations and spreadsheets convert to PDF." }
       if output == .epubFixed { return "Page-image EPUBs are made from PDFs." }
+      // Numbers and .xls workbooks are read through Numbers; their PDF has other fallbacks.
+      if !format.isTable && !format.isPresentation && output != .pdf,
+        let problem = SpreadsheetOps.problem(format)
+      {
+        return problem
+      }
     case .document:
       if output == .epubFixed { return "Page-image EPUBs are made from PDFs." }
+    case .image:
+      // Pictures convert to text by OCR; PDF has its own command.
+      if output == .pdf || output == .epubFixed { return "Use PDF on the Convert wheel." }
     default:
       return "Not a document."
     }

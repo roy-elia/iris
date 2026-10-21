@@ -105,7 +105,7 @@ struct RecipeEditor: View {
         Button("Cancel", role: .cancel, action: onCancel)
           .keyboardShortcut(.cancelAction)
         Button("Save") { onSave(recipe) }
-          .buttonStyle(.glassProminent)
+          .primaryActionStyle()
           .keyboardShortcut(.defaultAction)
           .disabled(recipe.steps.isEmpty)
       }

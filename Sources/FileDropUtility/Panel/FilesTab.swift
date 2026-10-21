@@ -44,23 +44,28 @@ struct FilesTab: View {
     VStack(spacing: 6) {
       Image(systemName: "tray.and.arrow.down")
         .font(.system(size: 26, weight: .medium))
-        .foregroundStyle(isTargeted ? Color.accentColor : .secondary)
+        .foregroundStyle(isTargeted ? DesignTokens.Palette.tealInk : .secondary)
         .accessibilityHidden(true)
-      Text("Drop files here").font(.callout)
+      Text("Drop files or text here").font(.callout)
+      // The window's one teal primary action.
       Button("Choose Files…") { model.chooseFiles() }
-        .buttonStyle(.glass)
+        .primaryActionStyle()
         .accessibilityIdentifier("chooseFiles")
+      Button("Paste Text as Markdown") { model.pasteTextAsMarkdown() }
+        .buttonStyle(.glass).tint(nil)
+        .keyboardShortcut("v", modifiers: .command)
+        .accessibilityIdentifier("pasteText")
     }
     .frame(maxWidth: .infinity, minHeight: 110)
     .padding(DesignTokens.Spacing.cardPadding)
     // A drop target is a control, so it's glass; it takes the accent tint while files hover.
-    .glassPanel(tint: isTargeted ? .accentColor : nil, interactive: true)
-    .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
-      URLLoader.load(providers) { model.add($0) }
-      return true
-    }
+    .glassPanel(tint: isTargeted ? DesignTokens.Palette.teal : nil, interactive: true)
+    .onDrop(
+      of: [.fileURL, .utf8PlainText, .plainText],
+      delegate: FilesDropDelegate(model: model, isTargeted: $isTargeted)
+    )
     .accessibilityElement(children: .contain)
-    .accessibilityLabel("Drop zone for images or PDFs")
+    .accessibilityLabel("Drop zone for files or text")
   }
 
   private var fileList: some View {
@@ -70,7 +75,7 @@ struct FilesTab: View {
           .font(.headline)
         Spacer()
         Button("Clear") { model.clear() }
-          .buttonStyle(.glass)
+          .buttonStyle(.glass).tint(nil)
           .accessibilityIdentifier("clearFiles")
       }
       // Only scroll once the list is long; a short list sizes to its rows.
@@ -125,7 +130,7 @@ struct FilesTab: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
           }
-          .buttonStyle(.glass)
+          .buttonStyle(.glass).tint(nil)
           .buttonBorderShape(.roundedRectangle(radius: DesignTokens.Radius.card))
           .accessibilityLabel("Open \(kind.longTitle) wheel")
           .accessibilityIdentifier("open-\(kind.rawValue)")
@@ -142,7 +147,7 @@ struct FilesTab: View {
         } label: {
           Label("Back", systemImage: "chevron.left")
         }
-        .buttonStyle(.glass)
+        .buttonStyle(.glass).tint(nil)
         .accessibilityIdentifier("wheelBack")
         Spacer()
         Text(kind.longTitle).font(.headline)
@@ -172,22 +177,28 @@ struct ResultCard: View {
           "\(operation): \(result.renames.isEmpty ? "saved" : "renamed") \(result.outputs.count) file\(result.outputs.count == 1 ? "" : "s")",
           systemImage: "checkmark.circle.fill"
         )
-        .foregroundStyle(Color.accentColor)
+        .foregroundStyle(DesignTokens.Palette.tealInk)
         .font(.callout.weight(.semibold))
         ForEach(result.outputs, id: \.self) { url in
           Text(url.lastPathComponent).font(.caption).lineLimit(1).truncationMode(.middle)
         }
+        if let notice = result.downloadsNotice {
+          Label(notice, systemImage: "arrow.down.circle")
+            .font(.caption)
+            .foregroundStyle(Color.secondary)
+            .accessibilityIdentifier("downloadsNotice")
+        }
         HStack {
           Button("Show in Finder") { model.reveal(result.outputs) }
-            .buttonStyle(.glass)
+            .buttonStyle(.glass).tint(nil)
             .accessibilityIdentifier("reveal")
           Button("AirDrop") { model.perform(.airDrop, urls: result.outputs, origin: .panel) }
-            .buttonStyle(.glass)
+            .buttonStyle(.glass).tint(nil)
             .accessibilityIdentifier("airdrop")
           ShareButton(items: result.outputs).fixedSize()
           if !result.renames.isEmpty {
             Button("Undo Rename") { model.undoRenames() }
-              .buttonStyle(.glass)
+              .buttonStyle(.glass).tint(nil)
               .accessibilityIdentifier("undoRename")
           }
         }
@@ -204,5 +215,31 @@ struct ResultCard: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(4)
     .groupBoxed()
+  }
+}
+
+/// Takes files or text. A plain-text file (.txt, .md) is also readable as text, so the choice
+/// comes from the drag's own types: anything carrying a file URL is a file, and only a drag
+/// with no file in it is text.
+private struct FilesDropDelegate: DropDelegate {
+  let model: AppModel
+  @Binding var isTargeted: Bool
+
+  func validateDrop(info: DropInfo) -> Bool {
+    info.hasItemsConforming(to: [.fileURL, .utf8PlainText, .plainText])
+  }
+
+  func dropEntered(info: DropInfo) { isTargeted = true }
+  func dropExited(info: DropInfo) { isTargeted = false }
+  func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .copy) }
+
+  func performDrop(info: DropInfo) -> Bool {
+    isTargeted = false
+    if info.hasItemsConforming(to: [.fileURL]) {
+      URLLoader.load(info.itemProviders(for: [.fileURL])) { model.add($0) }
+    } else {
+      TextLoader.load(info.itemProviders(for: [.utf8PlainText, .plainText])) { model.addText($0) }
+    }
+    return true
   }
 }

@@ -5,13 +5,12 @@ import SwiftUI
 enum PanelTab: String, CaseIterable, Identifiable {
   case files = "Files"
   case history = "History"
-  case settings = "Settings"
   var id: String { rawValue }
 }
 
-/// The main window: Files, History and Settings, switched with a segmented control in the
-/// window's toolbar. Content sits in system group boxes and a grouped form; glass is kept for
-/// the toolbar (drawn by the system) and the floating controls.
+/// The main window: Files and History, switched with a segmented control in the window's
+/// toolbar. Settings has its own window (`SettingsWindow`). Content sits in system group
+/// boxes; glass is kept for the toolbar (drawn by the system) and the floating controls.
 struct PanelView: View {
   @EnvironmentObject private var model: AppModel
   @State private var tab: PanelTab
@@ -23,14 +22,12 @@ struct PanelView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: DesignTokens.Spacing.stack) {
-      StatusHeader()
+      // The status line belongs with the drop zone; History has its own content to show.
+      if tab == .files { StatusHeader() }
       Group {
         switch tab {
         case .files: FilesTab()
         case .history: HistoryTab()
-        case .settings:
-          // A grouped form scrolls itself; give it the room the screen allows.
-          SettingsTab().frame(height: min(Self.settingsMaxHeight, 640))
         }
       }
       .id(tab)
@@ -54,16 +51,27 @@ struct PanelView: View {
     }
   }
 
-  /// The screen's usable height, less the header and window chrome.
-  static var settingsMaxHeight: CGFloat {
-    max((NSScreen.main?.visibleFrame.height ?? 800) - 200, 320)
+}
+
+/// The Settings window, opened with Settings… (⌘,) from the menu-bar menu or the More menu.
+/// The grouped form scrolls itself within the room the screen allows.
+struct SettingsWindow: View {
+  var body: some View {
+    SettingsTab()
+      .frame(width: 460, height: min(Self.maxHeight, 640))
+  }
+
+  /// The screen's usable height, less the window chrome.
+  static var maxHeight: CGFloat {
+    max((NSScreen.main?.visibleFrame.height ?? 800) - 160, 320)
   }
 }
 
-/// Getting Started, About and Quit, in the toolbar.
+/// Settings, Getting Started, About and Quit, in the toolbar.
 struct MoreMenu: View {
   var body: some View {
     Menu {
+      Button("Settings…") { WindowManager.shared.openSettings() }.keyboardShortcut(",")
       Button("Getting Started…") { WindowManager.shared.openOnboarding() }
       Button("About File Drop Utility") {
         NSApp.activate()
@@ -74,11 +82,14 @@ struct MoreMenu: View {
     } label: {
       Label("More", systemImage: "ellipsis")
     }
+    // Toolbar items stay monochrome; teal is for the window's primary action.
+    .tint(nil)
     .accessibilityIdentifier("moreMenu")
   }
 }
 
-/// "Ready" line with the modifier hints.
+/// "Ready" line. The modifier hints show only while the drop zone is empty: once files are
+/// queued, the wheel launchers below carry the same shortcuts on their own keycaps.
 struct StatusHeader: View {
   @EnvironmentObject private var model: AppModel
 
@@ -86,11 +97,13 @@ struct StatusHeader: View {
     HStack(alignment: .center, spacing: 10) {
       Image(systemName: model.isRunning ? "hourglass" : "checkmark.circle")
         .font(.title3)
-        .foregroundStyle(.tint)
+        .foregroundStyle(DesignTokens.Palette.tealInk)
         .accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 1) {
         Text(model.isRunning ? "Working…" : "Ready").font(.headline)
-        Text(hint).font(.caption).foregroundStyle(.secondary)
+        if let hint {
+          Text(hint).font(.caption).foregroundStyle(.secondary)
+        }
       }
       Spacer()
     }
@@ -98,8 +111,9 @@ struct StatusHeader: View {
     .accessibilityElement(children: .combine)
   }
 
-  private var hint: String {
+  private var hint: String? {
     guard model.settings.wheelTriggerEnabled else { return "Drag-and-hold wheels are off" }
+    guard model.files.isEmpty else { return nil }
     return WheelKind.allCases.map { "\($0.keySymbol) \($0.title)" }.joined(separator: " · ")
   }
 }

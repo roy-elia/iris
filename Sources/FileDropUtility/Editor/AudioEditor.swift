@@ -263,7 +263,7 @@ struct AudioEditorView: View {
       } label: {
         Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
       }
-      .buttonStyle(.glass)
+      .buttonStyle(.glass).tint(nil)
       .disabled(!model.canPlay)
       .help(
         model.canPlay
@@ -276,7 +276,7 @@ struct AudioEditorView: View {
         .foregroundStyle(Color.secondary)
       Spacer()
       Button("Save Edited Copy") { model.save() }
-        .buttonStyle(.glassProminent)
+        .primaryActionStyle()
         .disabled(!model.canSave)
         .keyboardShortcut("s")
         .accessibilityIdentifier("saveAudio")
@@ -306,8 +306,8 @@ struct AudioEditorView: View {
     Text("Drag the ends of the waveform, or set them at the playhead.")
       .font(.callout).foregroundStyle(Color.secondary)
     HStack {
-      Button("Start at Playhead") { model.setTrimStartToPlayhead() }.buttonStyle(.glass)
-      Button("End") { model.setTrimEndToPlayhead() }.buttonStyle(.glass).help("End at the playhead")
+      Button("Start at Playhead") { model.setTrimStartToPlayhead() }.buttonStyle(.glass).tint(nil)
+      Button("End") { model.setTrimEndToPlayhead() }.buttonStyle(.glass).tint(nil).help("End at the playhead")
     }
     LabeledContent("Keeps", value: formatTime(model.keptRange.upperBound - model.keptRange.lowerBound))
       .font(.callout.monospacedDigit())
@@ -331,7 +331,7 @@ struct AudioEditorView: View {
     if !model.bleepAll {
       Text("Add a bleep at the playhead, then drag its ends on the waveform.")
         .font(.callout).foregroundStyle(Color.secondary)
-      Button("Add Bleep") { model.addBleepAtPlayhead() }.buttonStyle(.glass)
+      Button("Add Bleep") { model.addBleepAtPlayhead() }.buttonStyle(.glass).tint(nil)
       ForEach(Array(model.bleeps.enumerated()), id: \.offset) { index, bleep in
         Button {
           model.selectedBleep = index
@@ -351,7 +351,8 @@ struct AudioEditorView: View {
         .buttonStyle(.plain)
       }
       if model.selectedBleep != nil {
-        Button("Delete Bleep", role: .destructive) { model.deleteSelectedBleep() }.buttonStyle(.glass)
+        Button("Delete Bleep", role: .destructive) { model.deleteSelectedBleep() }.buttonStyle(.glass).tint(
+          nil)
       }
     }
   }
@@ -396,7 +397,7 @@ struct AudioEditorView: View {
           Text(balanceText).font(.caption.monospacedDigit()).foregroundStyle(
             Color.secondary)
           Spacer()
-          Button("Centre") { model.balance = 0 }.buttonStyle(.glass).controlSize(.small)
+          Button("Centre") { model.balance = 0 }.buttonStyle(.glass).tint(nil).controlSize(.small)
             .disabled(model.balance == 0)
         }
       }
@@ -424,7 +425,7 @@ struct WaveformTimeline: View {
         WaveformShape(peaks: model.peaks)
           .fill(
             LinearGradient(
-              colors: [Color.accentColor, Color.accentColor], startPoint: .top,
+              colors: [DesignTokens.Palette.teal, DesignTokens.Palette.teal], startPoint: .top,
               endPoint: .bottom)
           )
           .frame(width: w, height: h)
@@ -441,6 +442,8 @@ struct WaveformTimeline: View {
             bleepBand(from: x(b.start), to: x(b.end), height: h, selected: model.selectedBleep == index)
               .onTapGesture { model.selectedBleep = index }
               .accessibilityLabel("Bleep \(index + 1)")
+              .accessibilityAddTraits(model.selectedBleep == index ? [.isButton, .isSelected] : .isButton)
+              .accessibilityAction { model.selectedBleep = index }
           }
         }
 

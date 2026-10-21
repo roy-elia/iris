@@ -15,9 +15,21 @@ extension Job {
 /// What a running job can use: progress reporting and cancellation checks.
 public struct JobContext: Sendable {
   let report: @Sendable (Double) -> Void
+  let reportFile: @Sendable (Processor.FileEvent) -> Void
+
+  init(
+    report: @escaping @Sendable (Double) -> Void,
+    reportFile: @escaping @Sendable (Processor.FileEvent) -> Void = { _ in }
+  ) {
+    self.report = report
+    self.reportFile = reportFile
+  }
 
   /// Reports progress from 0 to 1. Values are clamped and never go backwards.
   public func progress(_ fraction: Double) { report(fraction) }
+
+  /// Reports that a file in the batch started, finished or failed.
+  public func file(_ event: Processor.FileEvent) { reportFile(event) }
 
   public func checkCancelled() throws { try Task.checkCancellation() }
 }
@@ -38,6 +50,7 @@ public final class JobHandle: @unchecked Sendable, Identifiable {
   private let lock = NSLock()
   private var _state: JobState = .queued
   private var observers: [@Sendable (JobState) -> Void] = []
+  private var fileObservers: [@Sendable (Processor.FileEvent) -> Void] = []
   fileprivate var task: Task<OperationResult?, Never>?
 
   init(title: String) { self.title = title }
@@ -51,6 +64,16 @@ public final class JobHandle: @unchecked Sendable, Identifiable {
       return _state
     }
     observer(current)
+  }
+
+  /// Calls `observer` whenever a file in the batch starts, finishes or fails.
+  public func observeFiles(_ observer: @escaping @Sendable (Processor.FileEvent) -> Void) {
+    lock.withLock { fileObservers.append(observer) }
+  }
+
+  fileprivate func emit(_ event: Processor.FileEvent) {
+    let toNotify = lock.withLock { fileObservers }
+    for observer in toNotify { observer(event) }
   }
 
   public func cancel() { task?.cancel() }
@@ -97,9 +120,9 @@ public actor JobEngine {
         return nil
       }
       handle.set(.running(progress: 0))
-      let context = JobContext { fraction in
-        handle.set(.running(progress: min(max(fraction, 0), 1)))
-      }
+      let context = JobContext(
+        report: { fraction in handle.set(.running(progress: min(max(fraction, 0), 1))) },
+        reportFile: { handle.emit($0) })
       do {
         let result = try await job.run(context)
         try Task.checkCancellation()
@@ -158,7 +181,8 @@ public struct ProcessorJob: Job {
   public var isHeavy: Bool { operation.isMedia }
 
   public func run(_ context: JobContext) async throws -> OperationResult {
-    let processor = Processor(settings: settings)
+    var processor = Processor(settings: settings)
+    processor.fileEvents = { context.file($0) }
     context.progress(0.01)
     let result = await processor.run(operation, on: files) { fraction in context.progress(fraction) }
     context.progress(1)

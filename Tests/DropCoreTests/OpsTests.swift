@@ -60,6 +60,25 @@ import Testing
     // The original is untouched.
     #expect(try ImageOps.hasLocation(src))
   }
+
+  @Test func completeStripLeavesNoMetadataProfileOrAttributes() async throws {
+    let dir = try TempDir()
+    let src = try Fixtures.writeImage(to: dir.file("m.jpg"), withMetadata: true)
+    let file = try DroppedFile.load(src)
+    _ = setxattr(src.path, "com.example.tag", "x", 1, 0, 0)
+    let result = await Processor(settings: AppSettings()).run(.stripAllMetadata, on: [file])
+    let out = try #require(result.outputs.first)
+
+    let meta = try ImageOps.metadata(of: out)
+    #expect(meta.keys.allSatisfy { !$0.hasPrefix("TIFF") && !$0.hasPrefix("Exif") && !$0.hasPrefix("GPS") })
+    // ImageIO reports an assumed sRGB profile even for untagged files, so ask ExifTool what's
+    // actually in the file: only its derived Composite values may remain.
+    if ToolLocator.isAvailable(.exiftool) {
+      let left = try await MetadataOps.read(out).filter { $0.group != "Composite" }
+      #expect(left.isEmpty, "left behind: \(left.map(\.id))")
+    }
+    #expect(listxattr(out.path, nil, 0, 0) <= 0)
+  }
 }
 
 @Suite struct PDFOpsTests {

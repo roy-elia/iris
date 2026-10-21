@@ -49,7 +49,10 @@ service() {  # service <menu title> <QuickAction spec> <file type UTI>...
 DOCUMENTS=(public.plain-text public.rtf public.html net.daringfireball.markdown
   org.openxmlformats.wordprocessingml.document com.microsoft.word.doc org.oasis-open.opendocument.text
   com.apple.iwork.pages.sffpages com.apple.iwork.pages.pages org.idpf.epub-container
-  org.openxmlformats.spreadsheetml.sheet org.openxmlformats.presentationml.presentation)
+  org.openxmlformats.spreadsheetml.sheet org.openxmlformats.presentationml.presentation
+  com.microsoft.excel.xls com.microsoft.powerpoint.ppt com.apple.iwork.keynote.sffkey com.apple.keynote.key
+  com.apple.iwork.numbers.sffnumbers com.apple.numbers.numbers org.oasis-open.opendocument.spreadsheet
+  public.comma-separated-values-text public.tab-separated-values-text)
 SERVICES=$(
   service "Convert Image to PNG" convert-image:png public.image
   service "Convert Image to JPEG" convert-image:jpeg public.image

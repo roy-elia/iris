@@ -13,6 +13,8 @@ final class AppModel: ObservableObject {
   @Published var isRunning = false
   /// Progress of the running job, 0…1, or nil when none is running.
   @Published var progress: Double?
+  /// The running batch's per-file checklist, shown in the progress capsule.
+  @Published var batch: BatchProgress?
   private var currentJob: JobHandle?
   /// A Finder service run, which may be several jobs.
   private var quickActionTask: Task<Void, Never>?
@@ -33,7 +35,6 @@ final class AppModel: ObservableObject {
       }
       saveSettings()
       WheelKind.savedRecipes = settings.recipes
-      if oldValue.appearance != settings.appearance { applyAppearance() }
       if oldValue.checkForUpdates != settings.checkForUpdates { scheduleUpdateChecks() }
       settingsSnapshot.value = settings
       if oldValue.watchFolders != settings.watchFolders { folderWatcher?.update(settings.watchFolders) }
@@ -157,6 +158,25 @@ final class AppModel: ObservableObject {
     }
   }
 
+  /// Turns text that isn't in a file (pasted, or dragged out of another app) into a Markdown
+  /// file and queues it, so it can go straight to a chat or through any wheel action.
+  func addText(_ text: String) {
+    do {
+      let url = try TextToMarkdown.write(text, to: TextToMarkdown.destination(for: settings.outputLocation))
+      add([url])
+      Toast.show("Saved \(url.lastPathComponent)", outputs: [url])
+    } catch TextToMarkdown.Failure.empty {
+      rejected = ["Nothing to save: the text is empty."]
+    } catch {
+      rejected = [Self.message(for: error, fallback: "Pasted text")]
+    }
+  }
+
+  /// Makes a Markdown file from the plain text on the clipboard.
+  func pasteTextAsMarkdown() {
+    addText(NSPasteboard.general.string(forType: .string) ?? "")
+  }
+
   func remove(_ file: DroppedFile) {
     files.removeAll { $0.id == file.id }
   }
@@ -278,9 +298,8 @@ final class AppModel: ObservableObject {
       NSSharingService(named: .sendViaAirDrop)?.perform(withItems: fileURLs)
     case .share:
       SharePresenter.share(fileURLs)
-    case .float:
-      FloatManager.shared.create(with: fileURLs)
-    case .addToFloat:
+    case .float, .addToFloat:
+      // Every Float action stacks onto the one open Float, so files never spread across tabs.
       FloatManager.shared.addToLatest(fileURLs)
     case .copy:
       NSPasteboard.general.clearContents()
@@ -343,6 +362,14 @@ final class AppModel: ObservableObject {
     let handle = JobEngine.shared.submit(
       ProcessorJob(operation: operation, files: targets, settings: settings))
     currentJob = handle
+    batch = BatchProgress(title: operation.summary, names: targets.map(\.name))
+    ProgressCapsule.show()
+    handle.observeFiles { event in
+      Task { @MainActor in
+        guard AppModel.shared.currentJob === handle else { return }
+        AppModel.shared.batch?.apply(event)
+      }
+    }
     handle.observe { [weak self] state in
       guard case .running(let fraction) = state else { return }
       Task { @MainActor in
@@ -354,6 +381,8 @@ final class AppModel: ObservableObject {
       currentJob = nil
       isRunning = false
       progress = nil
+      batch = nil
+      ProgressCapsule.hide()
       switch handle.state {
       case .finished(let result):
         finish(result, operation: operation.summary, origin: origin, inputCount: targets.count)
@@ -435,7 +464,11 @@ final class AppModel: ObservableObject {
       WindowManager.shared.openTool("qr", title: "QR Codes") { QRResultsView(codes: codes) }
     } else if origin == .overlay {
       var undo: (@MainActor () -> Void)?
-      if !result.renames.isEmpty { undo = { AppModel.shared.undoRenames() } }
+      if !result.renames.isEmpty {
+        undo = { AppModel.shared.undoRenames() }
+      } else if !result.outputs.isEmpty {
+        undo = { AppModel.shared.undoOutputs() }
+      }
       Toast.show(result: result, operation: operation, undo: undo)
     }
   }
@@ -451,6 +484,30 @@ final class AppModel: ObservableObject {
     lastResult = undone
     if problems.isEmpty {
       Toast.show("Restored \(result.renames.count) name\(result.renames.count == 1 ? "" : "s")", outputs: [])
+    } else {
+      Toast.show(problems.joined(separator: "; "), outputs: [], isError: true)
+    }
+  }
+
+  /// Moves the files the last action made to the Trash, so nothing is lost for good.
+  func undoOutputs() {
+    guard let result = lastResult, result.renames.isEmpty, !result.outputs.isEmpty else { return }
+    var problems: [String] = []
+    var trashed = 0
+    for url in result.outputs {
+      guard FileManager.default.fileExists(atPath: url.path) else { continue }
+      do {
+        try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+        trashed += 1
+      } catch {
+        problems.append("\(url.lastPathComponent): \(error.localizedDescription)")
+      }
+    }
+    var undone = result
+    undone.outputs = []
+    lastResult = undone
+    if problems.isEmpty {
+      Toast.show("Moved \(trashed) file\(trashed == 1 ? "" : "s") to the Trash", outputs: [])
     } else {
       Toast.show(problems.joined(separator: "; "), outputs: [], isError: true)
     }
@@ -534,15 +591,6 @@ final class AppModel: ObservableObject {
     } catch {
       settingsError = "Launch at login needs the app bundle: \(error.localizedDescription)"
       settings.launchAtLogin = false
-    }
-  }
-
-  /// System appearance unless the user picked one in Settings.
-  func applyAppearance() {
-    switch settings.appearance {
-    case .system: NSApp.appearance = nil
-    case .light: NSApp.appearance = NSAppearance(named: .aqua)
-    case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
     }
   }
 

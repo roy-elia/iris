@@ -188,7 +188,9 @@ public enum RecipeRunner {
 
     var reserved = Set<URL>()
     for file in current {
-      let folder = OutputNamer.directory(for: file.origin, location: settings.outputLocation)
+      let (folder, fellBack) = OutputNamer.resolve(
+        for: file.origin, location: settings.outputLocation, fileManager: fileManager)
+      if fellBack { result.savedToDownloads = true }
       let desired = folder.appendingPathComponent(file.url.lastPathComponent)
       let target = OutputNamer.uniqueURL(for: desired, reserved: reserved, fileManager: fileManager)
       reserved.insert(target.standardizedFileURL)

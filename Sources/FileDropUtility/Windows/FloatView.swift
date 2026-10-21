@@ -27,9 +27,15 @@ final class FloatManager: ObservableObject {
     store = FloatStore(fileURL: folder.appendingPathComponent("floats.json"))
   }
 
-  /// Reopens the Floats saved last time.
+  /// Reopens the Float saved last time. Older versions could save several; they are merged
+  /// into one stack.
   func restore() {
-    for stack in store.load() { show(stack) }
+    let saved = store.load()
+    guard let latest = saved.last else { return }
+    // Newest stack first, each already newest-first; FloatStack.init puts the last URL on top.
+    let all = saved.reversed().flatMap(\.urls)
+    show(FloatStack(id: latest.id, urls: all.reversed(), edge: latest.edge, position: latest.position))
+    if saved.count > 1 { save() }
   }
 
   // MARK: Stacks
@@ -76,6 +82,7 @@ final class FloatManager: ObservableObject {
     panels[id] = nil
     stacks.removeAll { $0.id == id }
     expanded.remove(id)
+    pinned.remove(id)
     Self.openCount = stacks.count
     save()
   }
@@ -92,12 +99,19 @@ final class FloatManager: ObservableObject {
     collapseTasks[id]?.cancel()
     if inside {
       setExpanded(id, true)
-    } else {
+    } else if !pinned.contains(id) {
       // A short grace period, so brushing past the edge doesn't snap it shut.
       collapseTasks[id] = Task { [weak self] in
         try? await Task.sleep(for: .milliseconds(450))
-        guard !Task.isCancelled else { return }
-        self?.setExpanded(id, false)
+        // Dragging a file out or taking a screenshot moves the pointer away without
+        // meaning "done", so wait it out and keep the Float open afterwards.
+        var interrupted = false
+        while !Task.isCancelled, Self.isPointerBusy {
+          interrupted = true
+          try? await Task.sleep(for: .milliseconds(100))
+        }
+        guard !Task.isCancelled, let self else { return }
+        if interrupted { self.pin(id) } else { self.setExpanded(id, false) }
       }
     }
   }
@@ -105,7 +119,64 @@ final class FloatManager: ObservableObject {
   private func setExpanded(_ id: UUID, _ value: Bool) {
     guard expanded.contains(id) != value else { return }
     if value { expanded.insert(id) } else { expanded.remove(id) }
+    if !value { pinned.remove(id) }
     layout(id, animated: true)
+  }
+
+  // MARK: Staying open
+
+  /// Floats the person has clicked into (or dragged from, or screenshotted). These stay
+  /// open until a click lands somewhere else, instead of closing when the pointer leaves.
+  private var pinned: Set<UUID> = []
+  private var localClickMonitor: Any?
+  private var globalClickMonitor: Any?
+
+  private func pin(_ id: UUID) {
+    guard expanded.contains(id) else { return }
+    collapseTasks[id]?.cancel()
+    pinned.insert(id)
+    // Clicks in other apps; only watched while something is pinned.
+    guard globalClickMonitor == nil else { return }
+    globalClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
+      [weak self] _ in
+      MainActor.assumeIsolated { self?.clicked(in: nil) }
+    }
+  }
+
+  /// True while a mouse button is held (a drag in progress) or the screenshot tool is up.
+  private static var isPointerBusy: Bool {
+    CGEventSource.buttonState(.combinedSessionState, button: .left) || isScreenshotActive
+  }
+
+  /// The ⌘⇧3/4/5 tools all run as `screencaptureui`. Its crosshair takes clicks that
+  /// aren't meant for anything underneath.
+  private static var isScreenshotActive: Bool {
+    let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+    return windows.contains { ($0[kCGWindowOwnerName as String] as? String) == "screencaptureui" }
+  }
+
+  /// Clicks in this app: inside a Float pins it, anywhere else counts as clicking away.
+  private func startLocalClickMonitor() {
+    guard localClickMonitor == nil else { return }
+    localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
+      [weak self] event in
+      MainActor.assumeIsolated { self?.clicked(in: event.window) }
+      return event
+    }
+  }
+
+  private func clicked(in window: NSWindow?) {
+    if let window, let id = panels.first(where: { $0.value === window })?.key {
+      pin(id)
+    }
+    guard !Self.isScreenshotActive else { return }
+    for id in pinned where panels[id] !== window {
+      setExpanded(id, false)
+    }
+    if pinned.isEmpty, let monitor = globalClickMonitor {
+      NSEvent.removeMonitor(monitor)
+      globalClickMonitor = nil
+    }
   }
 
   private var dragStart: (mouse: CGPoint, origin: CGPoint)?
@@ -151,8 +222,10 @@ final class FloatManager: ObservableObject {
     panel.isReleasedWhenClosed = false
     panel.becomesKeyOnlyIfNeeded = true
     panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-    panel.contentView = NSHostingView(rootView: FloatTabView(id: stack.id).environmentObject(self))
+    panel.contentView = NSHostingView(
+      rootView: FloatTabView(id: stack.id).environmentObject(self).brandTint())
     panels[stack.id] = panel
+    startLocalClickMonitor()
     layout(stack.id, animated: false)
     panel.orderFrontRegardless()
     save()
@@ -282,7 +355,7 @@ struct FloatTabView: View {
     VStack(spacing: 4) {
       Image(systemName: "paperclip")
         .font(.system(size: 13, weight: .semibold))
-        .foregroundStyle(Color.accentColor)
+        .foregroundStyle(DesignTokens.Palette.tealInk)
         .rotationEffect(.degrees(stack.edge == .right ? -30 : 30))
       thumb(stack.urls.first, size: 36)
       Text("\(stack.urls.count)")
@@ -317,7 +390,7 @@ struct FloatTabView: View {
           )
           .help("Drag to move the Float")
           .accessibilityLabel("Move Float")
-        Image(systemName: "paperclip").foregroundStyle(Color.accentColor)
+        Image(systemName: "paperclip").foregroundStyle(DesignTokens.Palette.tealInk)
         Text("\(stack.urls.count) file\(stack.urls.count == 1 ? "" : "s")")
           .font(.callout.weight(.semibold))
           .frame(maxWidth: .infinity, alignment: .leading)

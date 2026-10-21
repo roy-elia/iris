@@ -6,7 +6,7 @@ struct OnboardingView: View {
   let onFinish: () -> Void
 
   enum Page: Int, CaseIterable {
-    case welcome, convert, tools, actions, fileTypes, folders, finish
+    case welcome, demo, convert, tools, actions, fileTypes, folders, finish
   }
 
   init(onFinish: @escaping () -> Void, startPage: Page = .welcome) {
@@ -24,6 +24,7 @@ struct OnboardingView: View {
       Group {
         switch page {
         case .welcome: welcome
+        case .demo: demo
         case .convert: wheelPage(.convert)
         case .tools: wheelPage(.tools)
         case .actions: wheelPage(.actions)
@@ -47,7 +48,7 @@ struct OnboardingView: View {
     VStack(spacing: 18) {
       AppGlyphView()
         .frame(width: 64, height: 64)
-        .foregroundStyle(Color.accentColor)
+        .foregroundStyle(DesignTokens.Palette.tealInk)
       Text("Welcome to").font(.title2).foregroundStyle(Color.secondary)
       Text("File Drop Utility").font(.system(.largeTitle, design: .rounded).weight(.bold))
       Text("Convert, fix and send files without opening another app.")
@@ -57,6 +58,23 @@ struct OnboardingView: View {
       continueButton
     }
     .padding(32)
+  }
+
+  private var demo: some View {
+    VStack(alignment: .leading, spacing: 18) {
+      HStack {
+        backButton
+        Spacer()
+      }
+      Text("See it in action").font(.largeTitle.weight(.bold))
+      WheelDemoView()
+        .frame(maxWidth: .infinity)
+      HStack {
+        Spacer()
+        continueButton
+      }
+    }
+    .padding(.horizontal, 36)
   }
 
   private func wheelPage(_ kind: WheelKind) -> some View {
@@ -99,7 +117,7 @@ struct OnboardingView: View {
           HStack(alignment: .top, spacing: 12) {
             Image(systemName: card.symbol)
               .font(.title2)
-              .foregroundStyle(Color.accentColor)
+              .foregroundStyle(DesignTokens.Palette.tealInk)
               .frame(width: 30)
               .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
@@ -155,10 +173,10 @@ struct OnboardingView: View {
       VStack(spacing: 14) {
         Image(systemName: "folder.fill.badge.person.crop")
           .font(.system(size: 96))
-          .foregroundStyle(Color.accentColor)
+          .foregroundStyle(DesignTokens.Palette.tealInk)
           .accessibilityHidden(true)
         Button("Check Folder Access…") { checkFolders() }
-          .buttonStyle(.glass)
+          .buttonStyle(.glass).tint(nil)
           .accessibilityIdentifier("checkFolders")
         Text(folderStatus ?? "Skip for now and macOS will ask the first time it's needed.")
           .font(.caption)
@@ -204,7 +222,7 @@ struct OnboardingView: View {
         )
         .accessibilityHidden(true)
         Image(systemName: "arrow.up")
-          .foregroundStyle(Color.accentColor)
+          .foregroundStyle(DesignTokens.Palette.tealInk)
           .frame(maxWidth: .infinity, alignment: .trailing)
           .padding(.trailing, 70)
           .accessibilityHidden(true)
@@ -232,7 +250,7 @@ struct OnboardingView: View {
           model.settings.hasCompletedOnboarding = true
           onFinish()
         }
-        .buttonStyle(.glassProminent)
+        .primaryActionStyle()
         .keyboardShortcut(.defaultAction)
         .accessibilityIdentifier("onboardingDone")
       }
@@ -245,7 +263,7 @@ struct OnboardingView: View {
 
   private var continueButton: some View {
     Button("Continue") { go(+1) }
-      .buttonStyle(.glassProminent)
+      .primaryActionStyle()
       .keyboardShortcut(.defaultAction)
       .accessibilityIdentifier("onboardingContinue")
   }
@@ -265,7 +283,7 @@ struct OnboardingView: View {
     HStack(spacing: 7) {
       ForEach(Page.allCases, id: \.self) { p in
         Capsule(style: .continuous)
-          .fill(p == page ? Color.accentColor : Color.secondary.opacity(0.4))
+          .fill(p == page ? DesignTokens.Palette.teal : Color.secondary.opacity(0.4))
           .frame(width: p == page ? 18 : 7, height: 7)
       }
     }

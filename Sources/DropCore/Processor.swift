@@ -9,6 +9,13 @@ public struct OperationResult: Equatable, Sendable {
   public var notes: [String] = []
   /// Files renamed in place, so the rename can be undone.
   public var renames: [Rename] = []
+  /// Some outputs went to Downloads because the chosen folder couldn't take them.
+  public var savedToDownloads = false
+
+  /// Says why outputs ended up in Downloads, when they did.
+  public var downloadsNotice: String? {
+    savedToDownloads ? "Saved to Downloads because the original’s folder can’t be written to." : nil
+  }
 
   public struct Rename: Equatable, Sendable {
     public let from: URL
@@ -50,9 +57,23 @@ public struct OperationResult: Equatable, Sendable {
 /// Runs operations on dropped files. Never overwrites existing files.
 public struct Processor: Sendable {
   public var settings: AppSettings
+  /// Called as each file starts and ends, so a batch can show a per-file checklist.
+  public var fileEvents: (@Sendable (FileEvent) -> Void)?
 
   public init(settings: AppSettings) {
     self.settings = settings
+  }
+
+  /// One file's step within a batch.
+  public struct FileEvent: Equatable, Sendable {
+    public enum Phase: Equatable, Sendable { case started, done, failed(String) }
+    public let name: String
+    public let phase: Phase
+
+    public init(name: String, phase: Phase) {
+      self.name = name
+      self.phase = phase
+    }
   }
 
   /// Checks that the inputs suit the operation. Returns a message if they do not.
@@ -66,7 +87,13 @@ public struct Processor: Sendable {
     case .convert(let format, _):
       if !format.isWritable { return "\(format.displayName) can't be written on this Mac." }
       if !allImages { return imagesOnly(operation) }
-    case .stripMetadata, .imagesToPDF, .replaceBackground, .batchEdit, .frame, .readQRCodes, .resize,
+    case .stripAllMetadata:
+      if let file = files.first(where: { !$0.kind.isImage && MetadataSupport($0.kind) == nil }) {
+        return "\(file.name) isn't supported. Strip all metadata works on images, PDFs, audio, video "
+          + "and Word, Excel and PowerPoint files."
+      }
+    case .stripMetadata, .imagesToPDF, .replaceBackground, .batchEdit, .frame,
+      .readQRCodes, .resize,
       .grayscale:
       if !allImages { return imagesOnly(operation) }
       if case .replaceBackground(.image(let path)) = operation, !FileManager.default.fileExists(atPath: path)
@@ -109,8 +136,8 @@ public struct Processor: Sendable {
       }
     case .convertDocument(let output):
       if let reason = output.unavailableReason { return "\(output.displayName): \(reason)." }
-      if !files.allSatisfy(\.kind.isDocumentLike) {
-        return "\(operation.summary) works on documents, PDFs, tables and presentations."
+      if !files.allSatisfy({ $0.kind.isDocumentLike || $0.kind.isImage }) {
+        return "\(operation.summary) works on documents, PDFs, tables, presentations and images."
       }
       if let problem = files.lazy.compactMap({ DocumentOps.problem($0.kind, output: output) }).first {
         return problem
@@ -130,7 +157,12 @@ public struct Processor: Sendable {
         return "\(operation.summary) works on SRT, VTT, ASS, SSA, SAMI and LRC subtitles."
       }
     case .convertData(let output):
-      if let file = files.first(where: { !($0.kind.dataFormat?.outputs.contains(output) ?? false) }) {
+      if let file = files.first(where: { file in
+        if case .office(let format) = file.kind, file.kind.isSpreadsheet {
+          return !(output == .json || output == .vcf) || SpreadsheetOps.problem(format) != nil
+        }
+        return !(file.kind.dataFormat?.outputs.contains(output) ?? false)
+      }) {
         return "\(file.name) can't be converted to \(output.displayName)."
       }
     case .sheetsToCSV:
@@ -179,6 +211,22 @@ public struct Processor: Sendable {
         return "\(file.name) can't hold photo metadata. Convert it to JPEG, PNG or TIFF first."
       }
       if edits.isEmpty { return "There are no metadata changes to save." }
+    case .copyMetadata(let path):
+      if let file = files.first(where: { MetadataSupport($0.kind) == nil }) {
+        return file.kind.isImage
+          ? "\(file.name) can't hold photo metadata. Convert it to JPEG, PNG or TIFF first."
+          : "\(file.name) isn't supported. Copy metadata works on images, PDFs, audio, video "
+            + "and Word, Excel and PowerPoint files."
+      }
+      if !FileManager.default.fileExists(atPath: path) {
+        return "The file to copy metadata from is no longer there."
+      }
+      if files.contains(where: { MetadataSupport($0.kind) == .office }),
+        MetadataSupport(FileKind(url: URL(fileURLWithPath: path))) != .office
+      {
+        return "Word, Excel and PowerPoint files can only take metadata from another Word, Excel "
+          + "or PowerPoint file."
+      }
     case .collage:
       if !allImages { return imagesOnly(operation) }
       if files.count < 2 { return "Drop at least two images to make a collage." }
@@ -229,7 +277,8 @@ public struct Processor: Sendable {
     func base(_ file: DroppedFile) -> String { file.url.deletingPathExtension().lastPathComponent }
     func target(_ file: DroppedFile, suffix: String, ext: String) -> URL {
       let name = suffix.isEmpty ? base(file) : "\(base(file)) \(suffix)"
-      return claim(outputDirectory(for: file.url).appendingPathComponent(name).appendingPathExtension(ext))
+      let dir = outputDirectory(for: file.url, in: &result)
+      return claim(dir.appendingPathComponent(name).appendingPathExtension(ext))
     }
     /// A file ImageIO can read: SVG is rasterised first.
     func readable(_ file: DroppedFile) throws -> URL { try ImageInput.readableURL(for: file.url) }
@@ -245,14 +294,27 @@ public struct Processor: Sendable {
         }
       }
 
-    case .stripMetadata:
+    case .stripMetadata, .stripAllMetadata:
+      let complete = operation == .stripAllMetadata
       for file in files {
+        if !file.kind.isImage {
+          let out = target(file, suffix: "no-metadata", ext: file.url.pathExtension)
+          await record(&result, file: file, output: out) {
+            switch MetadataSupport(file.kind) {
+            case .pdf: try await MetadataOps.stripPDF(file.url, destination: out)
+            case .office: try await MetadataOps.stripOffice(file.url, destination: out)
+            default: try await MetadataOps.stripMedia(file.url, destination: out)
+            }
+          }
+          continue
+        }
         // Read-only formats (SVG, and WebP without the encoder) come out as PNG.
         let format = ImageFormat(fileExtension: file.url.pathExtension)
         let ext = format.map { $0.isImageIOWritable } == true ? file.url.pathExtension : "png"
         let out = target(file, suffix: "no-metadata", ext: ext)
         await record(&result, file: file, output: out) {
-          try ImageOps.stripMetadata(readable(file), destination: out)
+          try ImageOps.stripMetadata(readable(file), destination: out, complete: complete)
+          if complete { try await MetadataOps.removeEverything(from: out) }
         }
       }
 
@@ -323,6 +385,15 @@ public struct Processor: Sendable {
         }
       }
 
+    case .copyMetadata(let path):
+      let source = URL(fileURLWithPath: path)
+      for file in files {
+        let out = target(file, suffix: "metadata", ext: file.url.pathExtension)
+        await record(&result, file: file, output: out) {
+          try await MetadataOps.copyExact(from: source, onto: file.url, destination: out)
+        }
+      }
+
     case .frame(let recipe):
       for file in files {
         let out = target(file, suffix: "framed", ext: "png")
@@ -333,7 +404,7 @@ public struct Processor: Sendable {
       }
 
     case .collage(let recipe):
-      let out = claim(outputDirectory(for: files[0].url).appendingPathComponent("Collage.png"))
+      let out = claim(outputDirectory(for: files[0].url, in: &result).appendingPathComponent("Collage.png"))
       await record(&result, file: nil, output: out) {
         try ImageOps.write(CollageOps.render(files.map(\.url), recipe: recipe), as: .png, quality: 1, to: out)
       }
@@ -402,7 +473,8 @@ public struct Processor: Sendable {
     case .joinVideos:
       let ext = Self.videoContainer(for: files[0].url).fileExtension
       let out = claim(
-        outputDirectory(for: files[0].url).appendingPathComponent("Joined").appendingPathExtension(ext))
+        outputDirectory(for: files[0].url, in: &result).appendingPathComponent("Joined")
+          .appendingPathExtension(ext))
       await record(&result, file: nil, output: out) {
         try await VideoOps.join(files.map(\.url), destination: out, progress: progress)
       }
@@ -541,6 +613,17 @@ public struct Processor: Sendable {
 
     case .convertData(let output):
       for file in files {
+        // Workbooks are saved sheet by sheet.
+        if case .office(let format) = file.kind, file.kind.isSpreadsheet {
+          do {
+            result.outputs += try await SpreadsheetOps.exportData(file.url, format: format, to: output) {
+              sheet in target(file, suffix: sheet ?? "", ext: output.fileExtension)
+            }
+          } catch {
+            result.failures.append(.init(file: file.name, message: Self.message(for: error)))
+          }
+          continue
+        }
         let out = target(file, suffix: "", ext: output.fileExtension)
         await record(&result, file: file, output: out) {
           try DataOps.convert(file.url, to: output, destination: out)
@@ -563,7 +646,8 @@ public struct Processor: Sendable {
     case .extractArchive:
       for file in files {
         let folder = claim(
-          outputDirectory(for: file.url).appendingPathComponent(ArchiveOps.outputName(for: file.url)))
+          outputDirectory(for: file.url, in: &result)
+            .appendingPathComponent(ArchiveOps.outputName(for: file.url)))
         await record(&result, file: file, output: folder) {
           try await DocumentOps.extract(file.url, into: folder)
         }
@@ -619,20 +703,20 @@ public struct Processor: Sendable {
 
     case .zipFiles:
       let name = files.count == 1 ? files[0].name : "Archive"
-      let out = claim(outputDirectory(for: files[0].url).appendingPathComponent("\(name).zip"))
+      let out = claim(outputDirectory(for: files[0].url, in: &result).appendingPathComponent("\(name).zip"))
       await record(&result, file: nil, output: out) {
         try await ArchiveOps.zip(files.map(\.url), destination: out)
       }
 
     case .mergePDFs:
-      let out = claim(outputDirectory(for: files[0].url).appendingPathComponent("Merged.pdf"))
+      let out = claim(outputDirectory(for: files[0].url, in: &result).appendingPathComponent("Merged.pdf"))
       await record(&result, file: nil, output: out) {
         try PDFOps.merge(files.map(\.url), destination: out)
       }
 
     case .imagesToPDF:
       let name = files.count == 1 ? base(files[0]) : "Images"
-      let out = claim(outputDirectory(for: files[0].url).appendingPathComponent("\(name).pdf"))
+      let out = claim(outputDirectory(for: files[0].url, in: &result).appendingPathComponent("\(name).pdf"))
       await record(&result, file: nil, output: out) {
         try PDFOps.imagesToPDF(files.map { (try? readable($0)) ?? $0.url }, destination: out)
       }
@@ -650,8 +734,9 @@ public struct Processor: Sendable {
     (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
   }
 
-  private func outputDirectory(for source: URL) -> URL {
-    let dir = OutputNamer.directory(for: source, location: settings.outputLocation)
+  private func outputDirectory(for source: URL, in result: inout OperationResult) -> URL {
+    let (dir, fellBack) = OutputNamer.resolve(for: source, location: settings.outputLocation)
+    if fellBack { result.savedToDownloads = true }
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     return dir
   }
@@ -659,11 +744,16 @@ public struct Processor: Sendable {
   private func record(
     _ result: inout OperationResult, file: DroppedFile?, output: URL, _ work: () async throws -> Void
   ) async {
+    let name = file?.name ?? output.lastPathComponent
+    fileEvents?(.init(name: name, phase: .started))
     do {
       try await work()
       result.outputs.append(output)
+      fileEvents?(.init(name: name, phase: .done))
     } catch {
-      result.failures.append(.init(file: file?.name ?? "", message: Self.message(for: error)))
+      let message = Self.message(for: error)
+      result.failures.append(.init(file: file?.name ?? "", message: message))
+      fileEvents?(.init(name: name, phase: .failed(message)))
     }
   }
 }

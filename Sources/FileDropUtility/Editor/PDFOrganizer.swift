@@ -153,9 +153,9 @@ struct PDFOrganizerView: View {
         .help("Scale every page to the widest page's width")
       Text(summary).font(.callout.monospacedDigit()).foregroundStyle(Color.secondary)
       Spacer()
-      Button("Reset") { model.reset() }.buttonStyle(.glass)
+      Button("Reset") { model.reset() }.buttonStyle(.glass).tint(nil)
       Button("Save Organized PDF") { model.save() }
-        .buttonStyle(.glassProminent)
+        .primaryActionStyle()
         .disabled(!model.canSave)
         .keyboardShortcut("s")
     }
@@ -193,11 +193,11 @@ struct PDFOrganizerView: View {
       .frame(width: 150, height: 150)
       .background(
         RoundedRectangle(cornerRadius: 16, style: .continuous)
-          .fill(selected ? Color.accentColor.opacity(0.22) : .clear)
+          .fill(selected ? DesignTokens.Palette.teal.opacity(0.22) : .clear)
       )
       .overlay(
         RoundedRectangle(cornerRadius: 16, style: .continuous)
-          .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 2)
+          .strokeBorder(selected ? DesignTokens.Palette.teal : .clear, lineWidth: 2)
       )
       Text("\(position + 1)")
         .font(.callout.monospacedDigit().weight(selected ? .semibold : .regular))
@@ -219,6 +219,7 @@ struct PDFOrganizerView: View {
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Page \(position + 1), from original page \(ref.index + 1)")
     .accessibilityValue(ref.rotation == 0 ? (selected ? "Selected" : "") : "Turned \(ref.rotation) degrees")
-    .accessibilityAddTraits(selected ? .isSelected : [])
+    .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    .accessibilityAction { model.toggle(position, extend: false) }
   }
 }

@@ -20,7 +20,7 @@ public enum SpreadsheetOps {
   public static func canRead(_ format: OfficeFormat) -> Bool {
     switch format {
     case .xlsx, .ods: true
-    case .numbers, .xls: IWorkApp.numbers.isInstalled
+    case .numbers, .xls: IWorkApp.numbers.isInstalled || LibreOffice.isInstalled
     default: false
     }
   }
@@ -29,7 +29,8 @@ public enum SpreadsheetOps {
   public static func problem(_ format: OfficeFormat) -> String? {
     switch format {
     case .xlsx, .ods: nil
-    case .numbers, .xls: IWorkApp.numbers.isInstalled ? nil : "Needs Numbers"
+    case .numbers, .xls:
+      IWorkApp.numbers.isInstalled || LibreOffice.isInstalled ? nil : "Needs Numbers or LibreOffice"
     default: "Spreadsheets only"
     }
   }
@@ -64,15 +65,26 @@ public enum SpreadsheetOps {
       }
       return try ods(content, name: name)
     case .numbers, .xls:
-      guard IWorkApp.numbers.isInstalled else {
-        throw DropError.wrongInput("Saving \(format.displayName) sheets as CSV needs Numbers.")
-      }
       let dir = try SystemProcess.scratchDirectory()
       defer { try? FileManager.default.removeItem(at: dir) }
-      let book = dir.appendingPathComponent("book.xlsx")
-      let args = excelExportScript().flatMap { ["-e", $0] } + [source.path, book.path]
-      try await SystemProcess.run("/usr/bin/osascript", args)
-      return try await xlsx(book, name: name)
+      // Numbers exports an Excel copy; when it can't (or claims to but writes nothing),
+      // LibreOffice converts it instead.
+      var numbersError: Error?
+      if IWorkApp.numbers.isInstalled {
+        let book = dir.appendingPathComponent("book.xlsx")
+        let args = excelExportScript().flatMap { ["-e", $0] } + [source.path, book.path]
+        do {
+          try await SystemProcess.run("/usr/bin/osascript", args, timeout: 60)
+          if FileManager.default.fileExists(atPath: book.path) { return try await xlsx(book, name: name) }
+        } catch {
+          numbersError = error
+        }
+      }
+      guard LibreOffice.isInstalled else {
+        throw numbersError
+          ?? DropError.wrongInput("Reading \(format.displayName) sheets needs Numbers or LibreOffice.")
+      }
+      return try await xlsx(LibreOffice.convertToXLSX(source, in: dir), name: name)
     default:
       throw DropError.wrongInput("\(name) isn't a spreadsheet.")
     }

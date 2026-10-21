@@ -9,9 +9,10 @@ final class WindowManager {
   private var editors: [URL: NSWindow] = [:]
   private var onboarding: NSWindow?
   private var main: NSWindow?
+  private var settings: NSWindow?
 
-  /// The main window: Files, History and Settings on floating glass, opened from the
-  /// menu's Settings… item.
+  /// The main window: Files and History on floating glass, opened from the menu's
+  /// Open File Drop Utility item.
   func openMain() {
     if let main {
       main.makeKeyAndOrderFront(nil)
@@ -103,6 +104,25 @@ final class WindowManager {
     show(window)
   }
 
+  /// The Settings window: one fixed-size pane. Minimise and zoom are dimmed, since ⌘, brings
+  /// it back at once and the window already fits its content.
+  func openSettings() {
+    if let settings {
+      settings.makeKeyAndOrderFront(nil)
+      NSApp.activate()
+      return
+    }
+    let view = SettingsWindow().environmentObject(AppModel.shared)
+    let window = makeWindow(
+      content: view, size: NSSize(width: 460, height: min(SettingsWindow.maxHeight, 640)), title: "Settings")
+    window.styleMask.remove(.resizable)
+    window.styleMask.remove(.miniaturizable)
+    window.titleVisibility = .visible
+    track(window) { [weak self] in self?.settings = nil }
+    settings = window
+    show(window)
+  }
+
   func openOnboarding() {
     if let onboarding {
       onboarding.makeKeyAndOrderFront(nil)
@@ -165,7 +185,7 @@ final class WindowManager {
     window.titleVisibility = .hidden
     window.isReleasedWhenClosed = false
     window.animationBehavior = AppWindowAnimation.behavior
-    let hosting = NSHostingController(rootView: AnyView(content))
+    let hosting = NSHostingController(rootView: AnyView(content.brandTint()))
     hosting.sizingOptions = []
     if toolbar {
       hosting.sceneBridgingOptions = [.toolbars]

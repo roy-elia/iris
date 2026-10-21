@@ -167,8 +167,15 @@ extension WheelKind {
       disabledReason: reason ?? aiReason)
   }
 
+  /// Opens the metadata tool, for files whose metadata the app can strip and copy.
+  static func metadataItem(_ prefix: String, files: [DroppedFile]) -> WheelItem {
+    WheelItem(
+      id: "\(prefix)-metadata", title: "Metadata", systemImage: "tag", command: .metadata,
+      disabledReason: files.allSatisfy { MetadataSupport($0.kind) != nil } ? nil : "Not for this format")
+  }
+
   /// Segments when every dropped file is a video.
-  func videoItems(count: Int) -> [WheelItem] {
+  func videoItems(count: Int, files: [DroppedFile] = []) -> [WheelItem] {
     let oneVideo: String? = count == 1 ? nil : "One video at a time"
     switch self {
     case .convert:
@@ -179,6 +186,12 @@ extension WheelKind {
           command: .convertVideo(output),
           disabledReason: output.unavailableReason)
       }
+        // The soundtrack in lossless formats too.
+        + [AudioOutput.wav, .flac].map { output in
+          WheelItem(
+            id: "v-a-\(output.rawValue)", title: output.displayName, systemImage: nil,
+            command: .convertAudio(output), disabledReason: output.unavailableReason)
+        }
     case .tools:
       func tool(_ t: VideoTool, _ reason: String? = nil) -> WheelItem {
         WheelItem(
@@ -196,7 +209,7 @@ extension WheelKind {
         tool(.speed, oneVideo), tool(.frames, oneVideo), tool(.crop, oneVideo), tool(.redact, oneVideo),
         WheelItem(
           id: "v-subtitles", title: "Subtitles", systemImage: "captions.bubble", command: .extractSubtitles),
-        Self.transcribeItem("v"), Self.summarizeItem("v"),
+        Self.metadataItem("v", files: files), Self.transcribeItem("v"), Self.summarizeItem("v"),
       ]
     case .actions:
       return items(for: [])
@@ -204,7 +217,7 @@ extension WheelKind {
   }
 
   /// Segments when every dropped file is audio.
-  func audioItems(count: Int) -> [WheelItem] {
+  func audioItems(count: Int, files: [DroppedFile] = []) -> [WheelItem] {
     let oneFile: String? = count == 1 ? nil : "One file at a time"
     switch self {
     case .convert:
@@ -221,7 +234,7 @@ extension WheelKind {
           disabledReason: oneFile)
       } + [
         WheelItem(id: "a-visualizer", title: "Visualizer", systemImage: "waveform", command: .visualizer),
-        Self.transcribeItem("a"), Self.summarizeItem("a"),
+        Self.metadataItem("a", files: files), Self.transcribeItem("a"), Self.summarizeItem("a"),
       ]
     case .actions:
       return items(for: [])
@@ -260,6 +273,7 @@ extension WheelKind {
             WheelItem(
               id: "d-\($0.rawValue)", title: $0.displayName, systemImage: nil, command: .pdfToImages($0))
           }
+          + [DocumentOutput.txt, .md, .html, .docx, .rtf].map(convert)
       }
       if files.allSatisfy(\.kind.isSpreadsheet) {
         let problem = files.lazy.compactMap { file -> String? in
@@ -270,11 +284,14 @@ extension WheelKind {
           convert(.pdf),
           WheelItem(
             id: "d-csv", title: "CSV", systemImage: nil, command: .sheetsToCSV, disabledReason: problem),
-        ]
+          WheelItem(
+            id: "j-json", title: DataFormat.json.displayName, systemImage: nil, command: .convertData(.json),
+            disabledReason: problem),
+        ] + [DocumentOutput.html, .md, .txt, .docx, .rtf].map(convert)
       }
-      // CSV tables also convert to JSON and vCard.
+      // CSV and TSV tables also convert to JSON and vCard.
       return [DocumentOutput.pdf, .docx, .rtf, .txt, .md, .html, .epub, .pages].map(convert)
-        + (files.allSatisfy { $0.kind == .office(.csv) } ? dataItems(for: files) : [])
+        + (files.allSatisfy { $0.kind.dataFormat == .csv } ? dataItems(for: files) : [])
     case .tools:
       return [
         WheelItem(
@@ -286,7 +303,7 @@ extension WheelKind {
         WheelItem(
           id: "d-compress", title: "Compress", systemImage: "arrow.down.right.and.arrow.up.left",
           command: .compress, disabledReason: pdfsOnly),
-        merge,
+        merge, Self.metadataItem("d", files: files),
         Self.summarizeItem("d", reason: readable), Self.renameItem("d", reason: readable),
       ]
     case .actions:
@@ -312,8 +329,8 @@ extension WheelKind {
     let allPDFs = known && files.allSatisfy { $0.kind == .pdf }
     let imagesOnly: String? = known && !allImages ? "Images only" : nil
     let allVideos = known && files.allSatisfy(\.kind.isVideo)
-    if allVideos { return videoItems(count: files.count) }
-    if known && files.allSatisfy(\.kind.isAudio) { return audioItems(count: files.count) }
+    if allVideos { return videoItems(count: files.count, files: files) }
+    if known && files.allSatisfy(\.kind.isAudio) { return audioItems(count: files.count, files: files) }
     if known && files.allSatisfy(\.kind.isDocumentLike) && self != .actions {
       return documentItems(for: files)
     }
@@ -348,6 +365,11 @@ extension WheelKind {
       items.insert(
         WheelItem(id: "pdf", title: "PDF", systemImage: nil, command: .toPDF, disabledReason: pdfReason),
         at: 1)
+      // The words in the picture, read with OCR.
+      items.append(
+        WheelItem(
+          id: "ocr", title: "Text", systemImage: nil, command: .convertDocument(.txt),
+          disabledReason: imagesOnly))
       return items
     case .tools:
       let compressReason: String? =
@@ -360,7 +382,7 @@ extension WheelKind {
         WheelItem(
           id: "metadata", title: "Metadata", systemImage: "tag", command: .metadata,
           disabledReason: imagesOnly
-            ?? (files.allSatisfy(Processor.canEditMetadata) ? nil : "Not for this format")),
+            ?? (files.allSatisfy { MetadataSupport($0.kind) != nil } ? nil : "Not for this format")),
         WheelItem(
           id: "annotate", title: "Annotate", systemImage: EditorTool.annotate.systemImage,
           command: .edit(.annotate), disabledReason: oneImage),
@@ -403,10 +425,6 @@ extension WheelKind {
           id: "airdrop", title: "AirDrop", systemImage: "dot.radiowaves.left.and.right", command: .airDrop),
         WheelItem(id: "share", title: "Share", systemImage: "square.and.arrow.up", command: .share),
         WheelItem(id: "float", title: "Float", systemImage: "paperclip", command: .float),
-        WheelItem(
-          id: "float-add", title: "Add to Float", systemImage: "paperclip.badge.ellipsis",
-          command: .addToFloat,
-          disabledReason: FloatManager.openCount > 0 ? nil : "No Float is open"),
         WheelItem(id: "copy", title: "Copy", systemImage: "doc.on.doc", command: .copy),
         WheelItem(id: "move", title: "Move", systemImage: "folder", command: .move),
         WheelItem(id: "copypath", title: "Copy Path", systemImage: "doc.text", command: .copyPath),

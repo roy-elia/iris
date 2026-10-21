@@ -28,7 +28,7 @@ public enum ImageOps {
       options[kCGImagePropertyOrientation] = orientation
     }
     if format.usesQuality {
-      options[kCGImageDestinationLossyCompressionQuality] = AppSettings.clampQuality(quality)
+      options[kCGImageDestinationLossyCompressionQuality] = format.encoderQuality(quality)
     }
     CGImageDestinationAddImage(dest, image, options as CFDictionary)
     guard CGImageDestinationFinalize(dest) else {
@@ -64,7 +64,9 @@ public enum ImageOps {
 
   /// Writes a copy of `source` without EXIF, GPS, IPTC or XMP metadata. Pixel data is
   /// re-encoded at maximum quality; orientation is applied so the result looks the same.
-  public static func stripMetadata(_ source: URL, destination: URL) throws {
+  /// With `complete`, the colour profile goes too: pixels are converted to sRGB first, so
+  /// the untagged copy still looks right.
+  public static func stripMetadata(_ source: URL, destination: URL, complete: Bool = false) throws {
     guard let imageSource = CGImageSourceCreateWithURL(source as CFURL, nil),
       let type = CGImageSourceGetType(imageSource),
       CGImageSourceGetCount(imageSource) > 0
@@ -77,9 +79,13 @@ public enum ImageOps {
       kCGImageSourceThumbnailMaxPixelSize: maxPixelSize(imageSource),
     ]
     guard
-      let image = CGImageSourceCreateThumbnailAtIndex(
+      var image = CGImageSourceCreateThumbnailAtIndex(
         imageSource, 0, thumbOptions as CFDictionary)
     else { throw DropError.readFailed(source.lastPathComponent) }
+    if complete {
+      guard let untagged = untaggedSRGB(image) else { throw DropError.readFailed(source.lastPathComponent) }
+      image = untagged
+    }
 
     // Formats macOS can only read (WebP) are written as PNG instead.
     let outType = CGImageDestinationCopyTypeIdentifiers() as? [String] ?? []
@@ -88,12 +94,27 @@ public enum ImageOps {
     guard let dest = CGImageDestinationCreateWithURL(destination as CFURL, writeType, 1, nil) else {
       throw DropError.writeFailed(destination.lastPathComponent)
     }
-    let options: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 1.0]
+    let format = ImageFormat.allCases.first { $0.typeIdentifier == writeType as String }
+    let options: [CFString: Any] = [
+      kCGImageDestinationLossyCompressionQuality: format?.encoderQuality(1) ?? 1
+    ]
     CGImageDestinationAddImage(dest, image, options as CFDictionary)
     guard CGImageDestinationFinalize(dest) else {
       try? FileManager.default.removeItem(at: destination)
       throw DropError.writeFailed(destination.lastPathComponent)
     }
+  }
+
+  /// `image` converted to 8-bit sRGB, then relabelled as device RGB so encoders write no
+  /// ICC profile for it.
+  static func untaggedSRGB(_ image: CGImage) -> CGImage? {
+    guard let srgb = CGColorSpace(name: CGColorSpace.sRGB),
+      let context = CGContext(
+        data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0,
+        space: srgb, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    else { return nil }
+    context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+    return context.makeImage()?.copy(colorSpace: CGColorSpaceCreateDeviceRGB())
   }
 
   /// Loads the first image with its orientation applied to the pixels.
@@ -117,7 +138,7 @@ public enum ImageOps {
     guard format.isImageIOWritable else { throw DropError.writeFailed(url.lastPathComponent) }
     var options: [CFString: Any] = [:]
     if format.usesQuality {
-      options[kCGImageDestinationLossyCompressionQuality] = AppSettings.clampQuality(quality)
+      options[kCGImageDestinationLossyCompressionQuality] = format.encoderQuality(quality)
     }
     func encode(_ image: CGImage) -> Bool {
       guard

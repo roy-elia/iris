@@ -18,7 +18,7 @@ struct HistoryTab: View {
               HStack(alignment: .top, spacing: 10) {
                 Image(systemName: entry.succeeded ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                   .foregroundStyle(
-                    entry.succeeded ? Color.accentColor : Color.orange
+                    entry.succeeded ? DesignTokens.Palette.tealInk : Color.orange
                   )
                   .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
@@ -45,7 +45,7 @@ struct HistoryTab: View {
         HStack {
           Spacer()
           Button("Clear History") { model.clearHistory() }
-            .buttonStyle(.glass)
+            .buttonStyle(.glass).tint(nil)
             .accessibilityIdentifier("clearHistory")
         }
       }
@@ -62,13 +62,6 @@ struct SettingsTab: View {
   var body: some View {
     Form {
       Section("Output") {
-        Picker("Appearance", selection: $model.settings.appearance) {
-          Text("System").tag(AppearancePreference.system)
-          Text("Light").tag(AppearancePreference.light)
-          Text("Dark").tag(AppearancePreference.dark)
-        }
-        .pickerStyle(.segmented)
-        .accessibilityIdentifier("appearance")
         Picker("Default format", selection: $model.settings.defaultFormat) {
           ForEach(ImageFormat.writable, id: \.self) { Text($0.displayName).tag($0) }
         }
@@ -88,18 +81,31 @@ struct SettingsTab: View {
       Section("Format defaults") { formatDefaults }
 
       Section("Save to") {
-        Text(locationLabel)
+        LabeledContent("Location") {
+          Text(locationLabel)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .accessibilityIdentifier("saveLocation")
+        }
+        if model.settings.outputLocation == .nextToSource {
+          Text(
+            "If the original’s folder is read-only or hidden, such as a Mail attachment, files go to Downloads."
+          )
           .font(.caption)
           .foregroundStyle(Color.secondary)
-          .lineLimit(1)
-          .truncationMode(.middle)
-          .accessibilityIdentifier("saveLocation")
+        }
         HStack {
-          Button("Next to Original") { model.settings.outputLocation = .nextToSource }
-            .buttonStyle(.glass)
+          Spacer()
+          Button("Use Original’s Folder") { model.settings.outputLocation = .nextToSource }
+            .buttonStyle(.glass).tint(nil)
             .accessibilityIdentifier("nextToOriginal")
+          Button("Use Downloads") {
+            model.settings.outputLocation = .folder(OutputNamer.downloadsDirectory())
+          }
+          .buttonStyle(.glass).tint(nil)
+          .accessibilityIdentifier("useDownloads")
           Button("Choose Folder…") { model.chooseOutputFolder() }
-            .buttonStyle(.glass)
+            .buttonStyle(.glass).tint(nil)
             .accessibilityIdentifier("chooseFolder")
         }
       }
@@ -150,8 +156,9 @@ struct SettingsTab: View {
           .accessibilityIdentifier("checkForUpdates")
         if model.settings.checkForUpdates {
           HStack {
-            Button("Check Now") { model.checkForUpdates(manual: true) }.buttonStyle(.glass).controlSize(
-              .small)
+            Button("Check Now") { model.checkForUpdates(manual: true) }.buttonStyle(.glass).tint(nil)
+              .controlSize(
+                .small)
             if let status = model.updateStatus {
               Text(status).font(.caption).foregroundStyle(Color.secondary)
             }
@@ -169,7 +176,7 @@ struct SettingsTab: View {
   /// Defaults for one output format, used whenever you convert to it.
   @ViewBuilder private var formatDefaults: some View {
     Group {
-      Picker("Format defaults", selection: $formatForDefaults) {
+      Picker("Image format", selection: $formatForDefaults) {
         ForEach(ImageFormat.writable, id: \.self) { Text($0.displayName).tag($0) }
       }
       .pickerStyle(.menu)
@@ -189,7 +196,7 @@ struct SettingsTab: View {
       if formatForDefaults == .gif {
         Toggle("Keep animation (original dimensions)", isOn: formatBinding(\.keepOriginalDimensions))
       }
-      Picker("Video defaults", selection: $videoForDefaults) {
+      Picker("Video format", selection: $videoForDefaults) {
         ForEach(VideoOutput.allCases.filter(\.usesVideoDefaults), id: \.self) { Text($0.displayName).tag($0) }
       }
       .pickerStyle(.menu)
@@ -208,7 +215,7 @@ struct SettingsTab: View {
         }
         .pickerStyle(.menu)
       }
-      Picker("Audio defaults", selection: $audioForDefaults) {
+      Picker("Audio format", selection: $audioForDefaults) {
         ForEach(AudioOutput.allCases, id: \.self) { Text($0.displayName).tag($0) }
       }
       .pickerStyle(.menu)
@@ -317,9 +324,12 @@ struct SettingsTab: View {
       })
   }
 
+  private static let downloads = OutputNamer.downloadsDirectory().standardizedFileURL
+
   private var locationLabel: String {
     switch model.settings.outputLocation {
     case .nextToSource: "Next to original"
+    case .folder(let url) where url.standardizedFileURL == Self.downloads: "Downloads"
     case .folder(let url): url.path
     }
   }

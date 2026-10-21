@@ -127,6 +127,12 @@ public enum ImageFormat: String, CaseIterable, Codable, Sendable {
     }
   }
 
+  /// `quality` as the encoder takes it. macOS's AVIF encoder fails outright at 1.0.
+  public func encoderQuality(_ quality: Double) -> Double {
+    let clamped = AppSettings.clampQuality(quality)
+    return self == .avif ? min(clamped, 0.99) : clamped
+  }
+
   /// Whether the format can store transparency.
   public var supportsAlpha: Bool {
     switch self {
@@ -243,12 +249,11 @@ public enum FileKind: Equatable, Sendable {
     }
   }
 
-  /// Documents whose text the app reads itself: text documents, PDFs and CSV/TSV tables
-  /// (not spreadsheets or slide decks, which are only rendered to PDF).
+  /// Documents whose text the app reads: text documents, PDFs, tables, spreadsheets and
+  /// slide decks.
   public var hasReadableText: Bool {
     switch self {
-    case .document, .pdf: true
-    case .office(let format): format.isTable
+    case .document, .pdf, .office: true
     default: false
     }
   }
@@ -264,7 +269,7 @@ public enum FileKind: Equatable, Sendable {
   public var dataFormat: DataFormat? {
     switch self {
     case .data(let format): format
-    case .office(.csv): .csv
+    case .office(.csv), .office(.tsv): .csv
     default: nil
     }
   }
@@ -330,6 +335,8 @@ public struct DroppedFile: Identifiable, Equatable, Sendable {
 public enum FileOperation: Codable, Equatable, Sendable {
   case convert(ImageFormat, quality: Double)
   case stripMetadata
+  /// Strips every trace: metadata, colour profile and the file's extended attributes.
+  case stripAllMetadata
   case mergePDFs
   case imagesToPDF
   case compress(quality: Double)
@@ -340,6 +347,8 @@ public enum FileOperation: Codable, Equatable, Sendable {
   /// The same edit (typically a crop) applied to every image.
   case batchEdit(EditRecipe)
   case editMetadata([MetadataEdit])
+  /// Replaces each image's metadata with an exact copy of the file at this path's.
+  case copyMetadata(from: String)
   case frame(FrameRecipe)
   case collage(CollageRecipe)
   case readQRCodes
@@ -402,6 +411,7 @@ public enum FileOperation: Codable, Equatable, Sendable {
     switch self {
     case .convert(let format, _): "Convert to \(format.displayName)"
     case .stripMetadata: "Strip metadata"
+    case .stripAllMetadata: "Strip all metadata"
     case .mergePDFs: "Merge PDFs"
     case .imagesToPDF: "Images to PDF"
     case .compress: "Compress"
@@ -412,6 +422,7 @@ public enum FileOperation: Codable, Equatable, Sendable {
     case .edit: "Edit image"
     case .batchEdit: "Edit images"
     case .editMetadata: "Edit metadata"
+    case .copyMetadata: "Copy metadata"
     case .frame: "Frame image"
     case .collage: "Create collage"
     case .readQRCodes: "Read QR codes"
@@ -472,11 +483,6 @@ public struct RGBA: Codable, Equatable, Hashable, Sendable {
   public static let white = RGBA(red: 1, green: 1, blue: 1)
   public static let black = RGBA(red: 0, green: 0, blue: 0)
   public static let clear = RGBA(red: 0, green: 0, blue: 0, alpha: 0)
-}
-
-/// Light/dark override. `system` follows macOS.
-public enum AppearancePreference: String, Codable, CaseIterable, Sendable {
-  case system, light, dark
 }
 
 /// Where outputs are written.
@@ -605,7 +611,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
   public var launchAtLogin: Bool
   /// Holding Shift, Command or Control while dragging files opens an action wheel.
   public var wheelTriggerEnabled: Bool
-  public var appearance: AppearancePreference
   public var hasCompletedOnboarding: Bool
   public var wheelModifiers: WheelModifiers
   /// The wheel's hover tick, drop pop and trackpad haptics.
@@ -639,7 +644,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
     outputLocation: OutputLocation = .nextToSource,
     launchAtLogin: Bool = false,
     wheelTriggerEnabled: Bool = true,
-    appearance: AppearancePreference = .system,
     hasCompletedOnboarding: Bool = false,
     wheelModifiers: WheelModifiers = WheelModifiers(),
     soundAndHaptics: Bool = true,
@@ -655,7 +659,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
     self.outputLocation = outputLocation
     self.launchAtLogin = launchAtLogin
     self.wheelTriggerEnabled = wheelTriggerEnabled
-    self.appearance = appearance
     self.hasCompletedOnboarding = hasCompletedOnboarding
     self.wheelModifiers = wheelModifiers.isValid ? wheelModifiers : WheelModifiers()
     self.soundAndHaptics = soundAndHaptics
@@ -683,7 +686,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
     launchAtLogin = (try? c.decode(Bool.self, forKey: .launchAtLogin)) ?? defaults.launchAtLogin
     wheelTriggerEnabled =
       (try? c.decode(Bool.self, forKey: .wheelTriggerEnabled)) ?? defaults.wheelTriggerEnabled
-    appearance = (try? c.decode(AppearancePreference.self, forKey: .appearance)) ?? defaults.appearance
     hasCompletedOnboarding =
       (try? c.decode(Bool.self, forKey: .hasCompletedOnboarding)) ?? defaults.hasCompletedOnboarding
     let modifiers = (try? c.decode(WheelModifiers.self, forKey: .wheelModifiers)) ?? defaults.wheelModifiers

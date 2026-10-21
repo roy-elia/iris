@@ -95,7 +95,7 @@ public enum ImageConvert {
     else { throw DropError.writeFailed(destination.lastPathComponent) }
     var options: [CFString: Any] = [:]
     if format.usesQuality {
-      options[kCGImageDestinationLossyCompressionQuality] = AppSettings.clampQuality(quality)
+      options[kCGImageDestinationLossyCompressionQuality] = format.encoderQuality(quality)
     }
     if keepMetadata {
       // Copies the source's metadata (orientation included) with the new encoding.

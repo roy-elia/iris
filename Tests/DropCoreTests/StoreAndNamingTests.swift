@@ -29,6 +29,46 @@ import Testing
     let folder = URL(fileURLWithPath: "/out")
     #expect(OutputNamer.directory(for: src, location: .folder(folder)) == folder)
   }
+
+  @Test func readOnlyFolderFallsBackToDownloads() throws {
+    let dir = try TempDir()
+    let locked = dir.file("locked")
+    try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: true)
+    try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path)
+    defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
+    let downloads = dir.file("Downloads")
+    let src = locked.appendingPathComponent("photo.png")
+
+    let nextTo = OutputNamer.resolve(for: src, location: .nextToSource, downloads: downloads)
+    #expect(nextTo.url == downloads && nextTo.fellBack)
+    let chosen = OutputNamer.resolve(for: src, location: .folder(locked), downloads: downloads)
+    #expect(chosen.url == downloads && chosen.fellBack)
+  }
+
+  @Test func writableOrMissingFolderIsKept() throws {
+    let dir = try TempDir()
+    let downloads = dir.file("Downloads")
+    let src = dir.file("photo.png")
+    let nextTo = OutputNamer.resolve(for: src, location: .nextToSource, downloads: downloads)
+    #expect(nextTo.url.standardizedFileURL == dir.url.standardizedFileURL && !nextTo.fellBack)
+    // A chosen folder that doesn't exist yet gets created, not replaced.
+    let missing = dir.file("not-yet")
+    let chosen = OutputNamer.resolve(for: src, location: .folder(missing), downloads: downloads)
+    #expect(chosen.url == missing && !chosen.fellBack)
+  }
+
+  @Test func hiddenAppStorageCountsAsTemporary() {
+    let home = URL(fileURLWithPath: "/Users/me")
+    func hidden(_ path: String) -> Bool {
+      OutputNamer.isHiddenAppStorage(URL(fileURLWithPath: path), home: home)
+    }
+    #expect(hidden("/Users/me/Library/Containers/com.apple.mail/Data/Library/Mail Downloads/ABC"))
+    #expect(hidden("/Users/me/Library/Messages/Attachments/1a/02"))
+    #expect(hidden("/Users/me/Library/Caches/com.example"))
+    #expect(!hidden("/Users/me/Documents"))
+    #expect(!hidden("/Users/me/Library/Mobile Documents/com~apple~CloudDocs"))
+    #expect(!hidden("/Users/me/Library/CachesBackup"))
+  }
 }
 
 @Suite struct SettingsStoreTests {

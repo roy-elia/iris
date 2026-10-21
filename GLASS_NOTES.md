@@ -11,9 +11,17 @@ or draws its own substitute.
 - Glass only on things that float: the toolbar, the drop zone, the wheel, Floats, the toast,
   tool panels, editor tool bars and inspectors. Content uses `GroupBox`, a grouped `Form`, or
   hierarchical system fills (`.quaternary`, `.quinary`), so glass never sits on glass.
-- Colours are semantic only: `.primary`, `.secondary`, `.tint`/`Color.accentColor`, `.red`,
-  `.orange`, `alternateSelectedControlTextColor`. The hand-mixed palette, scrims, shadows and
-  rim strokes in `DesignTokens` and `GlassStyles` are gone. No colour scheme is forced.
+- One brand colour, teal, in `DesignTokens.Palette`: `teal` (#0378A8 fills under white text,
+  4.9:1), `tealDeep` (#00578F), `tealInk` (text and symbols: #006B96 light, #4CC0E0 dark),
+  each with an Increase Contrast value. Every window root calls `brandTint()`, so prominent
+  buttons, toggles, sliders and selection are teal. Teal means three things only: the primary
+  action (one `.glassProminent` per view, applied through `primaryActionStyle()`), the current
+  selection, and success. Prominent buttons fill with `tealDeep`: the system draws their label
+  in a light cyan it picks itself, which measured 4.3:1 on `teal` in dark and 6.7:1 on
+  `tealDeep`. Secondary
+  `.glass` buttons and toolbar items carry `.tint(nil)` so they stay neutral glass.
+- Everything else is semantic: `.primary`, `.secondary`, `.red`, `.orange`, hierarchical fills.
+  No colour scheme is forced.
 - Motion goes through `withMorph`/`morphTransition`, which switch to a fade when Reduce Motion is on.
 
 ## Views and APIs
@@ -37,7 +45,7 @@ or draws its own substitute.
 
 - Wheel theme titles are now Regular, Clear and Tinted; stored raw values are unchanged, so
   saved settings still load.
-- The main window's tabs and More menu moved into the system toolbar; Settings is a grouped `Form`.
+- The main window's tabs (Files, History) and More menu are in the system toolbar. Settings is a grouped `Form` in its own Settings window.
 - The toast's Show button is a text button (glass shouldn't sit on the glass toast).
 - Onboarding opens as an opaque standard window instead of a transparent one.
 - The wheel keeps the app's original teal. The lit petal is teal-tinted glass with a

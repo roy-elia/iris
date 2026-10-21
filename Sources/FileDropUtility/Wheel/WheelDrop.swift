@@ -86,8 +86,9 @@ final class WheelDropState: ObservableObject {
 
 /// Wraps a drop-mode wheel so it redraws as the drag moves.
 struct DropWheelHost: View {
-  let diameter: CGFloat
   @ObservedObject var state: WheelDropState
+
+  private var diameter: CGFloat { WheelGeometry.diameter(forItemCount: state.items.count) }
 
   var body: some View {
     RadialWheel(
@@ -107,8 +108,9 @@ struct DropWheelHost: View {
 /// middle of another app's drag, which SwiftUI's per-view `onDrop` did not.
 @MainActor
 final class WheelDropView: NSView {
-  var diameter: CGFloat = WheelGeometry.design
   let state: WheelDropState
+  /// Matches the drawn wheel, which sizes itself from its petal count.
+  var diameter: CGFloat { WheelGeometry.diameter(forItemCount: state.items.count) }
   var onDrop: (WheelItem, [URL]) -> Void = { _, _ in }
 
   init(state: WheelDropState) {

@@ -113,9 +113,9 @@ final class DragWatcher {
 @MainActor
 final class WheelOverlayController {
   private var panel: NSPanel?
-  /// Room around the wheel for the lit petal to swell into and for the shadow.
-  private let size = NSSize(width: 340, height: 340)
-  private let diameter = WheelGeometry.design
+  /// Room around the largest wheel for the lit petal to swell into and for the shadow. Each
+  /// wheel sizes itself inside this from its petal count.
+  private let size = NSSize(width: 484, height: 484)
   private let dropState = WheelDropState()
   private var isShowing = false
 
@@ -173,11 +173,10 @@ final class WheelOverlayController {
     panel.hidesOnDeactivate = false
     panel.becomesKeyOnlyIfNeeded = true
     let container = NSView(frame: NSRect(origin: .zero, size: size))
-    let host = NSHostingView(rootView: DropWheelHost(diameter: diameter, state: dropState))
+    let host = NSHostingView(rootView: DropWheelHost(state: dropState).brandTint())
     host.frame = container.bounds
     host.autoresizingMask = [.width, .height]
     let dropView = WheelDropView(state: dropState)
-    dropView.diameter = diameter
     dropView.onDrop = { item, urls in
       AppModel.shared.perform(item.command, urls: urls, origin: .overlay)
     }
@@ -204,9 +203,11 @@ enum Toast {
     } else {
       let count = result.outputs.count
       let extra = result.failures.isEmpty ? "" : " · \(result.failures.count) failed"
+      let place = result.savedToDownloads ? " to Downloads" : ""
       let verb = result.renames.isEmpty ? "saved" : "renamed"
       show(
-        "\(operation): \(verb) \(count) file\(count == 1 ? "" : "s")\(extra)", outputs: result.outputs,
+        "\(operation): \(verb) \(count) file\(count == 1 ? "" : "s")\(place)\(extra)",
+        outputs: result.outputs,
         undo: undo)
     }
   }
@@ -216,6 +217,7 @@ enum Toast {
   ) {
     let view = ToastView(message: message, outputs: outputs, isError: isError, undo: undo)
       .padding(DesignTokens.Spacing.inset)
+      .brandTint()
     let host = NSHostingView(rootView: view)
     let size = host.fittingSize
     let panel =
@@ -259,7 +261,7 @@ private struct ToastView: View {
   var body: some View {
     HStack(spacing: 10) {
       Image(systemName: isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-        .foregroundStyle(isError ? Color.orange : Color.accentColor)
+        .foregroundStyle(isError ? Color.orange : DesignTokens.Palette.tealInk)
         .accessibilityHidden(true)
       Text(message).font(.callout).foregroundStyle(.primary).lineLimit(2)
       if !outputs.isEmpty {

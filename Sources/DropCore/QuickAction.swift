@@ -194,6 +194,7 @@ public enum QuickActionRunner {
         result.outputs += stepResult.outputs
         result.failures += stepResult.failures
         result.notes += stepResult.notes
+        if stepResult.savedToDownloads { result.savedToDownloads = true }
       case .failed(let message):
         result.failures.append(.init(file: "", message: message))
       case .cancelled:

@@ -31,11 +31,15 @@ private func load(_ urls: URL...) throws -> [DroppedFile] { try urls.map { try D
 
   @Test func settingsCoerceUnwritableDefaultAndRoundTripNewFields() async throws {
     #expect(AppSettings(defaultFormat: .svg).defaultFormat == .png)
-    let s = AppSettings(wheelTriggerEnabled: false, appearance: .dark, hasCompletedOnboarding: true)
+    let s = AppSettings(wheelTriggerEnabled: false, hasCompletedOnboarding: true)
     let back = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(s))
     #expect(back == s)
     let old = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"quality":0.5}"#.utf8))
-    #expect(old.wheelTriggerEnabled && old.appearance == .system && !old.hasCompletedOnboarding)
+    #expect(old.wheelTriggerEnabled && !old.hasCompletedOnboarding)
+    // Settings saved while the app had its own Appearance option still load; the key is ignored.
+    let withAppearance = try JSONDecoder().decode(
+      AppSettings.self, from: Data(#"{"quality":0.5,"appearance":"dark","launchAtLogin":true}"#.utf8))
+    #expect(withAppearance.launchAtLogin)
   }
 }
 

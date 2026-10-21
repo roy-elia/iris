@@ -6,6 +6,88 @@ import UniformTypeIdentifiers
 /// with the AppKit drop target, so the segment that lights up is the one under the pointer.
 enum WheelGeometry {
   static let design: CGFloat = 252
+  /// The drag-and-hold wheel's size on screen: large enough that its 8.4pt design labels
+  /// render at 10pt, macOS's minimum text size.
+  static let onScreen: CGFloat = 300
+  /// The largest a drag-and-hold wheel opens, for the busiest wheels.
+  static let maxOnScreen: CGFloat = 380
+
+  /// The drag-and-hold wheel's size for `count` petals. Up to 10 petals use `onScreen`; each
+  /// petal past that adds 20pt, so a 12-petal wheel opens at 340pt and a 14-petal one at 380pt,
+  /// which leaves the narrow petals room for a 10pt label.
+  static func diameter(forItemCount count: Int) -> CGFloat {
+    min(onScreen + 20 * CGFloat(max(count - 10, 0)), maxOnScreen)
+  }
+
+  /// Where a petal's label sits and how wide it may be, so it stays inside the petal.
+  struct LabelFit {
+    /// Distance from the wheel's centre to the centre of the label stack.
+    var radius: CGFloat
+    /// The widest the text line can be without crossing the petal's edge.
+    var width: CGFloat
+  }
+
+  /// Searches along petal `index`'s centre line for the spot where an axis-aligned label
+  /// (an optional symbol above a text line) gets the widest text line inside the petal.
+  /// Petals near the top and bottom are narrow across, so a fixed-width label spills out
+  /// of them even when it fits the petals on the sides.
+  static func labelFit(
+    index: Int, count: Int, innerRadius: CGFloat, outerRadius: CGFloat, gap: CGFloat,
+    symbolSize: CGSize?, spacing: CGFloat, textHeight: CGFloat
+  ) -> LabelFit {
+    let step = 2 * Double.pi / Double(max(count, 1))
+    let start = -Double.pi / 2 - step / 2 + step * Double(index)
+    let mid = start + step / 2
+    let edges = [start, start + step]
+    let padding: CGFloat = 2.5
+    let stackHeight = (symbolSize.map { $0.height + spacing } ?? 0) + textHeight
+
+    /// True when every corner of the rectangle lies inside the petal, `padding` clear of its edges.
+    func contains(center c: CGPoint, size: CGSize) -> Bool {
+      for sx in [-1.0, 1.0] {
+        for sy in [-1.0, 1.0] {
+          let x = c.x + sx * size.width / 2
+          let y = c.y + sy * size.height / 2
+          let r = hypot(x, y)
+          guard r >= innerRadius + padding, r <= outerRadius - padding else { return false }
+          var offset = (atan2(Double(y), Double(x)) - mid).truncatingRemainder(dividingBy: 2 * .pi)
+          if offset > .pi { offset -= 2 * .pi } else if offset < -.pi { offset += 2 * .pi }
+          guard abs(offset) <= step / 2 else { return false }
+          for edge in edges where abs(-sin(edge) * x + cos(edge) * y) < gap / 2 + padding { return false }
+        }
+      }
+      return true
+    }
+
+    var best = LabelFit(radius: (innerRadius + outerRadius) / 2, width: 0)
+    let samples = 40
+    for k in 0...samples {
+      let radius = innerRadius + (outerRadius - innerRadius) * CGFloat(k) / CGFloat(samples)
+      let c = CGPoint(x: cos(mid) * radius, y: sin(mid) * radius)
+      if let symbolSize {
+        let symbolCenter = CGPoint(x: c.x, y: c.y - stackHeight / 2 + symbolSize.height / 2)
+        guard contains(center: symbolCenter, size: symbolSize) else { continue }
+      }
+      let textCenter = CGPoint(x: c.x, y: c.y + stackHeight / 2 - textHeight / 2)
+      // A narrower line always fits where a wider one does, so binary-search the width.
+      var low: CGFloat = 0
+      var high = outerRadius * 2
+      guard contains(center: textCenter, size: CGSize(width: 1, height: textHeight)) else { continue }
+      while high - low > 0.5 {
+        let width = (low + high) / 2
+        if contains(center: textCenter, size: CGSize(width: width, height: textHeight)) {
+          low = width
+        } else {
+          high = width
+        }
+      }
+      let width = low
+      if width > best.width { best = LabelFit(radius: radius, width: width) }
+    }
+    return best
+  }
+  /// The smallest a wheel label may render, from the macOS minimum (typography guidelines).
+  static let minimumLabelSize: CGFloat = 10
   /// Petal inner radius over disc radius.
   static let innerRatio: CGFloat = 50.0 / 126
 
@@ -99,12 +181,12 @@ extension WheelTheme {
   }
 }
 
-/// The wheel's signature teal, kept from the app's original design. The wheel's panel never
-/// becomes key, and the system drops glass tints on inactive windows, so teal is drawn as a
-/// fill rather than a glass tint. White labels stay above 4.5:1 across the gradient.
+/// The wheel's signature teal, the app's brand colour (`DesignTokens.Palette`). The wheel's
+/// panel never becomes key, and the system drops glass tints on inactive windows, so teal is
+/// drawn as a fill rather than a glass tint. White labels stay above 4.5:1 across the gradient.
 enum WheelTeal {
-  static let deep = Color(red: 0.00, green: 0.34, blue: 0.56)
-  static let color = Color(red: 0.01, green: 0.47, blue: 0.66)
+  static let deep = DesignTokens.Palette.tealDeep
+  static let color = DesignTokens.Palette.teal
   static let gradient = LinearGradient(colors: [deep, color], startPoint: .top, endPoint: .bottom)
 }
 
@@ -140,6 +222,7 @@ struct RadialWheel: View {
   @State private var labelsShown = true
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.wheelTheme) private var themeOverride
+  @Environment(\.colorScheme) private var colorScheme
 
   private var theme: WheelTheme { themeOverride ?? AppModel.shared.settings.wheelTheme }
 
@@ -151,6 +234,7 @@ struct RadialWheel: View {
         .position(x: geo.size.width / 2, y: geo.size.height / 2)
     }
     .aspectRatio(1, contentMode: .fit)
+    .environment(\.colorScheme, theme == .light ? .dark : colorScheme)
     .onChange(of: introRevision, initial: true) { playIntro() }
     .accessibilityElement(children: .contain)
     .accessibilityLabel("\(kind.longTitle) wheel")
@@ -158,10 +242,112 @@ struct RadialWheel: View {
 
   // MARK: Layout
 
+  /// Petal labels and symbols scale with the wheel, except on busy wheels (more than 10
+  /// petals): those open larger to make room, so their type stays at the 300pt wheel's size
+  /// and the extra diameter becomes space between neighbouring labels.
+  private func textScale(_ s: CGFloat) -> CGFloat {
+    items.count > 10 ? min(s, WheelGeometry.onScreen / WheelGeometry.design) : s
+  }
+
+  /// How the wheel's labels are set so every one stays inside its petal. One choice holds for
+  /// the whole wheel, so neighbouring labels never mix type widths.
+  struct LabelLayout {
+    var fontWidth: Font.Width
+    var showsSymbols: Bool
+    var fits: [WheelGeometry.LabelFit]
+  }
+
+  private static var layoutCache: [String: LabelLayout] = [:]
+
+  /// Tries the standard system width first, then condensed, then compressed. Only if none
+  /// fits does the wheel drop its symbols, which frees the narrow end of each petal for text.
+  /// The text never goes below `WheelGeometry.minimumLabelSize`.
+  private func labelLayout(diameter d: CGFloat, scale s: CGFloat) -> LabelLayout {
+    let key =
+      "\(Int(d))|" + items.map { "\($0.title)\($0.systemImage == nil ? "" : "*")" }.joined(separator: "|")
+    if let cached = Self.layoutCache[key] { return cached }
+    let ts = textScale(s)
+    let fontSize = max(WheelGeometry.minimumLabelSize, 8.4 * ts)
+    let symbolSide = 13 * ts * 1.25
+    let hasSymbols = items.contains { $0.systemImage != nil }
+    let geometry = petalGeometry(diameter: d, scale: s)
+    let widths: [(Font.Width, NSFont.Width)] = [
+      (.standard, .standard), (.condensed, .condensed), (.compressed, .compressed),
+    ]
+    var fallback: LabelLayout?
+    let lineHeight = ceil(fontSize * 1.25)
+    for showsSymbols in hasSymbols ? [true, false] : [false] {
+      func fit(_ index: Int, lines: Int) -> WheelGeometry.LabelFit {
+        WheelGeometry.labelFit(
+          index: index, count: items.count, innerRadius: geometry.inner, outerRadius: geometry.outer,
+          gap: geometry.gap,
+          symbolSize: showsSymbols && items[index].systemImage != nil
+            ? CGSize(width: symbolSide, height: symbolSide) : nil,
+          spacing: 3 * s, textHeight: lineHeight * CGFloat(lines))
+      }
+      let oneLine = items.indices.map { fit($0, lines: 1) }
+      // Only labels of several words can wrap, so only they need the two-line measurement.
+      let twoLines = items.indices.map { items[$0].title.contains(" ") ? fit($0, lines: 2) : nil }
+      for (width, nsWidth) in widths {
+        let font = NSFont.systemFont(ofSize: fontSize, weight: .bold, width: nsWidth)
+        func measure(_ text: String) -> CGFloat {
+          ceil(NSAttributedString(string: text, attributes: [.font: font, .kern: 0.3 * s]).size().width)
+        }
+        var fits: [WheelGeometry.LabelFit] = []
+        for index in items.indices {
+          let title = items[index].title.uppercased()
+          if measure(title) <= oneLine[index].width {
+            fits.append(oneLine[index])
+          } else if let two = twoLines[index], Self.lineCount(title, width: two.width, measure: measure) <= 2 {
+            fits.append(two)
+          } else {
+            break
+          }
+        }
+        let layout = LabelLayout(
+          fontWidth: width, showsSymbols: showsSymbols, fits: fits.count == items.count ? fits : oneLine)
+        if fits.count == items.count {
+          Self.layoutCache[key] = layout
+          return layout
+        }
+        fallback = layout
+      }
+    }
+    // Nothing fits on one line: the compressed, symbol-free layout wraps within its width.
+    let layout = fallback!
+    Self.layoutCache[key] = layout
+    return layout
+  }
+
+  /// How many lines `text` takes when its words wrap at `width`, or `Int.max` if a word
+  /// is wider than the line.
+  private static func lineCount(_ text: String, width: CGFloat, measure: (String) -> CGFloat) -> Int {
+    var lines = 0
+    var current = ""
+    for word in text.split(separator: " ").map(String.init) {
+      guard measure(word) <= width else { return .max }
+      let candidate = current.isEmpty ? word : current + " " + word
+      if measure(candidate) <= width {
+        current = candidate
+      } else {
+        lines += 1
+        current = word
+      }
+    }
+    return lines + (current.isEmpty ? 0 : 1)
+  }
+
+  private func petalGeometry(diameter d: CGFloat, scale s: CGFloat) -> (
+    inner: CGFloat, outer: CGFloat, gap: CGFloat
+  ) {
+    (50 * s, d / 2 - 8 * s, 7 * s)
+  }
+
   private func wheel(diameter d: CGFloat) -> some View {
     let s = d / WheelGeometry.design
     let pointer = mode == .drop ? self.pointer : hoverPoint
     let lit = litIndex(diameter: d, pointer: pointer)
+    let labels = labelLayout(diameter: d, scale: s)
     return ZStack {
       disc(diameter: d, scale: s)
       // The petals' glass lives in its own container, so the lit petal's teal glass is drawn
@@ -169,7 +355,9 @@ struct RadialWheel: View {
       GlassEffectContainer(spacing: 0) {
         ZStack {
           ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-            petal(item, index: index, isHot: index == lit, diameter: d, scale: s, pointer: pointer)
+            petal(
+              item, index: index, isHot: index == lit, diameter: d, scale: s, pointer: pointer, labels: labels
+            )
           }
           center(scale: s, litItem: lit.map { items[$0] })
         }
@@ -206,28 +394,42 @@ struct RadialWheel: View {
 
   /// The disc is the wheel's only glass; the system draws its edge and depth, and makes it
   /// solid under Reduce Transparency.
+  /// Clear glass gets a 35% dimming layer, as Apple advises for clear glass over bright
+  /// content, and the wheel then draws in its dark appearance so labels stay light.
   private func disc(diameter d: CGFloat, scale s: CGFloat) -> some View {
     Circle()
-      .fill(theme == .tinted ? AnyShapeStyle(WheelTeal.color.opacity(0.6)) : AnyShapeStyle(.clear))
+      .fill(discFill)
       .glassEffect(theme.glass, in: Circle())
+  }
+
+  private var discFill: AnyShapeStyle {
+    switch theme {
+    case .tinted: AnyShapeStyle(WheelTeal.color.opacity(0.6))
+    case .light: AnyShapeStyle(Color.black.opacity(0.35))
+    case .dark: AnyShapeStyle(.clear)
+    }
   }
 
   @ViewBuilder
   private func petal(
-    _ item: WheelItem, index: Int, isHot: Bool, diameter d: CGFloat, scale s: CGFloat, pointer: CGPoint?
+    _ item: WheelItem, index: Int, isHot: Bool, diameter d: CGFloat, scale s: CGFloat, pointer: CGPoint?,
+    labels: LabelLayout
   ) -> some View {
     let step = 360.0 / Double(items.count)
     let start = WheelGeometry.startAngle(index: index, count: items.count)
     // The lit petal keeps the same concentric shape as the others, its edges following the
     // circle with the same corners, and swells outward past the rim.
     let widen = Angle(degrees: isHot ? 2 : 0)
-    let inner = 50 * s
-    let outer = d / 2 - 8 * s + (isHot ? 12 * s : 0)
+    let geometry = petalGeometry(diameter: d, scale: s)
+    let inner = geometry.inner
+    let outer = geometry.outer + (isHot ? 12 * s : 0)
     let shape = PetalShape(
       startAngle: start - widen, endAngle: start + .degrees(step) + widen, innerRadius: inner,
-      outerRadius: outer, gap: 7 * s, cornerRadius: 15 * s)
+      outerRadius: outer, gap: geometry.gap, cornerRadius: 15 * s)
     let mid = Angle(degrees: start.degrees + step / 2)
-    let labelRadius = (inner + outer) / 2
+    // Measured against the resting petal, so the label doesn't jump when the petal swells.
+    let fit = labels.fits[index]
+    let labelRadius = fit.radius
     let labelOffset = CGSize(width: cos(mid.radians) * labelRadius, height: sin(mid.radians) * labelRadius)
     let lean = isHot ? leanOffset(toward: pointer, from: labelOffset, limit: 7 * s) : .zero
 
@@ -246,18 +448,22 @@ struct RadialWheel: View {
         shape.fill(item.isEnabled ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.quinary))
       }
       VStack(spacing: 3 * s) {
-        if let symbol = item.systemImage {
+        if labels.showsSymbols, let symbol = item.systemImage {
           Image(systemName: symbol)
-            .font(.system(size: 13 * s, weight: .semibold))
+            .font(.system(size: 13 * textScale(s), weight: .semibold))
             .accessibilityHidden(true)
         }
         Text(item.title)
-          .font(.system(size: 8 * s, weight: .bold))
-          .tracking(0.4 * s)
+          .font(
+            .system(size: max(WheelGeometry.minimumLabelSize, 8.4 * textScale(s)), weight: .bold)
+              .width(labels.fontWidth)
+          )
+          .tracking(0.3 * s)
           .textCase(.uppercase)
           .multilineTextAlignment(.center)
           .lineLimit(2)
-          .minimumScaleFactor(0.75)
+          .fixedSize(horizontal: false, vertical: true)
+          .frame(width: max(fit.width, 1))
       }
       .foregroundStyle(
         isHot
@@ -265,7 +471,6 @@ struct RadialWheel: View {
             ? AnyShapeStyle(WheelTeal.color) : AnyShapeStyle(Color.white))
           : (item.isEnabled ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
       )
-      .frame(width: 64 * s)
       .offset(labelOffset)
       .opacity(labelsShown ? 1 : 0)
       .allowsHitTesting(false)
@@ -305,14 +510,15 @@ struct RadialWheel: View {
         .fill(.quinary)
         .frame(width: 84 * s, height: 84 * s)
       Text(litItem?.title ?? centerText)
-        .font(.system(size: 9 * s, weight: .bold))
-        .tracking(0.3 * s)
+        .font(.system(size: max(WheelGeometry.minimumLabelSize, 9 * s), weight: .bold))
+        .tracking(0.2 * s)
         .textCase(litItem == nil ? nil : .uppercase)
         .foregroundStyle(.primary)
-        .lineLimit(1)
-        .minimumScaleFactor(0.6)
+        .multilineTextAlignment(.center)
+        .lineLimit(2)
+        .minimumScaleFactor(0.9)
         .padding(.horizontal, 10 * s)
-        .frame(width: 74 * s, height: 30 * s)
+        .frame(width: 74 * s, height: 34 * s)
         .background(.quaternary, in: Capsule(style: .continuous))
         .contentTransition(.opacity)
         .animation(.easeOut(duration: 0.12), value: litItem?.id)
@@ -393,6 +599,31 @@ enum URLLoader {
     private var storage: [URL] = []
     func append(_ url: URL) { lock.withLock { storage.append(url) } }
     var urls: [URL] { lock.withLock { storage } }
+  }
+}
+
+/// Reads dragged text out of drag providers and calls back on the main actor with all of it.
+enum TextLoader {
+  static func load(_ providers: [NSItemProvider], completion: @escaping @MainActor (String) -> Void) {
+    let group = DispatchGroup()
+    let collected = Collector()
+    for provider in providers where provider.canLoadObject(ofClass: String.self) {
+      group.enter()
+      _ = provider.loadObject(ofClass: String.self) { text, _ in
+        if let text { collected.append(text) }
+        group.leave()
+      }
+    }
+    group.notify(queue: .main) {
+      MainActor.assumeIsolated { completion(collected.joined) }
+    }
+  }
+
+  private final class Collector: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [String] = []
+    func append(_ text: String) { lock.withLock { storage.append(text) } }
+    var joined: String { lock.withLock { storage.joined(separator: "\n\n") } }
   }
 }
 

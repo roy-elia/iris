@@ -89,6 +89,12 @@ public enum RichText {
     case .office(let format) where format.isTable:
       let rows = TableOps.parse(try readPlainText(url), separator: format == .tsv ? "\t" : ",")
       return try await readHTML(TableOps.html(rows, title: name), baseURL: nil)
+    case .office(let format) where format.isPresentation:
+      return try await OfficeText.presentation(url, format: format)
+    case .office(let format):
+      return try await OfficeText.spreadsheet(url, format: format)
+    case .image:
+      return try OfficeText.image(url)
     default:
       throw DropError.unsupportedFile(name)
     }
