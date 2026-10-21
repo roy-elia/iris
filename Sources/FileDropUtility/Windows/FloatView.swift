@@ -355,7 +355,7 @@ struct FloatTabView: View {
     VStack(spacing: 4) {
       Image(systemName: "paperclip")
         .font(.system(size: 13, weight: .semibold))
-        .foregroundStyle(DesignTokens.Palette.tealInk)
+        .foregroundStyle(DesignTokens.Palette.brandInk)
         .rotationEffect(.degrees(stack.edge == .right ? -30 : 30))
       thumb(stack.urls.first, size: 36)
       Text("\(stack.urls.count)")
@@ -390,7 +390,7 @@ struct FloatTabView: View {
           )
           .help("Drag to move the Float")
           .accessibilityLabel("Move Float")
-        Image(systemName: "paperclip").foregroundStyle(DesignTokens.Palette.tealInk)
+        Image(systemName: "paperclip").foregroundStyle(DesignTokens.Palette.brandInk)
         Text("\(stack.urls.count) file\(stack.urls.count == 1 ? "" : "s")")
           .font(.callout.weight(.semibold))
           .frame(maxWidth: .infinity, alignment: .leading)

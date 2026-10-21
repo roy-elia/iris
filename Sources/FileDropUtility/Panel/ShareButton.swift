@@ -10,8 +10,8 @@ struct ShareButton: NSViewRepresentable {
   func makeNSView(context: Context) -> NSButton {
     let button = NSButton(
       title: "Share", target: context.coordinator, action: #selector(Coordinator.share(_:)))
-    // The AppKit counterpart of SwiftUI's .glass button style, matching the buttons beside it.
-    button.bezelStyle = .glass
+    // The AppKit counterpart of SwiftUI's .bordered button style, matching the buttons beside it.
+    button.bezelStyle = .push
     button.setAccessibilityIdentifier("share")
     return button
   }

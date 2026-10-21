@@ -67,7 +67,7 @@ struct Keycap: View {
 }
 
 /// A row of tool buttons, each its own Liquid Glass capsule with a small gap between them; the
-/// selected one carries the teal tint. The shared container's merge distance (0) is smaller
+/// selected one carries the violet tint. The shared container's merge distance (0) is smaller
 /// than the gap, so neighbouring capsules never flow into each other.
 struct GlassToolPicker<Tool: Hashable & Identifiable & Sendable>: View {
   let tools: [Tool]
@@ -77,6 +77,9 @@ struct GlassToolPicker<Tool: Hashable & Identifiable & Sendable>: View {
   var identifier: (Tool) -> String? = { _ in nil }
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  /// macOS drops glass tints in windows that aren't in front, so the selected label is only
+  /// white while the violet shows; otherwise it would be white on grey glass (1.9:1).
+  @Environment(\.appearsActive) private var appearsActive
 
   var body: some View {
     // No shared GlassEffectContainer: inside one, neighbouring capsules melt together at
@@ -91,7 +94,8 @@ struct GlassToolPicker<Tool: Hashable & Identifiable & Sendable>: View {
             Label(title(tool), systemImage: systemImage(tool))
               .font(.callout.weight(selected ? .semibold : .regular))
               .foregroundStyle(
-                selected ? Color(nsColor: .alternateSelectedControlTextColor) : Color.primary
+                selected && appearsActive
+                  ? Color(nsColor: .alternateSelectedControlTextColor) : Color.primary
               )
               .padding(.horizontal, 12)
               .padding(.vertical, 7)
@@ -100,7 +104,7 @@ struct GlassToolPicker<Tool: Hashable & Identifiable & Sendable>: View {
           .buttonStyle(.plain)
           .glassEffect(
             selected
-              ? Glass.regular.tint(DesignTokens.Palette.teal).interactive() : Glass.regular.interactive(),
+              ? Glass.regular.tint(DesignTokens.Palette.brand).interactive() : Glass.regular.interactive(),
             in: Capsule()
           )
           .accessibilityAddTraits(selected ? .isSelected : [])

@@ -48,7 +48,7 @@ struct OnboardingView: View {
     VStack(spacing: 18) {
       AppGlyphView()
         .frame(width: 64, height: 64)
-        .foregroundStyle(DesignTokens.Palette.tealInk)
+        .foregroundStyle(DesignTokens.Palette.brandInk)
       Text("Welcome to").font(.title2).foregroundStyle(Color.secondary)
       Text("Iris").font(.largeTitle.weight(.bold))
       Text("Convert, fix and send files without opening another app.")
@@ -117,7 +117,7 @@ struct OnboardingView: View {
           HStack(alignment: .top, spacing: 12) {
             Image(systemName: card.symbol)
               .font(.title2)
-              .foregroundStyle(DesignTokens.Palette.tealInk)
+              .foregroundStyle(DesignTokens.Palette.brandInk)
               .frame(width: 30)
               .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
@@ -152,11 +152,11 @@ struct OnboardingView: View {
     ),
     (
       "waveform", "Audio",
-      "MP3, WAV, FLAC, Opus and more; trim silence, bleep, normalise loudness, channels, visualizer videos."
+      "MP3, WAV, FLAC, Opus and more; trim silence, bleep, normalize loudness, channels, visualizer videos."
     ),
     (
       "doc.richtext", "Documents and PDFs",
-      "Word, RTF, Markdown, HTML, EPUB and Pages; PDF to text or images, OCR, organise pages."
+      "Word, RTF, Markdown, HTML, EPUB and Pages; PDF to text or images, OCR, organize pages."
     ),
     (
       "captions.bubble", "Subtitles and archives",
@@ -173,7 +173,7 @@ struct OnboardingView: View {
       VStack(spacing: 14) {
         Image(systemName: "folder.fill.badge.person.crop")
           .font(.system(size: 96))
-          .foregroundStyle(DesignTokens.Palette.tealInk)
+          .foregroundStyle(DesignTokens.Palette.brandInk)
           .accessibilityHidden(true)
         Button("Check Folder Access…") { checkFolders() }
           .buttonStyle(.glass).tint(nil)
@@ -222,7 +222,7 @@ struct OnboardingView: View {
         )
         .accessibilityHidden(true)
         Image(systemName: "arrow.up")
-          .foregroundStyle(DesignTokens.Palette.tealInk)
+          .foregroundStyle(DesignTokens.Palette.brandInk)
           .frame(maxWidth: .infinity, alignment: .trailing)
           .padding(.trailing, 70)
           .accessibilityHidden(true)
@@ -283,7 +283,7 @@ struct OnboardingView: View {
     HStack(spacing: 7) {
       ForEach(Page.allCases, id: \.self) { p in
         Capsule(style: .continuous)
-          .fill(p == page ? DesignTokens.Palette.teal : Color.secondary.opacity(0.4))
+          .fill(p == page ? DesignTokens.Palette.brand : Color.secondary.opacity(0.4))
           .frame(width: p == page ? 18 : 7, height: 7)
       }
     }
@@ -301,7 +301,7 @@ struct OnboardingView: View {
     case .convert:
       "Change the format: images, videos, audio, documents, PDFs and subtitles each get the choices that fit them."
     case .tools:
-      "Compress, edit and fix: crop, annotate, redact, trim, split, bleep, normalise, organise PDF pages and more."
+      "Compress, edit and fix: crop, annotate, redact, trim, split, bleep, normalize, organize PDF pages and more."
     case .actions:
       "AirDrop, keep files in a Float at the screen edge, copy, move, copy paths or open a terminal in the folder."
     }

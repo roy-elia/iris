@@ -198,7 +198,7 @@ public enum QuickActionRunner {
       case .failed(let message):
         result.failures.append(.init(file: "", message: message))
       case .cancelled:
-        result.failures.append(.init(file: "", message: "\(step.operation.summary) was cancelled."))
+        result.failures.append(.init(file: "", message: "\(step.operation.summary) was canceled."))
       default:
         break
       }

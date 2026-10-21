@@ -309,8 +309,8 @@ struct MetadataView: View {
         }
         .font(.callout)
         if allImages {
-          Toggle("Remove everything (colour profile and file attributes too)", isOn: $stripEverything)
-            .help("Leaves no metadata at all. Colours are converted to sRGB so the copy looks the same.")
+          Toggle("Remove everything (color profile and file attributes too)", isOn: $stripEverything)
+            .help("Leaves no metadata at all. Colors are converted to sRGB so the copy looks the same.")
         }
         HStack {
           Button("Strip All Metadata") {
@@ -323,7 +323,7 @@ struct MetadataView: View {
           Button("Copy From…", action: copyFromFile)
             .disabled(!canEdit)
             .help(
-              "Replaces this metadata with an exact copy of another file’s: every tag, the colour profile, "
+              "Replaces this metadata with an exact copy of another file’s: every tag, the color profile, "
                 + "Finder tags and comments, and the created and modified dates.")
         }
         .buttonStyle(.glass).tint(nil)
@@ -385,7 +385,7 @@ struct MetadataView: View {
 struct BackgroundView: View {
   enum Mode: String, CaseIterable {
     case remove = "Remove"
-    case color = "Colour"
+    case color = "Color"
     case image = "Image"
   }
   let urls: [URL]
@@ -419,7 +419,7 @@ struct BackgroundView: View {
         Text("Lifts the subject onto a transparent background (PNG).")
           .font(.callout).foregroundStyle(Color.secondary)
       case .color:
-        ColorPicker("Colour", selection: $color, supportsOpacity: false)
+        ColorPicker("Color", selection: $color, supportsOpacity: false)
       case .image:
         HStack {
           Button(imagePath == nil ? "Choose Image…" : "Change Image…") { chooseImage() }.buttonStyle(.glass)
@@ -471,7 +471,7 @@ struct FrameView: View {
                       Image(systemName: "checkmark.circle.fill").font(.body)
                         .symbolRenderingMode(.palette)
                         .foregroundStyle(
-                          Color(nsColor: .alternateSelectedControlTextColor), DesignTokens.Palette.teal)
+                          Color(nsColor: .alternateSelectedControlTextColor), DesignTokens.Palette.brand)
                     }
                   }
                 Text(preset.name).font(.caption2)
@@ -682,7 +682,9 @@ struct CollageView: View {
         }
         .pickerStyle(.segmented)
         .labelsHidden()
-        ColorPicker("Background", selection: $background, supportsOpacity: true).labelsHidden()
+        Spacer()
+        // Labelled, so the well doesn't read as a bare pill beside the picker.
+        ColorPicker("Background", selection: $background, supportsOpacity: true)
       }
       HStack {
         Toggle("Order by name", isOn: $recipe.orderByName)
@@ -754,7 +756,7 @@ struct QRResultsView: View {
       ForEach(Array(codes.enumerated()), id: \.offset) { _, code in
         HStack(alignment: .top, spacing: 10) {
           Image(systemName: kind == .qr ? "qrcode" : "text.below.photo").foregroundStyle(
-            DesignTokens.Palette.tealInk
+            DesignTokens.Palette.brandInk
           )
           .accessibilityHidden(
             true)
@@ -806,7 +808,7 @@ struct JoinView: View {
         ForEach(Array(urls.enumerated()), id: \.element) { index, url in
           HStack(spacing: 10) {
             Text("\(index + 1)").font(.callout.monospacedDigit().weight(.semibold)).frame(width: 18)
-            Image(systemName: "film").foregroundStyle(DesignTokens.Palette.tealInk).accessibilityHidden(
+            Image(systemName: "film").foregroundStyle(DesignTokens.Palette.brandInk).accessibilityHidden(
               true)
             Text(url.lastPathComponent).font(.callout).lineLimit(1).truncationMode(.middle)
             Spacer()
@@ -838,7 +840,7 @@ struct JoinView: View {
 
 struct VisualizerView: View {
   enum Backdrop: String, CaseIterable {
-    case color = "Colour"
+    case color = "Color"
     case image = "Image"
   }
   let urls: [URL]
@@ -881,10 +883,10 @@ struct VisualizerView: View {
           .pickerStyle(.segmented).labelsHidden()
         }
         GridRow {
-          Text("Wave")
-          ColorPicker("Wave colour", selection: $waveColor, supportsOpacity: false).labelsHidden()
+          Text("Wave color")
+          ColorPicker("Wave color", selection: $waveColor, supportsOpacity: false).labelsHidden()
             .disabled(style == .spectrum)
-            .help(style == .spectrum ? "The spectrum uses its own colours." : "")
+            .help(style == .spectrum ? "The spectrum uses its own colors." : "")
         }
         GridRow {
           Text("Behind")
@@ -896,7 +898,7 @@ struct VisualizerView: View {
       }
       switch backdrop {
       case .color:
-        ColorPicker("Background colour", selection: $backgroundColor, supportsOpacity: false)
+        ColorPicker("Background color", selection: $backgroundColor, supportsOpacity: false)
       case .image:
         HStack {
           Button(imagePath == nil ? "Choose Image…" : "Change Image…") { chooseImage() }.buttonStyle(.glass)

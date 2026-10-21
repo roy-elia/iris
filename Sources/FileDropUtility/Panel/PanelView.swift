@@ -82,7 +82,7 @@ struct MoreMenu: View {
     } label: {
       Label("More", systemImage: "ellipsis")
     }
-    // Toolbar items stay monochrome; teal is for the window's primary action.
+    // Toolbar items stay monochrome; violet is for the window's primary action.
     .tint(nil)
     .accessibilityIdentifier("moreMenu")
   }
@@ -97,7 +97,7 @@ struct StatusHeader: View {
     HStack(alignment: .center, spacing: 10) {
       Image(systemName: model.isRunning ? "hourglass" : "checkmark.circle")
         .font(.title3)
-        .foregroundStyle(DesignTokens.Palette.tealInk)
+        .foregroundStyle(DesignTokens.Palette.brandInk)
         .accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 1) {
         Text(model.isRunning ? "Working…" : "Ready").font(.headline)

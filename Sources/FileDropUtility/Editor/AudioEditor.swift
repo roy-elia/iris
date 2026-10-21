@@ -303,13 +303,15 @@ struct AudioEditorView: View {
   }
 
   @ViewBuilder private var trimInspector: some View {
-    Text("Drag the ends of the waveform, or set them at the playhead.")
+    Text("Drag the ends of the waveform to trim, or set them from the playhead.")
       .font(.callout).foregroundStyle(Color.secondary)
     HStack {
-      Button("Start at Playhead") { model.setTrimStartToPlayhead() }.buttonStyle(.glass).tint(nil)
-      Button("End") { model.setTrimEndToPlayhead() }.buttonStyle(.glass).tint(nil).help("End at the playhead")
+      Button("Set Start") { model.setTrimStartToPlayhead() }.buttonStyle(.glass).tint(nil)
+        .help("Start at the playhead")
+      Button("Set End") { model.setTrimEndToPlayhead() }.buttonStyle(.glass).tint(nil)
+        .help("End at the playhead")
     }
-    LabeledContent("Keeps", value: formatTime(model.keptRange.upperBound - model.keptRange.lowerBound))
+    LabeledContent("Length", value: formatTime(model.keptRange.upperBound - model.keptRange.lowerBound))
       .font(.callout.monospacedDigit())
     Divider()
     Toggle("Trim silent ends", isOn: $model.trimSilence)
@@ -397,7 +399,7 @@ struct AudioEditorView: View {
           Text(balanceText).font(.caption.monospacedDigit()).foregroundStyle(
             Color.secondary)
           Spacer()
-          Button("Centre") { model.balance = 0 }.buttonStyle(.glass).tint(nil).controlSize(.small)
+          Button("Center") { model.balance = 0 }.buttonStyle(.glass).tint(nil).controlSize(.small)
             .disabled(model.balance == 0)
         }
       }
@@ -406,7 +408,7 @@ struct AudioEditorView: View {
 
   private var balanceText: String {
     let pct = Int((abs(model.balance) * 100).rounded())
-    if pct == 0 { return "Centred" }
+    if pct == 0 { return "Centered" }
     return model.balance < 0 ? "\(pct)% left" : "\(pct)% right"
   }
 }
@@ -425,7 +427,7 @@ struct WaveformTimeline: View {
         WaveformShape(peaks: model.peaks)
           .fill(
             LinearGradient(
-              colors: [DesignTokens.Palette.teal, DesignTokens.Palette.teal], startPoint: .top,
+              colors: [DesignTokens.Palette.brand, DesignTokens.Palette.brand], startPoint: .top,
               endPoint: .bottom)
           )
           .frame(width: w, height: h)

@@ -134,7 +134,7 @@ public enum RecipeRunner {
 
     for (index, step) in recipe.steps.enumerated() {
       if Task.isCancelled {
-        result.failures.append(.init(file: "", message: "\(recipe.displayName) was cancelled."))
+        result.failures.append(.init(file: "", message: "\(recipe.displayName) was canceled."))
         return result
       }
       let folder = work.appendingPathComponent("step-\(index + 1)", isDirectory: true)

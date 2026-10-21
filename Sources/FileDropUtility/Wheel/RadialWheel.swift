@@ -176,7 +176,7 @@ struct PetalShape: Shape {
 }
 
 /// The radial action wheel: rounded petals on a Liquid Glass disc, around a centre well with
-/// a label. The petal under the pointer turns teal, swells past the rim and
+/// a label. The petal under the pointer turns violet, swells past the rim and
 /// leans toward the pointer. The wheel springs open from a third of its size, and the labels
 /// fade in just after. Everything is drawn with system glass, fills and colours, so it
 /// follows light and dark, Increase Contrast and Reduce Transparency.
@@ -194,26 +194,26 @@ extension WheelTheme {
   }
 }
 
-/// The wheel's signature teal, the app's brand colour (`DesignTokens.Palette`). The wheel's
-/// panel never becomes key, and the system drops glass tints on inactive windows, so teal is
+/// The wheel's signature violet, the app's brand colour (`DesignTokens.Palette`). The wheel's
+/// panel never becomes key, and the system drops glass tints on inactive windows, so violet is
 /// drawn as a fill rather than a glass tint. White labels stay above 4.5:1 across the gradient.
-enum WheelTeal {
-  static let deep = DesignTokens.Palette.tealDeep
-  static let color = DesignTokens.Palette.teal
-  /// Deep teal at the lower left, brightening toward the upper right, like Tangerine's lit petal.
+enum WheelBrand {
+  static let deep = DesignTokens.Palette.brandDeep
+  static let color = DesignTokens.Palette.brand
+  /// Deep violet at the lower left, brightening toward the upper right (#6A50E6, white 5.4:1).
   static let gradient = LinearGradient(
-    colors: [deep, color, Color(red: 0.16, green: 0.58, blue: 0.78)], startPoint: .bottomLeading,
+    colors: [deep, color, Color(red: 0.416, green: 0.314, blue: 0.902)], startPoint: .bottomLeading,
     endPoint: .topTrailing)
 }
 
 /// The wheel's slate surfaces: a cool blue-grey glass disc, near-black petals and a lighter
-/// hub ring, each edged with a thin light rim, the way Tangerine's wheel is drawn. Teal
+/// hub ring, each edged with a thin light rim, the way Tangerine's wheel is drawn. Violet
 /// replaces Tangerine's orange as the lit petal.
 enum WheelSlate {
-  static let disc = Color(red: 0.16, green: 0.19, blue: 0.23)
-  static let petal = Color(red: 0.105, green: 0.125, blue: 0.15)
-  static let hubRing = Color(red: 0.24, green: 0.27, blue: 0.32)
-  static let hubWell = Color(red: 0.12, green: 0.14, blue: 0.17)
+  static let disc = Color(red: 0.18, green: 0.17, blue: 0.24)
+  static let petal = Color(red: 0.12, green: 0.11, blue: 0.16)
+  static let hubRing = Color(red: 0.27, green: 0.25, blue: 0.34)
+  static let hubWell = Color(red: 0.13, green: 0.12, blue: 0.18)
 
   /// A light edge that catches the top-left and fades toward the bottom-right.
   static func rim(_ strength: Double = 1) -> LinearGradient {
@@ -386,7 +386,7 @@ struct RadialWheel: View {
     let labels = labelLayout(diameter: d, scale: s)
     return ZStack {
       disc(diameter: d, scale: s)
-      // The petals' glass lives in its own container, so the lit petal's teal glass is drawn
+      // The petals' glass lives in its own container, so the lit petal's violet glass is drawn
       // on its own rather than folded into the disc's glass variant.
       GlassEffectContainer(spacing: 0) {
         ZStack {
@@ -450,7 +450,7 @@ struct RadialWheel: View {
 
   private var discFill: AnyShapeStyle {
     switch theme {
-    case .tinted: AnyShapeStyle(WheelTeal.color.opacity(0.6))
+    case .tinted: AnyShapeStyle(WheelBrand.color.opacity(0.6))
     case .light: AnyShapeStyle(WheelSlate.disc.opacity(0.55))
     case .dark: AnyShapeStyle(WheelSlate.disc.opacity(0.72))
     }
@@ -480,14 +480,14 @@ struct RadialWheel: View {
     let lean = isHot ? leanOffset(toward: pointer, from: labelOffset, limit: 7 * s) : .zero
 
     ZStack {
-      // The lit petal is teal; the rest use hierarchical fills on the glass. On the teal
+      // The lit petal is violet; the rest use hierarchical fills on the glass. On the violet
       // disc the lit petal flips to the background colour so it stands out.
       if isHot {
-        // A see-through teal layer over the teal glass: the glass gives the edge and
-        // refraction, and the layer keeps it teal in the non-activating panel, where the
+        // A see-through violet layer over the violet glass: the glass gives the edge and
+        // refraction, and the layer keeps it violet in the non-activating panel, where the
         // system draws glass tints without colour.
         shape.fill(
-          theme == .tinted ? AnyShapeStyle(.background) : AnyShapeStyle(WheelTeal.gradient.opacity(0.9)))
+          theme == .tinted ? AnyShapeStyle(.background) : AnyShapeStyle(WheelBrand.gradient.opacity(0.9)))
       } else if theme == .tinted {
         shape.fill(.background.opacity(item.isEnabled ? 0.18 : 0.08))
       } else {
@@ -516,7 +516,7 @@ struct RadialWheel: View {
       .foregroundStyle(
         isHot
           ? (theme == .tinted
-            ? AnyShapeStyle(WheelTeal.color) : AnyShapeStyle(Color.white))
+            ? AnyShapeStyle(WheelBrand.color) : AnyShapeStyle(Color.white))
           : (item.isEnabled ? AnyShapeStyle(Color.white) : AnyShapeStyle(Color.white.opacity(0.35)))
       )
       .offset(labelOffset)
@@ -702,7 +702,7 @@ enum TextLoader {
   }
 }
 
-/// Teal Liquid Glass behind the lit petal. Only the lit petal gets a glass effect: an
+/// Violet Liquid Glass behind the lit petal. Only the lit petal gets a glass effect: an
 /// `.identity` glass on the others would still merge them into the disc's glass.
 private struct TealGlass: ViewModifier {
   let isOn: Bool
@@ -710,7 +710,7 @@ private struct TealGlass: ViewModifier {
 
   func body(content: Content) -> some View {
     if isOn {
-      content.glassEffect(.regular.tint(WheelTeal.color).interactive(), in: shape)
+      content.glassEffect(.regular.tint(WheelBrand.color).interactive(), in: shape)
     } else {
       content
     }

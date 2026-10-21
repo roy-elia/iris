@@ -173,7 +173,7 @@ public enum MetadataOps {
       // Some combinations decode nowhere, such as a Display P3 profile in a JPEG 2000 file.
       if support == .image, decodes(target), !decodes(destination) {
         throw DropError.wrongInput(
-          "\(source.lastPathComponent)’s metadata, likely its colour profile, would leave "
+          "\(source.lastPathComponent)’s metadata, likely its color profile, would leave "
             + "\(target.lastPathComponent) unreadable, so it wasn’t copied.")
       }
       try copyFileAttributes(from: source, to: destination)

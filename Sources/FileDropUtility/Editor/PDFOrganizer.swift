@@ -193,11 +193,11 @@ struct PDFOrganizerView: View {
       .frame(width: 150, height: 150)
       .background(
         RoundedRectangle(cornerRadius: 16, style: .continuous)
-          .fill(selected ? DesignTokens.Palette.teal.opacity(0.22) : .clear)
+          .fill(selected ? DesignTokens.Palette.brand.opacity(0.22) : .clear)
       )
       .overlay(
         RoundedRectangle(cornerRadius: 16, style: .continuous)
-          .strokeBorder(selected ? DesignTokens.Palette.teal : .clear, lineWidth: 2)
+          .strokeBorder(selected ? DesignTokens.Palette.brand : .clear, lineWidth: 2)
       )
       Text("\(position + 1)")
         .font(.callout.monospacedDigit().weight(selected ? .semibold : .regular))

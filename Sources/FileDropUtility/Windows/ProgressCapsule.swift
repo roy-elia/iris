@@ -131,7 +131,7 @@ struct ProgressCapsuleView: View {
     switch state {
     case .waiting: Image(systemName: "circle").foregroundStyle(.tertiary)
     case .working: ProgressView().controlSize(.small)
-    case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(DesignTokens.Palette.tealInk)
+    case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(DesignTokens.Palette.brandInk)
     case .failed: Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
     }
   }

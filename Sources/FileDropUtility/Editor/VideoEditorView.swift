@@ -135,7 +135,7 @@ struct VideoEditorView: View {
         .overlay {
           if model.tool == .redact && model.selectedRedaction == index {
             RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(
-              DesignTokens.Palette.teal, lineWidth: 2)
+              DesignTokens.Palette.brand, lineWidth: 2)
           }
         }
         .frame(width: box.width, height: box.height)
@@ -161,7 +161,9 @@ struct VideoEditorView: View {
         LabeledContent("End", value: formatTime(model.trimEnd)).monospacedDigit()
         HStack {
           Button("Set Start") { model.setTrimStartToPlayhead() }.buttonStyle(.glass).tint(nil)
+            .help("Start at the playhead")
           Button("Set End") { model.setTrimEndToPlayhead() }.buttonStyle(.glass).tint(nil)
+            .help("End at the playhead")
         }
         LabeledContent("Length", value: formatTime(model.trimEnd - model.trimStart)).monospacedDigit()
       case .split:
@@ -339,13 +341,13 @@ struct VideoTimeline: View {
         case .frames:
           ForEach(model.frameTimes, id: \.self) { t in
             Image(systemName: "camera.fill").font(.caption2).foregroundStyle(.white).padding(3)
-              .background(DesignTokens.Palette.teal, in: Circle())
+              .background(DesignTokens.Palette.brand, in: Circle())
               .offset(x: x(t) - 9, y: h - 20).allowsHitTesting(false)
           }
         case .redact:
           ForEach(Array(model.redactions.enumerated()), id: \.offset) { index, r in
             Capsule(style: .continuous)
-              .fill(DesignTokens.Palette.teal.opacity(model.selectedRedaction == index ? 0.95 : 0.55))
+              .fill(DesignTokens.Palette.brand.opacity(model.selectedRedaction == index ? 0.95 : 0.55))
               .frame(width: max(x(r.end) - x(r.start), 6), height: 12)
               .offset(x: x(r.start), y: h - 16)
               .onTapGesture { model.selectedRedaction = index }

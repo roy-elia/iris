@@ -239,7 +239,7 @@ public enum AIOps {
   /// in pieces and the pieces are then combined.
   public static func summarize(_ text: String, title: String) async throws -> String {
     let body = text.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard body.count >= 40 else { throw DropError.wrongInput("There isn't enough text to summarise.") }
+    guard body.count >= 40 else { throw DropError.wrongInput("There isn't enough text to summarize.") }
     var notes = chunks(body)
     // Reduce until everything fits in one request.
     while notes.count > 1 || notes[0].count > chunkCharacters {
@@ -290,7 +290,7 @@ public enum AIOps {
     if !points.isEmpty {
       md += "## Key points\n\n" + points.map { "- \($0)" }.joined(separator: "\n") + "\n\n"
     }
-    md += "_Summarised on this Mac by Apple Intelligence. Check important details against the original._\n"
+    md += "_Summarized on this Mac by Apple Intelligence. Check important details against the original._\n"
     return md
   }
 

@@ -44,10 +44,10 @@ struct FilesTab: View {
     VStack(spacing: 6) {
       Image(systemName: "tray.and.arrow.down")
         .font(.system(size: 26, weight: .medium))
-        .foregroundStyle(isTargeted ? DesignTokens.Palette.tealInk : .secondary)
+        .foregroundStyle(isTargeted ? DesignTokens.Palette.brandInk : .secondary)
         .accessibilityHidden(true)
       Text("Drop files or text here").font(.callout)
-      // The window's one teal primary action.
+      // The window's one violet primary action.
       Button("Choose Files…") { model.chooseFiles() }
         .primaryActionStyle()
         .accessibilityIdentifier("chooseFiles")
@@ -59,7 +59,7 @@ struct FilesTab: View {
     .frame(maxWidth: .infinity, minHeight: 110)
     .padding(DesignTokens.Spacing.cardPadding)
     // A drop target is a control, so it's glass; it takes the accent tint while files hover.
-    .glassPanel(tint: isTargeted ? DesignTokens.Palette.teal : nil, interactive: true)
+    .glassPanel(tint: isTargeted ? DesignTokens.Palette.brand : nil, interactive: true)
     .onDrop(
       of: [.fileURL, .utf8PlainText, .plainText],
       delegate: FilesDropDelegate(model: model, isTargeted: $isTargeted)
@@ -75,7 +75,7 @@ struct FilesTab: View {
           .font(.headline)
         Spacer()
         Button("Clear") { model.clear() }
-          .buttonStyle(.glass).tint(nil)
+          .buttonStyle(.bordered).tint(nil)
           .accessibilityIdentifier("clearFiles")
       }
       // Only scroll once the list is long; a short list sizes to its rows.
@@ -177,7 +177,7 @@ struct ResultCard: View {
           "\(operation): \(result.renames.isEmpty ? "saved" : "renamed") \(result.outputs.count) file\(result.outputs.count == 1 ? "" : "s")",
           systemImage: "checkmark.circle.fill"
         )
-        .foregroundStyle(DesignTokens.Palette.tealInk)
+        .foregroundStyle(DesignTokens.Palette.brandInk)
         .font(.callout.weight(.semibold))
         ForEach(result.outputs, id: \.self) { url in
           Text(url.lastPathComponent).font(.caption).lineLimit(1).truncationMode(.middle)
@@ -189,16 +189,17 @@ struct ResultCard: View {
             .accessibilityIdentifier("downloadsNotice")
         }
         HStack {
+          // The result card is content, so its buttons use the standard style, not glass.
           Button("Show in Finder") { model.reveal(result.outputs) }
-            .buttonStyle(.glass).tint(nil)
+            .buttonStyle(.bordered).tint(nil)
             .accessibilityIdentifier("reveal")
           Button("AirDrop") { model.perform(.airDrop, urls: result.outputs, origin: .panel) }
-            .buttonStyle(.glass).tint(nil)
+            .buttonStyle(.bordered).tint(nil)
             .accessibilityIdentifier("airdrop")
           ShareButton(items: result.outputs).fixedSize()
           if !result.renames.isEmpty {
             Button("Undo Rename") { model.undoRenames() }
-              .buttonStyle(.glass).tint(nil)
+              .buttonStyle(.bordered).tint(nil)
               .accessibilityIdentifier("undoRename")
           }
         }

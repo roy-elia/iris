@@ -18,7 +18,7 @@ struct HistoryTab: View {
               HStack(alignment: .top, spacing: 10) {
                 Image(systemName: entry.succeeded ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                   .foregroundStyle(
-                    entry.succeeded ? DesignTokens.Palette.tealInk : Color.orange
+                    entry.succeeded ? DesignTokens.Palette.brandInk : Color.orange
                   )
                   .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
@@ -44,8 +44,9 @@ struct HistoryTab: View {
         .groupBoxed()
         HStack {
           Spacer()
+          // History is content, so its controls use the standard style, not glass.
           Button("Clear History") { model.clearHistory() }
-            .buttonStyle(.glass).tint(nil)
+            .buttonStyle(.bordered).tint(nil)
             .accessibilityIdentifier("clearHistory")
         }
       }
@@ -81,32 +82,27 @@ struct SettingsTab: View {
       Section("Format defaults") { formatDefaults }
 
       Section("Save to") {
-        LabeledContent("Location") {
-          Text(locationLabel)
-            .lineLimit(1)
-            .truncationMode(.middle)
-            .accessibilityIdentifier("saveLocation")
+        // One pop-up instead of three buttons: the choices people make, with a custom folder
+        // shown by name and Choose Folder… at the end, as in Safari's download location.
+        Picker("Location", selection: locationChoice) {
+          Text("Next to Original").tag(LocationChoice.nextToSource)
+          Text("Downloads").tag(LocationChoice.downloads)
+          if case .folder(let url) = model.settings.outputLocation,
+            url.standardizedFileURL != Self.downloads
+          {
+            Text(url.lastPathComponent).tag(LocationChoice.custom).help(url.path)
+          }
+          Divider()
+          Text("Choose Folder…").tag(LocationChoice.choose)
         }
+        .pickerStyle(.menu)
+        .accessibilityIdentifier("saveLocation")
         if model.settings.outputLocation == .nextToSource {
           Text(
             "If the original’s folder is read-only or hidden, such as a Mail attachment, files go to Downloads."
           )
           .font(.caption)
           .foregroundStyle(Color.secondary)
-        }
-        HStack {
-          Spacer()
-          Button("Use Original’s Folder") { model.settings.outputLocation = .nextToSource }
-            .buttonStyle(.glass).tint(nil)
-            .accessibilityIdentifier("nextToOriginal")
-          Button("Use Downloads") {
-            model.settings.outputLocation = .folder(OutputNamer.downloadsDirectory())
-          }
-          .buttonStyle(.glass).tint(nil)
-          .accessibilityIdentifier("useDownloads")
-          Button("Choose Folder…") { model.chooseOutputFolder() }
-            .buttonStyle(.glass).tint(nil)
-            .accessibilityIdentifier("chooseFolder")
         }
       }
 
@@ -156,7 +152,7 @@ struct SettingsTab: View {
           .accessibilityIdentifier("checkForUpdates")
         if model.settings.checkForUpdates {
           HStack {
-            Button("Check Now") { model.checkForUpdates(manual: true) }.buttonStyle(.glass).tint(nil)
+            Button("Check Now") { model.checkForUpdates(manual: true) }.buttonStyle(.bordered).tint(nil)
               .controlSize(
                 .small)
             if let status = model.updateStatus {
@@ -182,7 +178,8 @@ struct SettingsTab: View {
       .pickerStyle(.menu)
       .accessibilityIdentifier("formatDefaults")
       if formatForDefaults.usesQuality {
-        Toggle("Own quality", isOn: ownQuality)
+        Toggle("Custom \(formatForDefaults.displayName) quality", isOn: ownQuality)
+          .help("Use its own quality instead of the default quality above.")
         if model.settings.formatSettings[formatForDefaults.rawValue]?.quality != nil {
           HStack {
             Slider(value: formatQuality, in: AppSettings.qualityRange).accessibilityLabel(
@@ -326,11 +323,25 @@ struct SettingsTab: View {
 
   private static let downloads = OutputNamer.downloadsDirectory().standardizedFileURL
 
-  private var locationLabel: String {
-    switch model.settings.outputLocation {
-    case .nextToSource: "Next to original"
-    case .folder(let url) where url.standardizedFileURL == Self.downloads: "Downloads"
-    case .folder(let url): url.path
-    }
+  private enum LocationChoice: Hashable { case nextToSource, downloads, custom, choose }
+
+  private var locationChoice: Binding<LocationChoice> {
+    Binding(
+      get: {
+        switch model.settings.outputLocation {
+        case .nextToSource: .nextToSource
+        case .folder(let url) where url.standardizedFileURL == Self.downloads: .downloads
+        case .folder: .custom
+        }
+      },
+      set: { choice in
+        switch choice {
+        case .nextToSource: model.settings.outputLocation = .nextToSource
+        case .downloads: model.settings.outputLocation = .folder(OutputNamer.downloadsDirectory())
+        case .custom: break
+        // Opens the folder panel; cancelling it leaves the current location selected.
+        case .choose: DispatchQueue.main.async { model.chooseOutputFolder() }
+        }
+      })
   }
 }

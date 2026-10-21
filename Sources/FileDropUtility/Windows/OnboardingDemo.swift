@@ -51,7 +51,7 @@ struct WheelDemoView: View {
       .font(.title)
       .foregroundStyle(.white)
       .frame(width: 54, height: 54)
-      .background(DesignTokens.Palette.teal, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+      .background(DesignTokens.Palette.brand, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
       .shadow(radius: step == .drag ? 8 : 2, y: 3)
       .offset(chipOffset)
       .opacity(step == .drop ? 0 : 1)

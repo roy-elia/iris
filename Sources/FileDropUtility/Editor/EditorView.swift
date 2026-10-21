@@ -49,6 +49,7 @@ struct EditorView: View {
         Image(systemName: "rotate.left")
       }
       .buttonStyle(.glass).tint(nil)
+      .help("Rotate Left")
       .accessibilityLabel("Rotate left")
       Button {
         model.rotate(clockwise: true)
@@ -56,6 +57,7 @@ struct EditorView: View {
         Image(systemName: "rotate.right")
       }
       .buttonStyle(.glass).tint(nil)
+      .help("Rotate Right")
       .accessibilityLabel("Rotate right")
       Button {
         model.undo()
@@ -65,6 +67,7 @@ struct EditorView: View {
       .buttonStyle(.glass).tint(nil)
       .disabled(!model.canUndo)
       .keyboardShortcut("z")
+      .help("Undo (⌘Z)")
       .accessibilityLabel("Undo")
       Spacer()
       Button("Save Copy") { model.save() }
@@ -149,7 +152,7 @@ struct EditorView: View {
             )
             .background(
               model.annotateKind == kind
-                ? AnyShapeStyle(DesignTokens.Palette.teal) : AnyShapeStyle(.clear),
+                ? AnyShapeStyle(DesignTokens.Palette.brand) : AnyShapeStyle(.clear),
               in: RoundedRectangle(cornerRadius: DesignTokens.Radius.chip, style: .continuous)
             )
             .contentShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.chip, style: .continuous))
@@ -161,7 +164,7 @@ struct EditorView: View {
       }
       Text(model.annotateKind.hint).font(.callout).foregroundStyle(Color.secondary)
       if model.annotateKind != .magnifier && model.annotateKind != .sticker {
-        ColorPicker("Colour", selection: $model.strokeColor, supportsOpacity: false)
+        ColorPicker("Color", selection: $model.strokeColor, supportsOpacity: false)
       }
       switch model.annotateKind {
       case .draw, .arrow:
