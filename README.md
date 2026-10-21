@@ -10,7 +10,7 @@ Requirements: a Mac with Apple silicon running macOS 26 or later.
 ## Download
 
 1. Download `Iris-<version>.zip` from the latest
-   [release](https://github.com/roy-elia/file-drop-utility/releases) and unzip it.
+   [release](https://github.com/roy-elia/iris/releases) and unzip it.
 2. Move `Iris.app` to Applications and open it.
 3. The app isn't notarized, so the first time macOS says it can't verify it. Open
    **System Settings › Privacy & Security**, scroll to Security and click **Open Anyway**
@@ -21,8 +21,8 @@ Requirements: a Mac with Apple silicon running macOS 26 or later.
 You need Apple's Command Line Tools (`xcode-select --install`); Xcode is optional.
 
 ```bash
-git clone https://github.com/roy-elia/file-drop-utility.git
-cd file-drop-utility
+git clone https://github.com/roy-elia/iris.git
+cd iris
 scripts/install.sh --install
 ```
 
