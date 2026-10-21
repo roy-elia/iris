@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<defs>
+  <clipPath id="tile"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+  <linearGradient id="bg" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#1D1A2B"/><stop offset="0.55" stop-color="#141220"/><stop offset="1" stop-color="#0B0A12"/></linearGradient>
+  <radialGradient id="glow" cx="0.3" cy="0.12" r="0.8"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.0"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
+  <linearGradient id="rim" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.9"/><stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.12"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.5"/></linearGradient>
+  <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.45"/><stop offset="0.35" stop-color="#FFFFFF" stop-opacity="0.04"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.18"/></linearGradient>
+  <filter id="tileShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.3"/></filter>
+  
+</defs>
+<g filter="url(#tileShadow)"><g clip-path="url(#tile)">
+  <rect x="100" y="100" width="824" height="824" fill="url(#bg)"/>
+  <rect x="100" y="100" width="824" height="824" fill="url(#glow)"/>
+  <path d="M512.0,510.0 C618.4,420.0 581.4,225.0 512.0,210.0 C442.6,225.0 405.6,420.0 512.0,510.0Z" fill="#6F5BE8"/><path d="M489.9,517.7 C544.7,407.3 487.3,246.4 425.3,259.7 C374.0,296.9 371.1,484.6 489.9,517.7Z" fill="#6F5BE8"/><path d="M534.1,517.7 C652.9,484.6 650.0,296.9 598.7,259.7 C536.7,246.4 479.3,407.3 534.1,517.7Z" fill="#6F5BE8"/><path d="M495.2,554.7 C361.2,475.3 260.8,660.3 289.6,743.3 C342.3,813.6 486.1,710.2 495.2,554.7Z" fill="#9B8BFF"/><path d="M528.8,554.7 C537.9,710.2 681.7,813.6 734.4,743.3 C763.2,660.3 662.8,475.3 528.8,554.7Z" fill="#9B8BFF"/><path d="M512.0,566.0 C390.4,629.0 432.6,765.5 512.0,776.0 C591.4,765.5 633.6,629.0 512.0,566.0Z" fill="#9B8BFF"/><path d="M468.7,568.8 C429.8,572.3 369.0,624.1 368.4,635.7 C378.3,641.7 444.0,599.1 468.7,568.8Z" fill="#FFC94A"/><path d="M555.3,568.8 C580.0,599.1 645.7,641.7 655.6,635.7 C655.0,624.1 594.2,572.3 555.3,568.8Z" fill="#FFC94A"/><path d="M512.0,592.0 C496.8,622.0 502.1,687.0 512.0,692.0 C521.9,687.0 527.2,622.0 512.0,592.0Z" fill="#FFC94A"/>
+</g><rect x="101.5" y="101.5" width="821" height="821" rx="183.5" fill="none" stroke="url(#edge)" stroke-width="3"/></g>
+</svg>
