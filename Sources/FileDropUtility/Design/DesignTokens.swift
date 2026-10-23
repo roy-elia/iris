@@ -34,10 +34,13 @@ enum DesignTokens {
     /// Fills behind white text: selected tools, the lit wheel petal, the tint on glass.
     /// #7559E3 (white on it 4.9:1); Increase Contrast #5E43C9 (6.3:1).
     static let brand = Color(nsColor: adaptive(light: 0x7559E3, dark: 0x7559E3, contrast: 0x5E43C9))
-    /// The deeper lilac for prominent buttons and the start of the wheel's gradient. The system
-    /// draws a prominent button's label in a light tint of its fill; this stays above 4.5:1.
-    /// Increase Contrast #4A30B5.
-    static let brandDeep = Color(nsColor: adaptive(light: 0x6A4FD8, dark: 0x6A4FD8, contrast: 0x4A30B5))
+    /// The light lilac of hovered wheel petals and primary buttons: #A78BFA in light, #B9A6FA in
+    /// dark, where it glows against dark surfaces. Its labels use `lilacInk`, not white.
+    static let lilac = Color(
+      nsColor: adaptive(light: 0xA78BFA, dark: 0xB9A6FA, contrast: 0xA78BFA, darkContrast: 0xB9A6FA))
+    /// Deep ink for text and symbols on `lilac`: 6.0:1 in light, 7.6:1 in dark; Increase
+    /// Contrast #120A2E (7.6:1 / 9.4:1).
+    static let lilacInk = Color(nsColor: adaptive(light: 0x22184A, dark: 0x22184A, contrast: 0x120A2E))
     /// Lilac text and symbols on the window and glass: #6347D8 in light (5.6:1 on #F5F5F7),
     /// #C9BCFF in dark (6.6:1 on #3A3A3C); Increase Contrast #4A30B5 / #DDD4FF.
     static let brandInk = Color(
@@ -88,9 +91,41 @@ extension View {
     tint(DesignTokens.Palette.brand)
   }
 
-  /// The view's one primary action: prominent Liquid Glass on the deeper lilac. The system draws
-  /// a prominent button's label in a light cyan it derives itself   /// change it); the deeper `brandDeep` fill keeps it above 4.5:1.
+  /// The view's one primary action: lilac over lilac Liquid Glass with a deep-ink label, at
+  /// the size and shape of a standard macOS push button. A custom style because the system's
+  /// prominent glass draws its own near-white label, which can't be read on a light lilac.
   func primaryActionStyle() -> some View {
-    buttonStyle(.glassProminent).tint(DesignTokens.Palette.brandDeep)
+    buttonStyle(PrimaryActionButtonStyle())
+  }
+}
+
+/// Lilac primary button: a 24 pt rounded rectangle with a 6 pt radius and 12 pt side padding,
+/// like the system's prominent button, filled with `lilac` over lilac glass so it keeps its
+/// colour in inactive windows, where the system drops glass tints.
+struct PrimaryActionButtonStyle: ButtonStyle {
+  @Environment(\.isEnabled) private var isEnabled
+  @Environment(\.controlSize) private var controlSize
+
+  func makeBody(configuration: Configuration) -> some View {
+    let shape = RoundedRectangle(cornerRadius: controlSize == .large ? 8 : 6, style: .continuous)
+    let metrics: (height: CGFloat, padding: CGFloat) =
+      switch controlSize {
+      case .mini, .small: (20, 8)
+      case .large, .extraLarge: (30, 14)
+      default: (24, 12)
+      }
+    return configuration.label
+      .font(controlSize == .small || controlSize == .mini ? .callout : .body)
+      .foregroundStyle(DesignTokens.Palette.lilacInk.opacity(isEnabled ? 1 : 0.45))
+      .padding(.horizontal, metrics.padding)
+      .frame(minHeight: metrics.height)
+      .background(
+        DesignTokens.Palette.lilac.opacity(isEnabled ? (configuration.isPressed ? 1 : 0.92) : 0.35),
+        in: shape
+      )
+      .overlay(shape.strokeBorder(.white.opacity(configuration.isPressed ? 0.1 : 0.22), lineWidth: 0.5))
+      .glassEffect(.regular.tint(DesignTokens.Palette.lilac).interactive(), in: shape)
+      .brightness(configuration.isPressed ? -0.06 : 0)
+      .contentShape(shape)
   }
 }

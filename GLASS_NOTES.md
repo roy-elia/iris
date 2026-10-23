@@ -12,12 +12,11 @@ or draws its own substitute.
   tool panels, editor tool bars and inspectors. Content uses `GroupBox`, a grouped `Form`, or
   hierarchical system fills (`.quaternary`, `.quinary`), so glass never sits on glass.
 - One brand colour, lilac, in `DesignTokens.Palette`: `brand` (#7559E3 fills under white text,
-  4.9:1), `brandDeep` (#6A4FD8), `brandInk` (text and symbols: #6347D8 light, #C9BCFF dark),
+  4.9:1), `lilac` (#A78BFA light, #B9A6FA dark) with `lilacInk` (#22184A), `brandInk` (text and symbols: #6347D8 light, #C9BCFF dark),
   each with an Increase Contrast value. Every window root calls `brandTint()`, so prominent
   buttons, toggles, sliders and selection are lilac. Lilac means three things only: the primary
   action (one `.glassProminent` per view, applied through `primaryActionStyle()`), the current
-  selection, and success. Prominent buttons fill with `brandDeep`: the system draws their label
-  in a light tint of the fill, which measured 4.9:1 in dark and 5.2:1 in light. Secondary
+  selection, and success. Primary buttons use `primaryActionStyle()`, a custom style: `lilac` (#A78BFA light, #B9A6FA dark) over lilac glass with a #22184A label (5.8:1 light, 7.6:1 dark), at the system push button's 24 pt height and 6 pt radius. The system's prominent glass draws its own near-white label, which can't be read on a light lilac. Secondary
   `.glass` buttons and toolbar items carry `.tint(nil)` so they stay neutral glass.
 - Everything else is semantic: `.primary`, `.secondary`, `.red`, `.orange`, hierarchical fills.
   No colour scheme is forced.

@@ -201,7 +201,7 @@ enum WheelBrand {
   static let color = DesignTokens.Palette.brand
   /// Deep ink for the lit petal's label and symbol: 7.6:1 on the dark wheel's lilac, 6.0:1 on
   /// the light wheel's.
-  static let ink = Color(red: 0x22 / 255, green: 0x18 / 255, blue: 0x4A / 255)
+  static let ink = DesignTokens.Palette.lilacInk
 
   /// A true lilac, a little lighter on the dark wheel (#B9A6FA) so it glows against the
   /// near-black petals, and a little richer on the light wheel (#A78BFA) so it reads on frost.

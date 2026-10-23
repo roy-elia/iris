@@ -400,7 +400,9 @@ import SwiftUI
     private static func dropHover(_ model: AppModel) -> some View {
       let items = WheelKind.actions.items(for: [])
       return RadialWheel(
-        kind: .actions, items: items, centerText: "5 KB", mode: .drop, hotID: items.last?.id,
+        // Terminal is on the first page; the wheel shows 8 actions per page.
+        kind: .actions, items: items, centerText: "5 KB", mode: .drop,
+        hotID: items.first { $0.title == "Terminal" }?.id,
         pointer: CGPoint(x: -150, y: -30)
       ) { _, _ in }
       .padding(DesignTokens.Spacing.inset)
