@@ -206,16 +206,16 @@ enum WheelBrand {
     colors: [deep, color, color], startPoint: .bottomLeading, endPoint: .topTrailing)
 }
 
-/// The wheel's surfaces: a lilac-grey glass disc, deeper lilac petals and a lighter hub ring,
-/// each edged with a thin light rim. Lilac is the lit petal. White labels stay above 7:1 on
-/// the petals' own fill.
+/// The wheel's dark surfaces: a cool dark glass disc, near-black petals and a lighter hub ring,
+/// each edged with a thin light rim, so the wheel matches the dark system UI. Lilac appears
+/// only on the lit petal under the pointer. White labels stay above 15:1 on the petals.
 enum WheelSlate {
-  static let disc = Color(red: 0.36, green: 0.31, blue: 0.52)
-  static let petal = Color(red: 0.30, green: 0.25, blue: 0.47)
-  static let hubRing = Color(red: 0.42, green: 0.37, blue: 0.60)
-  static let hubWell = Color(red: 0.27, green: 0.22, blue: 0.42)
+  static let disc = Color(red: 0.18, green: 0.17, blue: 0.24)
+  static let petal = Color(red: 0.12, green: 0.11, blue: 0.16)
+  static let hubRing = Color(red: 0.27, green: 0.25, blue: 0.34)
+  static let hubWell = Color(red: 0.13, green: 0.12, blue: 0.18)
 
-/// A light edge that catches the top-left and fades toward the bottom-right.
+  /// A light edge that catches the top-left and fades toward the bottom-right.
   static func rim(_ strength: Double = 1) -> LinearGradient {
     LinearGradient(
       colors: [.white.opacity(0.42 * strength), .white.opacity(0.05 * strength), .white.opacity(0.2 * strength)],

@@ -47,7 +47,7 @@ or draws its own substitute.
 - The main window's tabs (Files, History) and More menu are in the system toolbar. Settings is a grouped `Form` in its own Settings window.
 - The toast's Show button is a text button (glass shouldn't sit on the glass toast).
 - Onboarding opens as an opaque standard window instead of a transparent one.
-- The wheel uses the app's lilac. The lit petal is lilac-tinted glass with a
+- The wheel stays dark, like the system UI; lilac appears only on the lit petal. That petal is lilac-tinted glass with a
   see-through lilac layer on it: the wheel's panel is non-activating, and macOS draws glass
   tints on inactive windows without colour, so tint alone turned grey in real use.
 - Kept on purpose: media overlays in the editors (crop dimming, the redaction preview's black and
@@ -69,4 +69,4 @@ appearance and "dark-largest-text": 205 captures, all produced.
 | Reduce Motion | Not run, for the same reason; the fade path in `DesignTokens.Motion` is in the code but not checked on screen. |
 | Largest Dynamic Type | Ran, with no effect: macOS doesn't apply SwiftUI `dynamicTypeSize`, so text stays at the system size. Text uses text styles throughout, so it follows the macOS text-size settings that do exist. |
 | `#Preview` canvas | Not available: only the Command Line Tools are installed (no Xcode). The snapshot harness stands in for it. |
-| Contrast notes | White labels on the lilac lit petal are 5.4:1 or better across the gradient, and 9:1 on the wheel's own petals. On the Tinted wheel the lit petal is the background colour with lilac text. Clear wheel labels depend on what's behind the glass, as with any `.clear` glass. |
+| Contrast notes | White labels on the lilac lit petal are 5.4:1 or better across the gradient, and above 15:1 on the wheel's own dark petals. On the Tinted wheel the lit petal is the background colour with lilac text. Clear wheel labels depend on what's behind the glass, as with any `.clear` glass. |
