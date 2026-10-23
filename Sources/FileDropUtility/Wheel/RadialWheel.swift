@@ -194,26 +194,65 @@ extension WheelTheme {
   }
 }
 
-/// The wheel's signature lilac, the app's brand colour (`DesignTokens.Palette`). The wheel's
-/// panel never becomes key, and the system drops glass tints on inactive windows, so lilac is
-/// drawn as a fill rather than a glass tint. White labels stay above 4.5:1 across the gradient.
+/// The wheel's hover lilac. The wheel's panel never becomes key, and the system drops glass
+/// tints on inactive windows, so lilac is drawn as a fill over the lilac glass rather than as
+/// a tint alone. The lilac is light, so the lit petal's label is deep ink, not white.
 enum WheelBrand {
-  static let deep = DesignTokens.Palette.brandDeep
   static let color = DesignTokens.Palette.brand
-  /// Deeper lilac at the lower left, brightening to the brand lilac at the upper right
-  /// (#7559E3, white 4.9:1).
-  static let gradient = LinearGradient(
-    colors: [deep, color, color], startPoint: .bottomLeading, endPoint: .topTrailing)
+  /// Deep ink for the lit petal's label and symbol: 7.6:1 on the dark wheel's lilac, 6.0:1 on
+  /// the light wheel's.
+  static let ink = Color(red: 0x22 / 255, green: 0x18 / 255, blue: 0x4A / 255)
+
+  /// A true lilac, a little lighter on the dark wheel (#B9A6FA) so it glows against the
+  /// near-black petals, and a little richer on the light wheel (#A78BFA) so it reads on frost.
+  static func lilac(light: Bool) -> Color {
+    light ? hex(0xA78BFA) : hex(0xB9A6FA)
+  }
+
+  /// Slightly deeper at the lower left, lighter at the upper right, like light on glass.
+  static func gradient(light: Bool) -> LinearGradient {
+    LinearGradient(
+      colors: light
+        ? [hex(0x9D85F2), hex(0xA78BFA), hex(0xB09CF7)] : [hex(0xAD97F8), hex(0xB9A6FA), hex(0xC4B5FD)],
+      startPoint: .bottomLeading, endPoint: .topTrailing)
+  }
+
+  private static func hex(_ v: UInt32) -> Color {
+    Color(red: Double(v >> 16 & 0xFF) / 255, green: Double(v >> 8 & 0xFF) / 255, blue: Double(v & 0xFF) / 255)
+  }
 }
 
-/// The wheel's dark surfaces: a cool dark glass disc, near-black petals and a lighter hub ring,
-/// each edged with a thin light rim, so the wheel matches the dark system UI. Lilac appears
-/// only on the lit petal under the pointer. White labels stay above 15:1 on the petals.
+/// The wheel's surfaces in each appearance. Dark: a cool dark glass disc, near-black petals and
+/// a lighter hub ring, matching the dark system UI. Light: white frost on the same glass, pale
+/// lilac-grey petals and dark labels. Labels stay above 12:1 on the petals in both.
+struct WheelSurface {
+  let disc: Color
+  let discOpacity: Double
+  let petal: Color
+  let petalOpacity: Double
+  let hubRing: Color
+  let hubWell: Color
+  /// Enabled labels, symbols, the centre pill's text and the current page dot.
+  let label: Color
+  /// The fine inner ring and the well's edge.
+  let hairline: Color
+
+  static let dark = WheelSurface(
+    disc: Color(red: 0.18, green: 0.17, blue: 0.24), discOpacity: 0.72,
+    petal: Color(red: 0.12, green: 0.11, blue: 0.16), petalOpacity: 0.82,
+    hubRing: Color(red: 0.27, green: 0.25, blue: 0.34), hubWell: Color(red: 0.13, green: 0.12, blue: 0.18),
+    label: .white, hairline: .white.opacity(0.07))
+
+  static let light = WheelSurface(
+    disc: .white, discOpacity: 0.5,
+    petal: Color(red: 0.957, green: 0.949, blue: 0.973), petalOpacity: 0.78,
+    hubRing: Color(red: 0.894, green: 0.878, blue: 0.933),
+    hubWell: Color(red: 0.957, green: 0.949, blue: 0.973),
+    label: Color(red: 0.114, green: 0.114, blue: 0.122), hairline: .black.opacity(0.08))
+}
+
+/// The wheel's rim and sheen, shared by both appearances.
 enum WheelSlate {
-  static let disc = Color(red: 0.18, green: 0.17, blue: 0.24)
-  static let petal = Color(red: 0.12, green: 0.11, blue: 0.16)
-  static let hubRing = Color(red: 0.27, green: 0.25, blue: 0.34)
-  static let hubWell = Color(red: 0.13, green: 0.12, blue: 0.18)
 
   /// A light edge that catches the top-left and fades toward the bottom-right.
   static func rim(_ strength: Double = 1) -> LinearGradient {
@@ -295,6 +334,10 @@ struct RadialWheel: View {
   @Environment(\.colorScheme) private var colorScheme
 
   private var theme: WheelTheme { themeOverride ?? AppModel.shared.settings.wheelTheme }
+  /// The Regular wheel follows the system appearance. Clear glass keeps its dimming layer and
+  /// light labels, and Tinted keeps its lilac disc, so both stay dark.
+  private var isLight: Bool { theme == .dark && colorScheme == .light }
+  private var surface: WheelSurface { isLight ? .light : .dark }
 
   var body: some View {
     GeometryReader { geo in
@@ -304,7 +347,7 @@ struct RadialWheel: View {
         .position(x: geo.size.width / 2, y: geo.size.height / 2)
     }
     .aspectRatio(1, contentMode: .fit)
-    .environment(\.colorScheme, .dark)
+    .environment(\.colorScheme, isLight ? .light : .dark)
     .onChange(of: introRevision, initial: true) { playIntro() }
     .accessibilityElement(children: .contain)
     .accessibilityLabel("\(kind.longTitle) wheel")
@@ -444,15 +487,15 @@ struct RadialWheel: View {
         .glassEffect(theme.glass, in: Circle())
       // The outer bevel and a fine inner ring.
       Circle().strokeBorder(WheelSlate.rim(), lineWidth: 1.6 * s)
-      Circle().inset(by: 4.5 * s).strokeBorder(Color.white.opacity(0.07), lineWidth: 1)
+      Circle().inset(by: 4.5 * s).strokeBorder(surface.hairline, lineWidth: 1)
     }
   }
 
   private var discFill: AnyShapeStyle {
     switch theme {
     case .tinted: AnyShapeStyle(WheelBrand.color.opacity(0.6))
-    case .light: AnyShapeStyle(WheelSlate.disc.opacity(0.55))
-    case .dark: AnyShapeStyle(WheelSlate.disc.opacity(0.72))
+    case .light: AnyShapeStyle(WheelSurface.dark.disc.opacity(0.55))
+    case .dark: AnyShapeStyle(surface.disc.opacity(surface.discOpacity))
     }
   }
 
@@ -487,11 +530,11 @@ struct RadialWheel: View {
         // refraction, and the layer keeps it lilac in the non-activating panel, where the
         // system draws glass tints without colour.
         shape.fill(
-          theme == .tinted ? AnyShapeStyle(.background) : AnyShapeStyle(WheelBrand.gradient.opacity(0.9)))
+          theme == .tinted ? AnyShapeStyle(.background) : AnyShapeStyle(WheelBrand.gradient(light: isLight).opacity(0.92)))
       } else if theme == .tinted {
         shape.fill(.background.opacity(item.isEnabled ? 0.18 : 0.08))
       } else {
-        shape.fill(WheelSlate.petal.opacity(item.isEnabled ? 0.82 : 0.5))
+        shape.fill(surface.petal.opacity(item.isEnabled ? surface.petalOpacity : 0.5))
         shape.stroke(WheelSlate.petalSheen, lineWidth: 1)
       }
       VStack(spacing: 3 * s) {
@@ -516,8 +559,8 @@ struct RadialWheel: View {
       .foregroundStyle(
         isHot
           ? (theme == .tinted
-            ? AnyShapeStyle(DesignTokens.Palette.brandInk) : AnyShapeStyle(Color.white))
-          : (item.isEnabled ? AnyShapeStyle(Color.white) : AnyShapeStyle(Color.white.opacity(0.35)))
+            ? AnyShapeStyle(DesignTokens.Palette.brandInk) : AnyShapeStyle(WheelBrand.ink))
+          : (item.isEnabled ? AnyShapeStyle(surface.label) : AnyShapeStyle(surface.label.opacity(0.35)))
       )
       .offset(labelOffset)
       .opacity(labelsShown ? 1 : 0)
@@ -557,24 +600,24 @@ struct RadialWheel: View {
     return ZStack {
       // A raised ring around a recessed well, then the pill that names the lit petal.
       Circle()
-        .fill(WheelSlate.hubRing.opacity(0.85))
+        .fill(surface.hubRing.opacity(0.85))
         .frame(width: wellSide * s, height: wellSide * s)
         .overlay(Circle().strokeBorder(WheelSlate.rim(0.8), lineWidth: 1.2 * s))
       Circle()
-        .fill(WheelSlate.hubWell.opacity(0.9))
+        .fill(surface.hubWell.opacity(0.9))
         .frame(width: wellSide * 0.84 * s, height: wellSide * 0.84 * s)
-        .overlay(Circle().strokeBorder(Color.white.opacity(0.06), lineWidth: 1))
+        .overlay(Circle().strokeBorder(surface.hairline, lineWidth: 1))
       Text(litItem?.title ?? centerText)
         .font(.system(size: max(WheelGeometry.minimumLabelSize, 9 * s), weight: .bold))
         .tracking(0.2 * s)
         .textCase(litItem == nil || !usesCaps ? nil : .uppercase)
-        .foregroundStyle(.white)
+        .foregroundStyle(surface.label)
         .multilineTextAlignment(.center)
         .lineLimit(1)
         .minimumScaleFactor(0.6)
         .padding(.horizontal, 4 * s)
         .frame(width: wellSide * 0.78 * s, height: min(34, wellSide * 0.38) * s)
-        .background(WheelSlate.petal.opacity(0.95), in: Capsule(style: .continuous))
+        .background(surface.petal.opacity(0.95), in: Capsule(style: .continuous))
         .overlay(Capsule(style: .continuous).stroke(WheelSlate.petalSheen, lineWidth: 1))
         .clipShape(Capsule(style: .continuous))
         .contentTransition(.opacity)
@@ -585,7 +628,7 @@ struct RadialWheel: View {
         HStack(spacing: 4 * s) {
           ForEach(0..<totalPages, id: \.self) { page in
             Circle()
-              .fill(Color.white.opacity(page == currentPage ? 0.95 : 0.3))
+              .fill(surface.label.opacity(page == currentPage ? 0.95 : 0.3))
               .frame(width: 4 * s, height: 4 * s)
           }
         }
@@ -702,7 +745,7 @@ enum TextLoader {
   }
 }
 
-/// Violet Liquid Glass behind the lit petal. Only the lit petal gets a glass effect: an
+/// Lilac Liquid Glass behind the lit petal. Only the lit petal gets a glass effect: an
 /// `.identity` glass on the others would still merge them into the disc's glass.
 private struct TealGlass: ViewModifier {
   let isOn: Bool
@@ -710,7 +753,7 @@ private struct TealGlass: ViewModifier {
 
   func body(content: Content) -> some View {
     if isOn {
-      content.glassEffect(.regular.tint(WheelBrand.color).interactive(), in: shape)
+      content.glassEffect(.regular.tint(WheelBrand.lilac(light: false)).interactive(), in: shape)
     } else {
       content
     }

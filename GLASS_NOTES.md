@@ -47,9 +47,13 @@ or draws its own substitute.
 - The main window's tabs (Files, History) and More menu are in the system toolbar. Settings is a grouped `Form` in its own Settings window.
 - The toast's Show button is a text button (glass shouldn't sit on the glass toast).
 - Onboarding opens as an opaque standard window instead of a transparent one.
-- The wheel stays dark, like the system UI; lilac appears only on the lit petal. That petal is lilac-tinted glass with a
-  see-through lilac layer on it: the wheel's panel is non-activating, and macOS draws glass
-  tints on inactive windows without colour, so tint alone turned grey in real use.
+- The Regular wheel follows the system appearance (`WheelSurface.dark` / `.light` in
+  `Wheel/RadialWheel.swift`): dark slate glass with white labels in Dark Mode, white frost with
+  #1D1D1F labels in Light Mode, labels 15 to 16:1 on the petals. Clear and Tinted stay dark.
+  Hovering a petal turns it lilac (#B9A6FA on the dark wheel, #A78BFA on the light one) over
+  lilac glass, with a deep-ink #22184A label (7.3:1 dark, 5.9:1 light). The wheel's panel is
+  non-activating, and macOS draws glass tints on inactive windows without colour, so the lilac
+  is a fill over the glass rather than a tint alone.
 - Kept on purpose: media overlays in the editors (crop dimming, the redaction preview's black and
   `.ultraThinMaterial` blur, white playheads with a shadow, the PDF page's white paper and shadow).
   They depict the output or must stay visible over arbitrary media, so they aren't chrome.
