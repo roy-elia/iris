@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Shape, spacing, colour and motion values shared by every screen. Materials come from the
-/// system (Liquid Glass); the only custom colour is the brand violet.
+/// system (Liquid Glass); the only custom colour is the brand lilac.
 enum DesignTokens {
   // MARK: Shape
 
@@ -25,22 +25,23 @@ enum DesignTokens {
 
   // MARK: Colour
 
-  /// The app's iris violet, the one brand colour (the icon's gold stays in the icon). Everything
+  /// The app's lilac, the one brand colour (the icon's gold stays in the icon). Everything
   /// else uses system semantic colours (`.primary`, `.secondary`, `.red`, `.orange`, hierarchical
-  /// fills). Violet marks three things only: the primary action, the current selection, and
+  /// fills). Lilac marks three things only: the primary action, the current selection, and
   /// success. Each role has light, dark and Increase Contrast values; ratios are against the
   /// surfaces they sit on.
   enum Palette {
-    /// Fills behind white text: prominent buttons, selected tools, the lit wheel petal.
-    /// #5B3FD9 (white on it 6.7:1); Increase Contrast #4527B8 (9.4:1).
-    static let brand = Color(nsColor: adaptive(light: 0x5B3FD9, dark: 0x5B3FD9, contrast: 0x4527B8))
-    /// The deeper end of the wheel's gradient and prominent buttons. White on it 10.3:1;
-    /// Increase Contrast #2E1A8A (12.9:1).
-    static let brandDeep = Color(nsColor: adaptive(light: 0x3F25A8, dark: 0x3F25A8, contrast: 0x2E1A8A))
-    /// Violet text and symbols on the window and glass: #5338D0 in light (6.8:1 on #F5F5F7),
-    /// #B3A3FF in dark (5.2:1 on #3A3A3C); Increase Contrast #3F25A8 / #CBC0FF.
+    /// Fills behind white text: selected tools, the lit wheel petal, the tint on glass.
+    /// #7559E3 (white on it 4.9:1); Increase Contrast #5E43C9 (6.3:1).
+    static let brand = Color(nsColor: adaptive(light: 0x7559E3, dark: 0x7559E3, contrast: 0x5E43C9))
+    /// The deeper lilac for prominent buttons and the start of the wheel's gradient. The system
+    /// draws a prominent button's label in a light tint of its fill; this stays above 4.5:1.
+    /// Increase Contrast #4A30B5.
+    static let brandDeep = Color(nsColor: adaptive(light: 0x6A4FD8, dark: 0x6A4FD8, contrast: 0x4A30B5))
+    /// Lilac text and symbols on the window and glass: #6347D8 in light (5.6:1 on #F5F5F7),
+    /// #C9BCFF in dark (6.6:1 on #3A3A3C); Increase Contrast #4A30B5 / #DDD4FF.
     static let brandInk = Color(
-      nsColor: adaptive(light: 0x5338D0, dark: 0xB3A3FF, contrast: 0x3F25A8, darkContrast: 0xCBC0FF))
+      nsColor: adaptive(light: 0x6347D8, dark: 0xC9BCFF, contrast: 0x4A30B5, darkContrast: 0xDDD4FF))
 
     static func adaptive(light: UInt32, dark: UInt32, contrast: UInt32, darkContrast: UInt32? = nil)
       -> NSColor
@@ -81,15 +82,14 @@ enum DesignTokens {
 }
 
 extension View {
-  /// The app's violet as the tint for every control in a window: prominent buttons, toggles,
+  /// The app's lilac as the tint for every control in a window: prominent buttons, toggles,
   /// sliders, selection and `.tint` foregrounds. Apply once at each window's root.
   func brandTint() -> some View {
     tint(DesignTokens.Palette.brand)
   }
 
-  /// The view's one primary action: prominent Liquid Glass on the deeper violet. The system draws
-  /// a prominent button's label in a light cyan it derives itself (a foreground style doesn't
-  /// change it); the deeper `brandDeep` fill keeps it well above 4.5:1.
+  /// The view's one primary action: prominent Liquid Glass on the deeper lilac. The system draws
+  /// a prominent button's label in a light cyan it derives itself   /// change it); the deeper `brandDeep` fill keeps it above 4.5:1.
   func primaryActionStyle() -> some View {
     buttonStyle(.glassProminent).tint(DesignTokens.Palette.brandDeep)
   }

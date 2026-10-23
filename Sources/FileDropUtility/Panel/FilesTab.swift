@@ -47,7 +47,7 @@ struct FilesTab: View {
         .foregroundStyle(isTargeted ? DesignTokens.Palette.brandInk : .secondary)
         .accessibilityHidden(true)
       Text("Drop files or text here").font(.callout)
-      // The window's one violet primary action.
+      // The window's one lilac primary action.
       Button("Choose Files…") { model.chooseFiles() }
         .primaryActionStyle()
         .accessibilityIdentifier("chooseFiles")

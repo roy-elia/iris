@@ -67,7 +67,7 @@ struct Keycap: View {
 }
 
 /// A row of tool buttons, each its own Liquid Glass capsule with a small gap between them; the
-/// selected one carries the violet tint. The shared container's merge distance (0) is smaller
+/// selected one carries the lilac tint. The shared container's merge distance (0) is smaller
 /// than the gap, so neighbouring capsules never flow into each other.
 struct GlassToolPicker<Tool: Hashable & Identifiable & Sendable>: View {
   let tools: [Tool]
@@ -78,7 +78,7 @@ struct GlassToolPicker<Tool: Hashable & Identifiable & Sendable>: View {
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   /// macOS drops glass tints in windows that aren't in front, so the selected label is only
-  /// white while the violet shows; otherwise it would be white on grey glass (1.9:1).
+  /// white while the lilac shows; otherwise it would be white on grey glass (1.9:1).
   @Environment(\.appearsActive) private var appearsActive
 
   var body: some View {

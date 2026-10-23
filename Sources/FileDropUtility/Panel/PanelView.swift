@@ -82,7 +82,7 @@ struct MoreMenu: View {
     } label: {
       Label("More", systemImage: "ellipsis")
     }
-    // Toolbar items stay monochrome; violet is for the window's primary action.
+    // Toolbar items stay monochrome; lilac is for the window's primary action.
     .tint(nil)
     .accessibilityIdentifier("moreMenu")
   }
