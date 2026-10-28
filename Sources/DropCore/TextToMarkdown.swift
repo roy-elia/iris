@@ -46,13 +46,29 @@ public enum TextToMarkdown {
     return name
   }
 
+  /// A usable file name (without extension) from what the user typed: illegal characters and a
+  /// trailing `.md` removed. Falls back to the name taken from `fallbackText` when nothing is left.
+  public static func fileName(from typed: String, fallbackText: String, date: Date = Date()) -> String {
+    var name = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+    if name.lowercased().hasSuffix(".md") { name.removeLast(3) }
+    let illegal = CharacterSet(charactersIn: "/\\:*?\"<>|").union(.controlCharacters)
+    name = String(name.unicodeScalars.map { illegal.contains($0) ? " " : Character($0) })
+      .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    while name.hasPrefix(".") || name.hasPrefix(" ") { name.removeFirst() }
+    return name.isEmpty ? baseName(for: fallbackText, date: date) : name
+  }
+
   /// Writes `text` to a new `.md` file in `directory`, never overwriting an existing file.
+  /// `name` replaces the name taken from the text's first line.
   @discardableResult
   public static func write(
-    _ text: String, to directory: URL, date: Date = Date(), fileManager: FileManager = .default
+    _ text: String, to directory: URL, named name: String? = nil, date: Date = Date(),
+    fileManager: FileManager = .default
   ) throws -> URL {
     guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw Failure.empty }
-    let desired = directory.appendingPathComponent(baseName(for: text, date: date) + ".md")
+    let base =
+      name.map { fileName(from: $0, fallbackText: text, date: date) } ?? baseName(for: text, date: date)
+    let desired = directory.appendingPathComponent(base + ".md")
     let url = OutputNamer.uniqueURL(for: desired, fileManager: fileManager)
     try Data(contents(of: text).utf8).write(to: url, options: .withoutOverwriting)
     return url

@@ -161,8 +161,15 @@ final class AppModel: ObservableObject {
   /// Turns text that isn't in a file (pasted, or dragged out of another app) into a Markdown
   /// file and queues it, so it can go straight to a chat or through any wheel action.
   func addText(_ text: String) {
+    guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+      rejected = ["Nothing to save: the text is empty."]
+      return
+    }
+    // Offer the suggested name before anything is written; Cancel saves nothing.
+    guard let name = Self.askFileName(suggested: TextToMarkdown.baseName(for: text)) else { return }
     do {
-      let url = try TextToMarkdown.write(text, to: TextToMarkdown.destination(for: settings.outputLocation))
+      let url = try TextToMarkdown.write(
+        text, to: TextToMarkdown.destination(for: settings.outputLocation), named: name)
       add([url])
       Toast.show("Saved \(url.lastPathComponent)", outputs: [url])
     } catch TextToMarkdown.Failure.empty {
@@ -170,6 +177,23 @@ final class AppModel: ObservableObject {
     } catch {
       rejected = [Self.message(for: error, fallback: "Pasted text")]
     }
+  }
+
+  /// Asks what to call the new Markdown file. Returns nil when the user cancels.
+  private static func askFileName(suggested: String) -> String? {
+    let alert = NSAlert()
+    alert.messageText = "Name this Markdown file"
+    alert.informativeText = "It is saved with the .md extension."
+    alert.addButton(withTitle: "Save")
+    alert.addButton(withTitle: "Cancel")
+    let field = NSTextField(string: suggested)
+    field.frame = NSRect(x: 0, y: 0, width: 280, height: 24)
+    field.setAccessibilityIdentifier("markdown-file-name")
+    alert.accessoryView = field
+    alert.window.initialFirstResponder = field
+    NSApp.activate(ignoringOtherApps: true)
+    guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+    return field.stringValue
   }
 
   /// Makes a Markdown file from the plain text on the clipboard.

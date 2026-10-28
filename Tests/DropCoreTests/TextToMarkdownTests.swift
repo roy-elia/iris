@@ -48,4 +48,19 @@ import Testing
     #expect(TextToMarkdown.destination(for: .folder(folder)) == folder)
     #expect(TextToMarkdown.destination(for: .nextToSource).lastPathComponent == "Downloads")
   }
+
+  @Test func writesUnderTheChosenName() throws {
+    let dir = try tempDir()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let url = try TextToMarkdown.write("# Notes\nhello", to: dir, named: "My plan.md")
+    #expect(url.lastPathComponent == "My plan.md")
+    let again = try TextToMarkdown.write("x", to: dir, named: "My plan")
+    #expect(again.lastPathComponent == "My plan (1).md")
+  }
+
+  @Test func chosenNameIsCleaned() {
+    #expect(TextToMarkdown.fileName(from: "  a/b: c?.MD ", fallbackText: "t") == "a b c")
+    #expect(TextToMarkdown.fileName(from: "../x", fallbackText: "t") == "x")
+    #expect(TextToMarkdown.fileName(from: "   ", fallbackText: "# Plan\nbody") == "Plan")
+  }
 }
