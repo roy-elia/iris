@@ -33,6 +33,16 @@ final class WindowManager {
     window.styleMask.remove(.resizable)
     window.isMovableByWindowBackground = true
     track(window) { [weak self] in self?.main = nil }
+    // A quick-access panel, not a document: it closes when the user moves on to another app.
+    let dismiss = NotificationCenter.default.addObserver(
+      forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
+    ) { [weak window] _ in
+      MainActor.assumeIsolated {
+        guard let window, window.isVisible, NSApp.modalWindow == nil else { return }
+        window.close()
+      }
+    }
+    observers.append(dismiss)
     main = window
     show(window)
   }
