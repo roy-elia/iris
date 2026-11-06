@@ -50,9 +50,6 @@ scripts/lint.sh          # swift-format lint (scripts/lint.sh --fix to reformat)
 swift-testing paths, which SwiftPM doesn't find on its own. The snapshot mode needs Screen
 Recording permission for the app that runs it.
 
-See [SETUP.md](SETUP.md) for the spec, assumptions and known gaps, and
-[GLASS_NOTES.md](GLASS_NOTES.md) for the Liquid Glass design.
-
 ## Licence
 
 Iris is released under the [MIT licence](LICENSE). The bundled helpers keep their own

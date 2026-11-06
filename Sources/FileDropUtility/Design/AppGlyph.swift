@@ -3,8 +3,8 @@ import SwiftUI
 
 /// The app's mark: a ring of twelve petals around an iris (a solid ring and a pupil), so it is
 /// the flower and the eye at once. Petals are half opacity and the iris solid, so it reads in
-/// monochrome as a template image. Matches `Resources/AppIcon/HotbarIcon.svg`, which is the
-/// app icon's geometry (a 1024 canvas) scaled into a 24pt box.
+/// monochrome as a template image. It is the app icon's geometry (a 1024 canvas) scaled into
+/// a 24pt box.
 enum AppGlyph {
   private static let box: CGFloat = 24
   /// The icon canvas maps into the box by this scale and offset.

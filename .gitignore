@@ -4,6 +4,5 @@ dist/
 *.xcodeproj
 .DS_Store
 .env
-samples/
 Vendor/
-test-drop/
+samples/

@@ -4,7 +4,7 @@ import Testing
 
 @testable import DropCore
 
-/// One test per acceptance criterion in SETUP.md. A1 (build/test/lint) and A10 (share
+/// One test per acceptance criterion. A1 (build/test/lint) and A10 (share
 /// picker opens) are checked by running the tools and the app, not here.
 @Suite("Acceptance") struct AcceptanceTests {
   private let repoRoot = URL(fileURLWithPath: #filePath)
